@@ -23,6 +23,9 @@ from db import get_connection
 load_dotenv()
 
 app = Flask(__name__)
+@app.route('/')
+def home():
+    return jsonify({"message": "Welcome to Employee Portal API"})
 CORS(app)  # يسمح لصفحة الويب (Frontend) إنها تكلم السيرفر ده من دومين مختلف
 
 SECRET_KEY = os.getenv("SECRET_KEY")
