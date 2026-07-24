@@ -5,7 +5,7 @@ db.py
 """
 
 import os
-import pyodbc
+import pymssql
 from dotenv import load_dotenv
 
 # بيقرأ القيم من ملف .env ويحطها في متغيرات البيئة
@@ -23,11 +23,15 @@ def get_connection():
     لو الاتصال فشل (بيانات غلط، السيرفر واقف...) هيرمي Exception
     ونمسكه في الأماكن اللي بنستخدمه فيها.
     """
-    connection_string = (
-        "DRIVER={ODBC Driver 17 for SQL Server};"
-        f"SERVER={DB_SERVER};"
-        f"DATABASE={DB_NAME};"
-        f"UID={DB_USER};"
-        f"PWD={DB_PASSWORD};"
+    def get_connection():
+    """
+    بتفتح اتصال جديد مع SQL Server وترجعه.
+    """
+    return pymssql.connect(
+        server=DB_SERVER,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=1433,
+        as_dict=True
     )
-    return pyodbc.connect(connection_string)
