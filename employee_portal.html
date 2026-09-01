@@ -562,7 +562,7 @@
     <div class="grid-pulse p4"></div>
     <div class="login-card">
       <div class="login-header">
-        <div class="logo-badge"><img src="assets/logo.png?v=delta-20260901" alt="شعار الشركة" style="width:100%;height:100%;object-fit:contain;border-radius:50%;"></div>
+        <div class="logo-badge"><img src="assets/logo.jpg?v=delta-original" alt="شعار الشركة" style="width:100%;height:100%;object-fit:contain;border-radius:50%;"></div>
         <div>
           <div class="login-title">الشركة المصرية لنقل الكهرباء</div>
           <div style="color:var(--gold-soft);font-size:13.5px;font-weight:600;margin-top:3px;">المنظومة الإلكترونية الموحدة</div>
@@ -718,7 +718,7 @@
         <button class="menu-toggle" id="menuToggle" aria-label="فتح القائمة">
           <span class="bar"></span><span class="bar"></span><span class="bar"></span>
         </button>
-        <div class="logo-badge" style="width:46px;height:46px;padding:2px;"><img src="assets/logo.png?v=delta-20260901" alt="شعار الشركة" style="width:100%;height:100%;object-fit:contain;border-radius:50%;"></div>
+        <div class="logo-badge" style="width:46px;height:46px;padding:2px;"><img src="assets/logo.jpg?v=delta-original" alt="شعار الشركة" style="width:100%;height:100%;object-fit:contain;border-radius:50%;"></div>
         <div>
           <div class="topbar-brand">الشركة المصرية لنقل الكهرباء</div>
           <div style="color:var(--gold-soft);font-size:12px;font-weight:600;margin-top:1px;">المنظومة الإلكترونية الموحدة</div>
@@ -1389,9 +1389,9 @@ async function loadAdminInfo() {
       <div class="card" style="margin-bottom:16px;text-align:center;padding:20px;">
         <div class="card-header" style="margin:-20px -20px 18px;">الصورة الشخصية</div>
         <img id="myProfilePhoto"
-             src="${data.photo_url ? `${API_BASE}${data.photo_url}?token=${encodeURIComponent(session.token)}&v=${Date.now()}` : 'assets/logo.png?v=delta-20260901'}"
+             src="${data.photo_url ? `${API_BASE}${data.photo_url}?token=${encodeURIComponent(session.token)}&v=${Date.now()}` : 'assets/logo.jpg?v=delta-original'}"
              alt="الصورة الشخصية"
-             onerror="this.onerror=null;this.src='assets/logo.png?v=delta-20260901'"
+             onerror="this.onerror=null;this.src='assets/logo.jpg?v=delta-original'"
              style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:4px solid var(--gold);background:#fff;">
         <div style="margin-top:14px;">
           <input id="myPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" style="max-width:100%;">
