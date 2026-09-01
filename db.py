@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_connection():
     driver = os.getenv("ODBC_DRIVER", "ODBC Driver 17 for SQL Server")
     server = os.getenv("DB_SERVER", ".")
@@ -17,14 +18,14 @@ def get_connection():
         raise RuntimeError("DB_NAME غير مضبوط في ملف .env")
 
     parts = [
-        `DRIVER={${driver}}`,
-        `SERVER=${server}`,
-        `DATABASE=${database}`,
+        f"DRIVER={{{driver}}}",
+        f"SERVER={server}",
+        f"DATABASE={database}",
         "TrustServerCertificate=yes",
     ]
 
     if user and password:
-        parts.extend([`UID=${user}`, `PWD=${password}`])
+        parts.extend([f"UID={user}", f"PWD={password}"])
     else:
         parts.append("Trusted_Connection=yes")
 
