@@ -1,8 +1,11 @@
-flask==3.0.3
-pyodbc>=5.1.0
+Flask==3.0.3
+Flask-Cors==4.0.1
+PyJWT==2.9.0
 bcrypt==4.2.0
 python-dotenv==1.0.1
-flask-cors==4.0.1
-PyJWT==2.9.0
+pymssql>=2.3.0
 gunicorn==21.2.0
-pymssql
+reportlab==4.2.5
+arabic-reshaper==3.0.0
+python-bidi==0.6.3
+Pillow>=10.4.0

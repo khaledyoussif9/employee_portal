@@ -1,0 +1,2703 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>الشركة المصرية لنقل الكهرباء</title>
+<meta name="author" content="Khaled Youssif Elmansy">
+<meta name="copyright" content="© 2026 Khaled Youssif Elmansy. All Rights Reserved.">
+<meta name="designer" content="Khaled Youssif Elmansy">
+<meta name="creator" content="Payroll Management System - Khaled Youssif Elmansy">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;800&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #5C1524;
+    --navy-light: #7A1F32;
+    --gold: #C9A24B;
+    --gold-soft: #E9D9AE;
+    --paper: #F7F4EC;
+    --ink: #242730;
+    --green: #2F7A4F;
+    --red: #B14A3D;
+    --gray: #6B7280;
+    --line: #DFD9C8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Cairo', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .hidden { display: none !important; }
+
+  /* ---------- شاشة تسجيل الدخول ---------- */
+  #loginScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      linear-gradient(160deg, rgba(70,12,22,0.90) 0%, rgba(90,22,34,0.60) 45%, rgba(120,45,55,0.30) 100%),
+      url("https://commons.wikimedia.org/wiki/Special:FilePath/Transmission_tower_at_dusk_(Unsplash).jpg") center center / cover no-repeat;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #loginScreen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNDAiIGhlaWdodD0iMTQwIiB2aWV3Qm94PSIwIDAgMjQgMjQiPgo8cGF0aCBmaWxsPSIjQzlBMjRCIiBvcGFjaXR5PSIwLjA2IiBkPSJNMTEgMjFoLTFsMS03SDcuNWMtLjU4IDAtLjU3LS4zMi0uMzgtLjY2LjE5LS4zNC4wNS0uMDguMDctLjEyQzguNDggMTAuOTQgMTAuNDIgNy41NCAxMyAzaDFsLTEgN2gzLjVjLjQ5IDAgLjU2LjMzLjQ3LjUxbC0uMDcuMTVDMTIuOTYgMTcuNTUgMTEgMjEgMTEgMjF6Ii8+Cjwvc3ZnPg==");
+    background-repeat: repeat;
+    background-size: 140px 140px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .power-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    top: 50%;
+    background: linear-gradient(90deg, transparent 0%, rgba(201,162,75,0) 35%, rgba(201,162,75,0.9) 50%, rgba(201,162,75,0) 65%, transparent 100%);
+    background-size: 200% 100%;
+    animation: powerFlow 5.5s linear infinite;
+    z-index: 1;
+    pointer-events: none;
+  }
+  @keyframes powerFlow {
+    0%   { background-position: 200% 0; opacity: 0.35; }
+    50%  { opacity: 0.9; }
+    100% { background-position: -200% 0; opacity: 0.35; }
+  }
+
+  .grid-pulse {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px 2px rgba(201,162,75,0.7);
+    animation: gridPulse 2.6s ease-in-out infinite;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .grid-pulse.p1 { left: 62px; top: 12%; animation-delay: 0s; }
+  .grid-pulse.p2 { right: 62px; top: 12%; animation-delay: 0.9s; }
+  .grid-pulse.p3 { left: 62px; bottom: 14%; animation-delay: 1.6s; }
+  .grid-pulse.p4 { right: 62px; bottom: 14%; animation-delay: 0.4s; }
+  @keyframes gridPulse {
+    0%, 100% { transform: scale(0.7); opacity: 0.35; }
+    50% { transform: scale(1.4); opacity: 1; }
+  }
+
+  .gold-glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 480px; height: 480px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(201,162,75,0.22) 0%, rgba(201,162,75,0) 70%);
+    animation: goldPulse 4s ease-in-out infinite;
+    z-index: 1;
+    pointer-events: none;
+  }
+  @keyframes goldPulse {
+    0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.92); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  }
+  @keyframes notifPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.25); }
+  }
+  #splashScreen {
+    transition: opacity 0.5s ease;
+  }
+  #splashScreen.splash-hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .login-card { position: relative; z-index: 2; }
+  .login-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--paper);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+  }
+  .login-header {
+    background: var(--navy-light);
+    padding: 26px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .login-header::after, .topbar::after, .col-title.gold-shimmer::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--gold) 45%, #fff 50%, var(--gold) 55%, transparent);
+    background-size: 260% 100%;
+    animation: shimmerLine 3.2s linear infinite;
+  }
+  @keyframes shimmerLine {
+    0% { background-position: 260% 0; }
+    100% { background-position: -260% 0; }
+  }
+  .logo-badge {
+    width: 62px; height: 62px; border-radius: 50%;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--navy); font-weight: 800; font-family: 'Tajawal', sans-serif;
+    flex-shrink: 0; overflow: hidden; padding: 2px; box-sizing: border-box;
+  }
+  .login-title { font-family: 'Tajawal', sans-serif; color: #fff; font-weight: 800; font-size: 20px; line-height: 1.3; }
+  .login-sub { color: var(--gold-soft); font-size: 14px; font-weight: 600; margin-top: 3px; }
+  .login-body { padding: 32px; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; margin-bottom: 6px; font-size: 13.5px; font-weight: 600; }
+  .field input {
+    width: 100%; padding: 10px 14px; border-radius: 6px;
+    border: 1.5px solid var(--line); background: #fff; font-size: 14px;
+    font-family: 'Cairo', sans-serif; outline: none;
+  }
+  .field input:focus { border-color: var(--gold); }
+  .btn-primary {
+    width: 100%; margin-top: 18px; padding: 11px; border: none; border-radius: 6px;
+    background: var(--navy); color: #fff; font-family: 'Tajawal', sans-serif;
+    font-weight: 800; font-size: 15px; cursor: pointer;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .error-text { color: var(--red); font-size: 13px; margin-top: 8px; }
+  .login-footer {
+    margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--line);
+    text-align: center; font-size: 12px; color: var(--gray);
+  }
+
+  /* ---------- الصفحة الرئيسية ---------- */
+  #appScreen { min-height: 100vh; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--navy);
+    padding: 14px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar-brand { font-family: 'Tajawal', sans-serif; color: #fff; font-weight: 800; font-size: 17px; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-name { color: var(--gold-soft); font-size: 13.5px; }
+  .btn-logout {
+    display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 6px;
+    background: var(--navy-light); color: #fff; font-size: 13px; border: none; cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+  }
+
+  .layout { display: flex; max-width: 960px; margin: 0 auto; }
+  .sidebar { width: 220px; flex-shrink: 0; padding: 24px 16px 24px 0; }
+  .nav-btn {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: right;
+    padding: 10px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 4px;
+    border: 1px solid transparent; background: transparent; color: var(--gray);
+    cursor: pointer; font-family: 'Cairo', sans-serif;
+  }
+  .nav-btn.active { background: #fff; border-color: var(--line); color: var(--navy); font-weight: 700; }
+
+  .content { flex: 1; padding: 24px 16px; }
+
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .card-header { background: var(--navy); color: #fff; padding: 16px 24px; font-family: 'Tajawal', sans-serif; font-weight: 700; }
+  .info-row { display: flex; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .info-row .label { color: var(--gray); }
+  .info-row .value { font-weight: 600; }
+
+  .selectors { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .selectors select {
+    padding: 8px 30px 8px 12px; border-radius: 6px; border: 1.5px solid var(--line);
+    background: #fff; font-size: 14px; font-weight: 600; font-family: 'Cairo', sans-serif;
+  }
+  .selectors label { font-size: 13.5px; color: var(--gray); margin-left: 6px; }
+  .btn-print {
+    margin-right: auto; display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+    border-radius: 6px; background: var(--navy); color: #fff; border: none; font-size: 13.5px; cursor: pointer;
+  }
+
+  .payslip-header {
+    background: var(--navy); padding: 20px 24px; display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .payslip-title { font-family: 'Tajawal', sans-serif; color: #fff; font-weight: 800; font-size: 18px; }
+  .payslip-sub { color: var(--gold-soft); font-size: 13px; margin-top: 3px; }
+  .seal {
+    width: 84px; height: 84px; border-radius: 50%; border: 2px dashed var(--gold);
+    display: flex; align-items: center; justify-content: center; color: var(--gold); transform: rotate(-8deg);
+    flex-shrink: 0;
+  }
+  .seal span { font-family: 'Tajawal', sans-serif; font-size: 11px; font-weight: 700; }
+
+  .payslip-section { padding: 18px 24px; }
+  .payslip-section .section-label { font-size: 12.5px; color: var(--gray); font-weight: 700; margin-bottom: 6px; }
+
+  .payslip-columns { display: grid; grid-template-columns: 1fr 1fr; }
+  .payslip-col { padding: 18px 20px; }
+  .payslip-col.earnings { border-left: 1px solid var(--line); }
+  .payslip-col .col-title {
+    font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 14px; color: var(--navy);
+    margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--gold);
+  }
+  .payslip-col .col-total {
+    display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px;
+    border-top: 1.5px dashed var(--line); font-weight: 800; font-size: 14px;
+  }
+  .payslip-col.earnings .col-total { color: var(--green); }
+  .payslip-col.deductions .col-total { color: var(--red); }
+  @media (max-width: 560px) {
+    .payslip-columns { grid-template-columns: 1fr; }
+    .payslip-col.earnings { border-left: none; border-bottom: 1px solid var(--line); }
+  }
+  .payslip-line { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+  .payslip-line .neg { color: var(--red); font-weight: 700; }
+  .payslip-line .pos { font-weight: 700; }
+  .divider { margin: 0 24px; border-top: 1px dashed var(--line); }
+  .net-box {
+    margin: 0 24px 24px; padding: 16px 20px; border-radius: 6px;
+    background: var(--gold-soft); border: 1.5px solid var(--gold);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .net-box .label { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy); }
+  .net-box .value { font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 20px; color: var(--navy); }
+
+  .state-box {
+    text-align: center; padding: 50px 20px; color: var(--gray); font-size: 14px;
+  }
+  .state-box.dashed { border: 1px dashed var(--line); border-radius: 8px; background: #fff; }
+  .spin {
+    display: inline-block; width: 16px; height: 16px; border: 2px solid var(--line);
+    border-top-color: var(--navy); border-radius: 50%; animation: spin 0.8s linear infinite;
+    vertical-align: middle; margin-left: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .conn-error {
+    display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 6px;
+    background: #FBEAE7; border: 1px solid var(--red); color: var(--red); font-size: 13px; margin-bottom: 16px;
+  }
+
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+  @media print {
+    .topbar, .sidebar, .selectors, #devCredit, #aboutOverlay, #splashScreen { display: none !important; }
+    .print-watermark, .print-footer-note { display: block !important; }
+
+    html, body { background: #fff !important; }
+    .content { padding: 0 !important; }
+    .layout { max-width: none !important; margin: 0 !important; }
+
+    .payslip-header { padding: 8px 14px !important; }
+    .payslip-title { font-size: 14px !important; }
+    .payslip-sub { font-size: 10.5px !important; margin-top: 1px !important; }
+    .seal { width: 52px !important; height: 52px !important; }
+    .seal span { font-size: 8px !important; }
+
+    .payslip-columns { }
+    .payslip-col { padding: 8px 12px !important; }
+    .payslip-col .col-title { font-size: 11px !important; margin-bottom: 4px !important; padding-bottom: 4px !important; }
+    .payslip-line { padding: 2px 0 !important; font-size: 12px !important; }
+    .payslip-col .col-total { margin-top: 4px !important; padding-top: 4px !important; font-size: 12px !important; }
+
+    .net-box { margin: 0 12px 12px !important; padding: 8px 14px !important; }
+    .net-box .label { font-size: 12px !important; }
+    .net-box .value { font-size: 15px !important; }
+
+    .print-footer-note { margin-top: 8px !important; font-size: 9.5px !important; padding-top: 5px !important; }
+    .print-watermark { font-size: 32px !important; }
+    .print-dev-signature, .print-watermark-author { display: block !important; }
+    .print-dev-signature { font-size: 8.5px !important; margin-top: 4px !important; }
+  }
+  .print-watermark {
+    display: none;
+    position: fixed;
+    top: 45%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 42px;
+    font-weight: 800;
+    color: rgba(180,70,61,0.18);
+    font-family: 'Tajawal', sans-serif;
+    white-space: nowrap;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .print-watermark-author {
+    display: none;
+    position: fixed;
+    bottom: 4%; left: 50%;
+    transform: translate(-50%, 0);
+    font-size: 11px;
+    color: rgba(92,21,36,0.07);
+    font-family: 'Cairo', sans-serif;
+    white-space: nowrap;
+    z-index: 998;
+    pointer-events: none;
+  }
+  .print-footer-note {
+    display: none;
+    margin-top: 18px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--red);
+    border-top: 1px dashed var(--line);
+    padding-top: 8px;
+  }
+  .print-dev-signature {
+    display: none;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--gray);
+    line-height: 1.7;
+  }
+
+  /* ---------- لوحة تحكم المدير ---------- */
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-row input {
+    flex: 1; padding: 10px 14px; border-radius: 6px; border: 1.5px solid var(--line);
+    background: #fff; font-size: 14px; font-family: 'Cairo', sans-serif; outline: none;
+  }
+  .search-row button {
+    padding: 10px 20px; border-radius: 6px; border: none; background: var(--navy);
+    color: #fff; font-size: 14px; cursor: pointer; font-family: 'Cairo', sans-serif;
+  }
+  .result-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px;
+    background: #fff; cursor: pointer; font-size: 14px;
+  }
+  .result-item:hover { border-color: var(--gold); }
+  .result-item .r-name { font-weight: 700; }
+  .result-item .r-meta { color: var(--gray); font-size: 12.5px; margin-top: 2px; }
+  .result-item .r-code { color: var(--gold); font-weight: 700; font-size: 13px; }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px; background: none; border: none;
+    color: var(--navy); font-size: 13.5px; cursor: pointer; margin-bottom: 14px; padding: 0;
+    font-family: 'Cairo', sans-serif; font-weight: 600;
+  }
+
+  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 20px 24px; }
+  .edit-field label { display: block; margin-bottom: 5px; font-size: 13px; color: var(--gray); font-weight: 600; }
+  .edit-field input, .edit-field select {
+    width: 100%; padding: 8px 12px; border-radius: 6px; border: 1.5px solid var(--line);
+    background: #fff; font-size: 14px; font-family: 'Cairo', sans-serif; outline: none;
+  }
+  .form-actions { padding: 4px 24px 22px; display: flex; gap: 10px; }
+  .btn-save {
+    padding: 9px 22px; border-radius: 6px; border: none; background: var(--green);
+    color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Cairo', sans-serif;
+  }
+  .save-msg { font-size: 13px; margin-top: 8px; padding: 0 24px; }
+  .save-msg.ok { color: var(--green); }
+  .save-msg.err { color: var(--red); }
+
+  .section-divider {
+    margin: 28px 0 16px; padding-top: 20px; border-top: 2px solid var(--line);
+    font-family: 'Tajawal', sans-serif; font-weight: 800; font-size: 15px; color: var(--navy);
+  }
+
+  /* ============================================================
+     إضافات جديدة - نفس الألوان الحالية بالظبط، مفيش أي تغيير فيها
+     ============================================================ */
+
+  /* ---------- إظهار/إخفاء كلمة المرور ---------- */
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-left: 42px; }
+  .eye-toggle {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer; color: var(--gray); padding: 0;
+    border-radius: 5px; transition: color .2s ease, background .2s ease;
+  }
+  .eye-toggle:hover { color: var(--navy); background: rgba(92,21,36,0.06); }
+  .eye-toggle svg { width: 18px; height: 18px; }
+  .eye-toggle .eye-off { display: none; }
+  .eye-toggle.showing .eye-on { display: none; }
+  .eye-toggle.showing .eye-off { display: block; }
+
+  /* ---------- تذكرني + نسيت كلمة المرور في صف واحد ---------- */
+  .remember-row { display: flex; align-items: center; justify-content: space-between; margin: -6px 0 4px; }
+  .remember-check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--gray); cursor: pointer; user-select: none; }
+  .remember-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; margin: 0; }
+  .forgot-link { font-size: 13px; color: var(--navy); text-decoration: underline; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
+
+  /* ---------- شكل الزرار الجديد (تدرّج + شمعة دهبية عند الـ hover) ---------- */
+  .btn-primary {
+    position: relative; overflow: hidden;
+    box-shadow: 0 6px 16px rgba(92,21,36,0.35);
+    background: linear-gradient(135deg, var(--navy-light), var(--navy) 60%);
+    transition: transform .15s ease, box-shadow .2s ease;
+  }
+  .btn-primary::before {
+    content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(201,162,75,0.55), transparent);
+    transform: skewX(-20deg); transition: left .6s ease;
+  }
+  .btn-primary:hover::before { left: 130%; }
+  .btn-primary:hover { box-shadow: 0 8px 22px rgba(92,21,36,0.5); transform: translateY(-1px); opacity: 1; }
+  .btn-primary:active { transform: translateY(0) scale(.98); box-shadow: 0 4px 10px rgba(92,21,36,0.4); }
+
+  /* ---------- بوابة اللمبة على شاشة الدخول ---------- */
+  .lamp-gate {
+    position: absolute; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, rgba(70,12,22,0.97) 0%, rgba(58,12,20,0.97) 100%);
+    transition: opacity .8s ease, visibility .8s ease; padding: 24px; text-align: center;
+  }
+  .lamp-gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .gate-title { color: #fff; font-size: 19px; font-weight: 800; margin: 0 0 4px; font-family: 'Tajawal', sans-serif; }
+  .gate-sub { color: var(--gold-soft); font-size: 13.5px; margin-bottom: 2px; }
+  .gate-credit { color: var(--gold); font-size: 12px; font-weight: 700; opacity: .9; margin-bottom: 30px; }
+
+  .lamp-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .cone {
+    position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+    width: 320px; height: 400px; pointer-events: none;
+    background: radial-gradient(ellipse 160px 340px at 50% 0%, rgba(201,162,75,0) 0%, rgba(201,162,75,0) 100%);
+    transition: background 1s ease;
+  }
+  .lamp-gate.on .cone { background: radial-gradient(ellipse 180px 360px at 50% 0%, rgba(201,162,75,0.28) 0%, rgba(201,162,75,0.08) 55%, rgba(201,162,75,0) 80%); }
+  .lamp { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
+  .cord { width: 2px; height: 18px; background: var(--gold); }
+  .shade {
+    width: 110px; height: 64px; border-radius: 110px 110px 8px 8px / 64px 64px 8px 8px;
+    background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+    box-shadow: inset 0 -8px 14px rgba(0,0,0,.3); filter: brightness(.5); transition: filter .9s ease;
+  }
+  .lamp-gate.on .shade { filter: brightness(1.05); }
+  .shade-rim { width: 116px; height: 8px; border-radius: 50%; background: var(--gold); margin-top: -4px; }
+  .bulb-zone { width: 30px; height: 30px; display: flex; justify-content: center; margin-top: -4px; }
+  .bulb { width: 17px; height: 17px; border-radius: 50%; background: #5a3f2a; margin-top: 2px; transition: background .5s ease, box-shadow .5s ease; }
+  .lamp-gate.on .bulb { background: #ffe9b8; box-shadow: 0 0 16px 6px rgba(201,162,75,.9), 0 0 55px 26px rgba(201,162,75,.35); }
+  .pole { width: 5px; height: 120px; background: linear-gradient(90deg,#8d6a3a,var(--gold),#8d6a3a); border-radius: 3px; }
+  .base { width: 70px; height: 11px; border-radius: 7px; background: linear-gradient(180deg,var(--gold),#8d6a3a); margin-top: -2px; }
+
+  .chain-wrap {
+    position: absolute; top: 82px; left: calc(50% + 28px);
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; z-index: 3; touch-action: none; user-select: none;
+  }
+  .chain {
+    width: 1.5px;
+    background: repeating-linear-gradient(var(--gold), var(--gold) 4px, transparent 4px, transparent 8px);
+    transition: height .25s cubic-bezier(.34,1.6,.5,1);
+  }
+  .chain-wrap.idle .chain { height: 34px; }
+  .chain-wrap.pulled .chain { height: 52px; }
+  .pull-knob { width: 10px; height: 13px; border-radius: 50% 50% 45% 45%; background: linear-gradient(180deg,var(--gold-soft),var(--gold)); box-shadow: 0 2px 4px rgba(0,0,0,.4); }
+  .hint { color: var(--gold-soft); font-size: 12.5px; margin-top: 16px; opacity: .85; animation: nudge 1.8s ease-in-out infinite; }
+  .lamp-gate.on .hint { opacity: 0; }
+  @keyframes nudge { 0%,100%{transform:translateX(0);} 50%{transform:translateX(4px);} }
+
+  /* ---------- القائمة الجانبية المتحركة (تظهر/تختفي بورتريه ولاندسكيب) ---------- */
+  .menu-toggle {
+    width: 36px; height: 36px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.25);
+    border-radius: 8px; cursor: pointer; position: relative;
+  }
+  .menu-toggle .bar {
+    position: absolute; width: 17px; height: 2px; background: #fff; border-radius: 2px;
+    transition: transform .28s ease, opacity .2s ease, top .28s ease;
+  }
+  .menu-toggle .bar:nth-child(1) { top: 12px; }
+  .menu-toggle .bar:nth-child(2) { top: 17px; }
+  .menu-toggle .bar:nth-child(3) { top: 22px; }
+  .menu-toggle.open .bar:nth-child(1) { top: 17px; transform: rotate(45deg); }
+  .menu-toggle.open .bar:nth-child(2) { opacity: 0; }
+  .menu-toggle.open .bar:nth-child(3) { top: 17px; transform: rotate(-45deg); }
+
+  .sidebar-backdrop {
+    position: fixed; inset: 0; background: rgba(20,10,14,0.45);
+    opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility .3s ease; z-index: 19;
+  }
+  .sidebar-backdrop.show { opacity: 1; visibility: visible; }
+
+  .sidebar {
+    position: fixed; top: 0; bottom: 0; right: 0;
+    width: 250px; max-width: 82vw;
+    background: #fff; border-left: 1px solid var(--line);
+    padding: 18px 14px; z-index: 20;
+    transform: translateX(100%);
+    transition: transform .32s cubic-bezier(.2,.8,.2,1);
+    box-shadow: -8px 0 24px rgba(0,0,0,0.15);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 14px; margin-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  .sidebar-head span { font-weight: 800; color: var(--navy); font-size: 14px; font-family: 'Tajawal', sans-serif; }
+  .sidebar-close { background: none; border: none; font-size: 18px; color: var(--gray); cursor: pointer; padding: 4px; }
+
+  @media (min-width: 900px) {
+    .sidebar { width: 270px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ============ شاشة تسجيل الدخول ============ -->
+  <div id="loginScreen">
+    <div class="power-line"></div>
+    <div class="gold-glow"></div>
+    <div class="grid-pulse p1"></div>
+    <div class="grid-pulse p2"></div>
+    <div class="grid-pulse p3"></div>
+    <div class="grid-pulse p4"></div>
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo-badge"><img src="assets/logo.png" alt="شعار الشركة" style="width:100%;height:100%;object-fit:contain;border-radius:50%;"></div>
+        <div>
+          <div class="login-title">الشركة المصرية لنقل الكهرباء</div>
+          <div style="color:var(--gold-soft);font-size:13.5px;font-weight:600;margin-top:3px;">المنظومة الإلكترونية الموحدة</div>
+          <div class="login-sub"><a href="https://www.eetc-delta.com.eg/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">منطقة الدلتا</a></div>
+        </div>
+      </div>
+      <div class="login-body" id="loginFormBody">
+        <div class="field">
+          <label>كود الموظف</label>
+          <input type="text" id="loginCode" placeholder="مثال: 9999">
+        </div>
+        <div class="field">
+          <label>كلمة المرور</label>
+          <div class="password-wrap">
+            <input type="password" id="loginPassword" placeholder="••••">
+            <button type="button" class="eye-toggle" id="pwEyeToggle" aria-label="إظهار كلمة المرور">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="remember-row">
+          <label class="remember-check"><input type="checkbox" id="rememberMeCheckbox"> تذكرني</label>
+          <button type="button" onclick="showForgotStep1()" class="forgot-link">نسيت كلمة المرور؟</button>
+        </div>
+        <div id="loginError" class="error-text hidden"></div>
+        <button class="btn-primary" id="loginBtn" onclick="handleLogin()">تسجيل الدخول</button>
+        <div class="login-footer">
+          بيتصل بالسيرفر الحقيقي على <b id="apiBaseLabel"></b> — اتأكد إنه شغال (python app.py)
+        </div>
+        <div style="text-align:center;margin-top:12px;font-size:11.5px;color:var(--gray);line-height:1.6;">
+          📍 تقاطع طريق الكورنيش مع طريق مدينة السماد، طلخا، المنصورة، محافظة الدقهلية
+          <br>
+          <a href="https://www.google.com/maps/search/?api=1&query=31.1197,31.3789" target="_blank" rel="noopener" style="color:var(--navy);text-decoration:underline;">عرض الموقع على خرائط جوجل</a>
+          <div style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:var(--gold-soft);color:var(--navy);padding:4px 12px;border-radius:14px;font-weight:700;font-size:11px;">
+            🛟 دعم فني 24/7
+          </div>
+        </div>
+      </div>
+
+      <!-- خطوة 1: طلب كود التحقق -->
+      <div class="login-body hidden" id="forgotStep1Body">
+        <div class="field">
+          <label>كود الموظف</label>
+          <input type="text" id="fpCode" placeholder="مثال: 9999">
+        </div>
+        <div class="field">
+          <label>البريد الإلكتروني المسجل</label>
+          <input type="email" id="fpEmail" placeholder="example@gmail.com">
+        </div>
+        <div id="fpStep1Error" class="error-text hidden"></div>
+        <button class="btn-primary" id="fpStep1Btn" onclick="submitForgotStep1()">إرسال كود التحقق</button>
+        <div style="text-align:center;margin-top:14px;">
+          <button onclick="showLoginForm()" style="background:none;border:none;color:var(--navy);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'Cairo',sans-serif;">رجوع لتسجيل الدخول</button>
+        </div>
+      </div>
+
+      <!-- خطوة 2: إدخال الكود وكلمة مرور جديدة -->
+      <div class="login-body hidden" id="forgotStep2Body">
+        <div style="background:#FBF3DD;border:1px solid var(--gold);color:var(--navy);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
+          📧 تم إرسال كود مكوّن من 6 أرقام على بريدك الإلكتروني. الكود صالح لمدة 10 دقائق.
+        </div>
+        <div class="field">
+          <label>كود التحقق</label>
+          <input type="text" id="fpVerifyCode" placeholder="6 أرقام">
+        </div>
+        <div class="field">
+          <label>كلمة المرور الجديدة</label>
+          <input type="password" id="fpNewPass1" placeholder="••••">
+        </div>
+        <div class="field">
+          <label>تأكيد كلمة المرور الجديدة</label>
+          <input type="password" id="fpNewPass2" placeholder="••••">
+        </div>
+        <div id="fpStep2Error" class="error-text hidden"></div>
+        <button class="btn-primary" id="fpStep2Btn" onclick="submitForgotStep2()">حفظ كلمة المرور الجديدة</button>
+        <div style="text-align:center;margin-top:14px;">
+          <button onclick="showLoginForm()" style="background:none;border:none;color:var(--navy);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'Cairo',sans-serif;">رجوع لتسجيل الدخول</button>
+        </div>
+      </div>
+
+      <!-- شاشة الإعداد الإجباري لأول دخول -->
+      <div class="login-body hidden" id="firstLoginSetupBody">
+        <div style="background:#FBEAE7;border:1px solid var(--red);color:var(--red);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
+          ⚠️ هذه أول مرة تدخل فيها. لازم تسجّل بريدك الإلكتروني وتغيّر كلمة المرور الافتراضية قبل ما تكمل.
+        </div>
+        <div class="field">
+          <label>كلمة المرور الحالية</label>
+          <input type="password" id="flsOldPassword" placeholder="••••">
+        </div>
+        <div class="field">
+          <label>البريد الإلكتروني</label>
+          <input type="email" id="flsEmail" placeholder="example@gmail.com">
+        </div>
+        <div class="field">
+          <label>كلمة المرور الجديدة</label>
+          <input type="password" id="flsNewPass1" placeholder="••••">
+        </div>
+        <div class="field">
+          <label>تأكيد كلمة المرور الجديدة</label>
+          <input type="password" id="flsNewPass2" placeholder="••••">
+        </div>
+        <div id="flsError" class="error-text hidden"></div>
+        <button class="btn-primary" id="flsSubmitBtn" onclick="submitFirstLoginSetup()">حفظ والدخول</button>
+      </div>
+
+      <!-- شاشة إتمام البيانات الإجباري -->
+      <div class="login-body hidden" id="completeProfileBody">
+        <div style="background:#FBEAE7;border:1px solid var(--red);color:var(--red);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
+          ⚠️ بياناتك ناقصة. لازم تدخل رقم هاتف والواتساب (11 رقم) والرقم القومي (14 رقم) قبل ما تكمل.
+        </div>
+        <div class="field">
+          <label>رقم هاتف والواتساب</label>
+          <input type="text" id="cpPhone" placeholder="01xxxxxxxxx" maxlength="11" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>الرقم القومي</label>
+          <input type="text" id="cpNationalId" placeholder="14 رقم" maxlength="14" inputmode="numeric">
+        </div>
+        <div id="cpError" class="error-text hidden"></div>
+        <button class="btn-primary" id="cpSubmitBtn" onclick="submitCompleteProfile()">حفظ والدخول</button>
+      </div>
+    </div>
+
+    <!-- بوابة اللمبة: نضغط/نشد الحبل تنور وتكشف كارت تسجيل الدخول اللي وراها -->
+    <div class="lamp-gate" id="lampGate">
+      <div class="gate-title">الشركة المصرية لنقل الكهرباء</div>
+      <div class="gate-sub">المنظومة الإلكترونية الموحدة — منطقة الدلتا</div>
+      <div class="gate-credit">تصميم وتطوير: خالد يوسف المنسي</div>
+      <div class="lamp-wrap">
+        <div class="cone"></div>
+        <div class="lamp">
+          <div class="cord"></div>
+          <div class="shade"></div>
+          <div class="shade-rim"></div>
+          <div class="bulb-zone"><div class="bulb"></div></div>
+          <div class="pole"></div>
+          <div class="base"></div>
+        </div>
+        <div class="chain-wrap idle" id="chainWrap">
+          <div class="chain"></div>
+          <div class="pull-knob"></div>
+        </div>
+      </div>
+      <div class="hint">اسحب الحبل عشان تدخل ↴</div>
+    </div>
+  </div>
+
+  <!-- ============ الصفحة الرئيسية بعد تسجيل الدخول ============ -->
+  <div id="appScreen" class="hidden">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="menuToggle" aria-label="فتح القائمة">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </button>
+        <div class="logo-badge" style="width:46px;height:46px;padding:2px;"><img src="assets/logo.png" alt="شعار الشركة" style="width:100%;height:100%;object-fit:contain;border-radius:50%;"></div>
+        <div>
+          <div class="topbar-brand">الشركة المصرية لنقل الكهرباء</div>
+          <div style="color:var(--gold-soft);font-size:12px;font-weight:600;margin-top:1px;">المنظومة الإلكترونية الموحدة</div>
+          <div style="color:var(--gold-soft);font-size:12px;font-weight:600;"><a href="https://www.eetc-delta.com.eg/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">منطقة الدلتا</a></div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span id="liveClock" style="color:var(--gold-soft);font-size:12.5px;font-weight:600;white-space:nowrap;"></span>
+        <button id="notifBellBtn" onclick="openNotifPanel()" style="position:relative;background:none;border:none;cursor:pointer;font-size:19px;padding:4px;">
+          🔔
+          <span id="notifBadge" class="hidden" style="position:absolute;top:-2px;left:-4px;background:var(--red);color:#fff;font-size:10px;font-weight:800;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;animation:notifPulse 1.4s ease-in-out infinite;"></span>
+        </button>
+        <span class="topbar-name" id="topbarName"></span>
+        <button class="btn-logout" onclick="handleLogout()">خروج</button>
+      </div>
+    </div>
+
+    <!-- طبقة تعتيم خلف القائمة الجانبية عند فتحها -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- لوحة الإشعارات المنبثقة -->
+    <div id="notifOverlay" class="hidden" onclick="if(event.target===this) closeNotifPanel()" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding-top:70px;">
+      <div style="background:#fff;border-radius:10px;max-width:480px;width:92%;max-height:75vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-family:'Tajawal',sans-serif;font-weight:800;color:var(--navy);">🔔 الإشعارات</span>
+          <button onclick="closeNotifPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--gray);">✕</button>
+        </div>
+        <div id="notifList" style="padding:8px;"></div>
+      </div>
+    </div>
+
+    <div id="welcomeBanner" style="background:var(--gold-soft);color:var(--navy);text-align:center;padding:10px 16px;font-size:13.5px;font-weight:600;line-height:1.6;"></div>
+
+    <div class="layout">
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-head">
+          <span>القائمة</span>
+          <button class="sidebar-close" id="sidebarCloseBtn" aria-label="إغلاق القائمة">✕</button>
+        </div>
+        <button class="nav-btn active" id="navAdmin" onclick="switchTab('admin')">👤 بياناتي الإدارية</button>
+        <button class="nav-btn" id="navPayslip" onclick="switchTab('payslip')">📄 شريط المرتب</button>
+        <button class="nav-btn" id="navWage" onclick="switchTab('wage')">📋 سجل الأجور</button>
+        <button class="nav-btn" id="navChangePass" onclick="switchTab('changepass')">🔑 تغيير كلمة المرور</button>
+        <button class="nav-btn" id="navContact" onclick="switchTab('contact')">✉️ تواصل معنا</button>
+        <button class="nav-btn" id="navRating" onclick="switchTab('rating')">⭐ تقييم الخدمة</button>
+        <button class="nav-btn hidden" id="navHR" onclick="switchTab('hr')">🗂 لوحة التحكم</button>
+      </div>
+
+      <div class="content">
+        <div id="tabAdmin"></div>
+        <div id="tabPayslip" class="hidden"></div>
+        <div id="tabWage" class="hidden"></div>
+        <div id="tabChangePass" class="hidden"></div>
+        <div id="tabContact" class="hidden"></div>
+        <div id="tabRating" class="hidden"></div>
+        <div id="tabHR" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API_BASE = window.location.origin;
+document.getElementById("apiBaseLabel").textContent = API_BASE;
+
+const APP_VERSION = "Version 1.0.0";
+
+console.log(
+  "%c====================================\n" +
+  "  Payroll Management System\n" +
+  "  Developed by Khaled Youssif Elmansy\n" +
+  "  © 2026 - All Rights Reserved\n" +
+  "====================================",
+  "color:#C9A24B;font-weight:bold;font-family:monospace;"
+);
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("footerVersion").textContent = APP_VERSION;
+  document.getElementById("aboutVersion").textContent = APP_VERSION;
+  setTimeout(() => {
+    document.getElementById("splashScreen").classList.add("splash-hidden");
+  }, 1600);
+  if (window.location.hash === "#about") {
+    setTimeout(() => showAboutPage(), 1700);
+  }
+
+  // لو فيه كود موظف محفوظ من مرة قبل كده (تذكرني)، عبّيه تلقائيًا
+  const savedCode = localStorage.getItem(REMEMBER_KEY);
+  if (savedCode) {
+    document.getElementById("loginCode").value = savedCode;
+    document.getElementById("rememberMeCheckbox").checked = true;
+  }
+});
+
+function showAboutPage() {
+  document.getElementById("aboutOverlay").classList.remove("hidden");
+}
+
+function closeAboutPage() {
+  document.getElementById("aboutOverlay").classList.add("hidden");
+}
+
+function apiFetch(url, options = {}) {
+  options.headers = { ...(options.headers || {}), "ngrok-skip-browser-warning": "true" };
+  return fetch(url, options);
+}
+
+const COMMON_EMOJIS = ["😀","😊","👍","🙏","❤️","🎉","😢","😮","👏","🤝","✅","❓"];
+
+function emojiPickerHTML(targetTextareaId) {
+  return `
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">
+      ${COMMON_EMOJIS.map(e => `<button type="button" onclick="insertEmoji('${targetTextareaId}', '${e}')" style="background:none;border:1px solid var(--line);border-radius:6px;font-size:16px;padding:2px 6px;cursor:pointer;">${e}</button>`).join("")}
+    </div>
+  `;
+}
+
+function insertEmoji(textareaId, emoji) {
+  const el = document.getElementById(textareaId);
+  if (!el) return;
+  const start = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? el.value.length;
+  el.value = el.value.slice(0, start) + emoji + el.value.slice(end);
+  el.focus();
+  const newPos = start + emoji.length;
+  el.setSelectionRange(newPos, newPos);
+}
+
+const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+const REMEMBER_KEY = "eetc_remembered_employee_code";
+
+let session = null;
+let selectedMonth = 5;
+let selectedYear = 2026;
+let _selectedRating = 0;
+
+function fmt(n) {
+  return Number(n).toLocaleString("en-US");
+}
+
+function showLoginForm() {
+  document.getElementById("loginFormBody").classList.remove("hidden");
+  document.getElementById("forgotStep1Body").classList.add("hidden");
+  document.getElementById("forgotStep2Body").classList.add("hidden");
+  document.getElementById("firstLoginSetupBody").classList.add("hidden");
+  document.getElementById("completeProfileBody").classList.add("hidden");
+}
+
+function showFirstLoginSetup(employeeCode, currentPassword) {
+  document.getElementById("loginFormBody").classList.add("hidden");
+  document.getElementById("forgotStep1Body").classList.add("hidden");
+  document.getElementById("forgotStep2Body").classList.add("hidden");
+  document.getElementById("completeProfileBody").classList.add("hidden");
+  document.getElementById("firstLoginSetupBody").classList.remove("hidden");
+  window._flsEmployeeCode = employeeCode;
+  document.getElementById("flsOldPassword").value = currentPassword || "";
+}
+
+function showCompleteProfile(employeeCode, currentPassword) {
+  document.getElementById("loginFormBody").classList.add("hidden");
+  document.getElementById("forgotStep1Body").classList.add("hidden");
+  document.getElementById("forgotStep2Body").classList.add("hidden");
+  document.getElementById("firstLoginSetupBody").classList.add("hidden");
+  document.getElementById("completeProfileBody").classList.remove("hidden");
+  window._cpEmployeeCode = employeeCode;
+  window._cpPassword = currentPassword;
+}
+
+async function submitCompleteProfile() {
+  const phone = document.getElementById("cpPhone").value.trim();
+  const nationalId = document.getElementById("cpNationalId").value.trim();
+  const errBox = document.getElementById("cpError");
+  const btn = document.getElementById("cpSubmitBtn");
+  errBox.classList.add("hidden");
+
+  if (!/^\d{11}$/.test(phone)) {
+    errBox.textContent = "رقم الهاتف لازم يكون 11 رقم بالظبط، أرقام فقط";
+    errBox.classList.remove("hidden");
+    return;
+  }
+  if (!/^\d{14}$/.test(nationalId)) {
+    errBox.textContent = "الرقم القومي لازم يكون 14 رقم بالظبط، أرقام فقط";
+    errBox.classList.remove("hidden");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "جاري الحفظ...";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/complete-profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employee_code: window._cpEmployeeCode,
+        password: window._cpPassword,
+        phone: phone,
+        national_id: nationalId,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errBox.textContent = data.error || "حصل خطأ غير متوقع";
+      errBox.classList.remove("hidden");
+      return;
+    }
+
+    session = { token: data.token, fullName: data.full_name, role: data.role, employeeCode: data.employee_code };
+    showApp();
+  } catch (e) {
+    errBox.textContent = "مش قادر أوصل للسيرفر";
+    errBox.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "حفظ والدخول";
+  }
+}
+
+async function submitFirstLoginSetup() {
+  const oldPassword = document.getElementById("flsOldPassword").value;
+  const email = document.getElementById("flsEmail").value.trim();
+  const newPass1 = document.getElementById("flsNewPass1").value;
+  const newPass2 = document.getElementById("flsNewPass2").value;
+  const errBox = document.getElementById("flsError");
+  const btn = document.getElementById("flsSubmitBtn");
+  errBox.classList.add("hidden");
+
+  if (!oldPassword || !email || !newPass1 || !newPass2) {
+    errBox.textContent = "من فضلك املأ كل الحقول";
+    errBox.classList.remove("hidden");
+    return;
+  }
+  if (!email.includes("@")) {
+    errBox.textContent = "من فضلك ادخل بريد إلكتروني صحيح";
+    errBox.classList.remove("hidden");
+    return;
+  }
+  if (newPass1 !== newPass2) {
+    errBox.textContent = "كلمتا المرور الجديدتان غير متطابقتين";
+    errBox.classList.remove("hidden");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "جاري الحفظ...";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/first-login-setup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employee_code: window._flsEmployeeCode,
+        old_password: oldPassword,
+        new_password: newPass1,
+        email: email,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errBox.textContent = data.error || "حصل خطأ غير متوقع";
+      errBox.classList.remove("hidden");
+      return;
+    }
+
+    if (data.must_complete_profile) {
+      showCompleteProfile(data.employee_code, newPass1);
+      return;
+    }
+
+    session = { token: data.token, fullName: data.full_name, role: data.role, employeeCode: data.employee_code };
+    showApp();
+  } catch (e) {
+    errBox.textContent = "مش قادر أوصل للسيرفر";
+    errBox.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "حفظ والدخول";
+  }
+}
+
+function showForgotStep1() {
+  document.getElementById("loginFormBody").classList.add("hidden");
+  document.getElementById("forgotStep1Body").classList.remove("hidden");
+  document.getElementById("forgotStep2Body").classList.add("hidden");
+  document.getElementById("fpStep1Error").classList.add("hidden");
+}
+
+async function submitForgotStep1() {
+  const code = document.getElementById("fpCode").value.trim();
+  const email = document.getElementById("fpEmail").value.trim();
+  const errBox = document.getElementById("fpStep1Error");
+  const btn = document.getElementById("fpStep1Btn");
+  errBox.classList.add("hidden");
+
+  if (!code || !email) {
+    errBox.textContent = "من فضلك ادخل كود الموظف والبريد الإلكتروني";
+    errBox.classList.remove("hidden");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "جاري الإرسال...";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employee_code: code, email: email }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errBox.textContent = data.error || "حصل خطأ غير متوقع";
+      errBox.classList.remove("hidden");
+      return;
+    }
+
+    document.getElementById("forgotStep1Body").classList.add("hidden");
+    document.getElementById("forgotStep2Body").classList.remove("hidden");
+    window._fpEmployeeCode = code;
+  } catch (e) {
+    errBox.textContent = "مش قادر أوصل للسيرفر";
+    errBox.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "إرسال كود التحقق";
+  }
+}
+
+async function submitForgotStep2() {
+  const verifyCode = document.getElementById("fpVerifyCode").value.trim();
+  const pass1 = document.getElementById("fpNewPass1").value;
+  const pass2 = document.getElementById("fpNewPass2").value;
+  const errBox = document.getElementById("fpStep2Error");
+  const btn = document.getElementById("fpStep2Btn");
+  errBox.classList.add("hidden");
+
+  if (!verifyCode || !pass1 || !pass2) {
+    errBox.textContent = "من فضلك املأ كل الحقول";
+    errBox.classList.remove("hidden");
+    return;
+  }
+  if (pass1 !== pass2) {
+    errBox.textContent = "كلمتا المرور غير متطابقتين";
+    errBox.classList.remove("hidden");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "جاري الحفظ...";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employee_code: window._fpEmployeeCode,
+        code: verifyCode,
+        new_password: pass1,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errBox.textContent = data.error || "حصل خطأ غير متوقع";
+      errBox.classList.remove("hidden");
+      return;
+    }
+
+    alert("تم تغيير كلمة المرور بنجاح، سجّل دخول بالباسورد الجديدة");
+    showLoginForm();
+  } catch (e) {
+    errBox.textContent = "مش قادر أوصل للسيرفر";
+    errBox.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "حفظ كلمة المرور الجديدة";
+  }
+}
+
+async function handleLogin() {
+  const code = document.getElementById("loginCode").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errorBox = document.getElementById("loginError");
+  const btn = document.getElementById("loginBtn");
+  const rememberChecked = document.getElementById("rememberMeCheckbox").checked;
+
+  errorBox.classList.add("hidden");
+
+  if (!code || !password) {
+    errorBox.textContent = "من فضلك ادخل كود الموظف وكلمة المرور";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "جاري الدخول...";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employee_code: code, password: password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorBox.textContent = data.error || "حصل خطأ غير متوقع";
+      errorBox.classList.remove("hidden");
+      return;
+    }
+
+    // تذكرني: نحفظ كود الموظف بس (مش الباسورد أبدًا) لو الموظف فعّل الخيار
+    if (rememberChecked) {
+      localStorage.setItem(REMEMBER_KEY, code);
+    } else {
+      localStorage.removeItem(REMEMBER_KEY);
+    }
+
+    if (data.must_change_password) {
+      showFirstLoginSetup(data.employee_code, password);
+      return;
+    }
+
+    if (data.must_complete_profile) {
+      showCompleteProfile(data.employee_code, password);
+      return;
+    }
+
+    session = { token: data.token, fullName: data.full_name, role: data.role, employeeCode: data.employee_code };
+    showApp();
+  } catch (e) {
+    errorBox.textContent = "مش قادر أوصل للسيرفر. اتأكد إن السيرفر (python app.py) شغال على جهازك.";
+    errorBox.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "تسجيل الدخول";
+  }
+}
+
+function handleLogout() {
+  session = null;
+  document.getElementById("appScreen").classList.add("hidden");
+  document.getElementById("loginScreen").classList.remove("hidden");
+  document.getElementById("loginPassword").value = "";
+}
+
+function showApp() {
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("appScreen").classList.remove("hidden");
+  document.getElementById("topbarName").textContent = session.fullName;
+  if (session.role === "hr_admin") {
+    document.getElementById("navHR").classList.remove("hidden");
+  }
+  setWelcomeBanner();
+  startLiveClock();
+  refreshNotifBadge();
+  switchTab("admin");
+}
+
+const MOTIVATIONAL_QUOTES = [
+  "النجاح ليس نهاية المطاف، والفشل ليس قاتلاً، الشجاعة للاستمرار هي ما يهم.",
+  "كل يوم عمل جديد هو فرصة جديدة للتميز والإنجاز.",
+  "العمل الجماعي يحوّل الأحلام الكبيرة إلى واقع ملموس.",
+  "الإتقان في العمل عبادة، والإخلاص فيه أمانة.",
+  "أنت جزء أساسي من منظومة تنير حياة الملايين، فخر لنا بك.",
+  "التطور المستمر هو سر التميز في أي مهنة.",
+  "ابدأ يومك بابتسامة، فهي أول خطوة نحو إنجاز رائع.",
+  "العمل بجد اليوم هو استثمار في نجاح الغد.",
+  "كل جهد تبذله في عملك له أثر يمتد لأشخاص كثيرين.",
+  "الانضباط هو الجسر بين الأهداف والإنجاز.",
+  "التعاون بين الزملاء يصنع بيئة عمل أفضل للجميع.",
+  "ثق بقدراتك، فأنت أقوى مما تتخيل.",
+  "الوقت أثمن ما نملك، فاستثمره بحكمة في عملك وحياتك.",
+  "النجاح رحلة وليس وجهة، استمتع بكل خطوة فيها.",
+  "قيمة العمل تكمن في الإتقان لا في الكمية فقط.",
+  "الصبر مفتاح الفرج، والمثابرة مفتاح النجاح.",
+  "كن سببًا في راحة زميلك، فالخير يعود إليك مضاعفًا.",
+  "التعلم المستمر يفتح أبوابًا لا حدود لها.",
+  "الإيجابية تنتقل، فكن مصدر طاقة إيجابية لمن حولك.",
+  "كل تحدٍ تواجهه اليوم يصنع منك شخصًا أقوى غدًا.",
+  "العمل الصادق لا يضيع، وثمرته آجلة أو عاجلة.",
+  "ابحث عن التميز في التفاصيل الصغيرة، فهي تصنع الفارق.",
+  "روح الفريق الواحد أقوى من أي تحدٍ فردي.",
+  "النجاح يبدأ بخطوة، فلا تؤجل ما يمكنك إنجازه اليوم.",
+  "كن فخورًا بعملك، فأنت تصنع فرقًا حقيقيًا كل يوم.",
+  "الشكر والتقدير لكل جهد تبذله، مهما بدا صغيرًا.",
+  "التحديات فرص متخفية لإثبات القدرات.",
+  "الجودة ليست فعلاً، بل عادة يومية نمارسها بحب.",
+  "ثقتك بنفسك هي أول خطوة نحو تحقيق أهدافك.",
+  "كل صباح جديد يحمل فرصة لبداية أفضل.",
+];
+
+function getTodayMotivationalQuote() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now - start;
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
+}
+
+function setWelcomeBanner() {
+  const hour = new Date().getHours();
+  const isMorning = hour < 12;
+  const greeting = isMorning
+    ? "☀️ صباح الخير، نتمنى لك يوم نشيط"
+    : "🌙 مساء الخير، نتمنى لك أمسية هادئة";
+  const quote = getTodayMotivationalQuote();
+  document.getElementById("welcomeBanner").innerHTML =
+    `${greeting}<br><span style="font-size:12px;font-weight:500;opacity:0.85;">💬 ${quote}</span>`;
+}
+
+let _cachedAnnouncements = [];
+
+async function refreshNotifBadge() {
+  try {
+    const res = await apiFetch(`${API_BASE}/api/announcements`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    if (!res.ok) return;
+    _cachedAnnouncements = await res.json();
+    const unread = _cachedAnnouncements.filter(a => !a.is_read).length;
+    const badge = document.getElementById("notifBadge");
+    if (unread > 0) {
+      badge.textContent = unread > 9 ? "9+" : unread;
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
+  } catch (e) {
+  }
+}
+
+function openNotifPanel() {
+  document.getElementById("notifOverlay").classList.remove("hidden");
+  renderNotifList();
+}
+
+function closeNotifPanel() {
+  document.getElementById("notifOverlay").classList.add("hidden");
+}
+
+async function toggleAnnouncementLike(annId) {
+  try {
+    const res = await apiFetch(`${API_BASE}/api/announcements/${annId}/like`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) return;
+
+    const item = _cachedAnnouncements.find(a => a.id === annId);
+    if (item) {
+      item.is_liked = data.is_liked;
+      item.like_count = data.like_count;
+    }
+    const btn = document.getElementById(`likeBtn_${annId}`);
+    const countEl = document.getElementById(`likeCount_${annId}`);
+    if (btn) {
+      btn.style.borderColor = data.is_liked ? "var(--gold)" : "var(--line)";
+      btn.style.color = data.is_liked ? "var(--gold)" : "var(--gray)";
+    }
+    if (countEl) countEl.textContent = data.like_count;
+  } catch (e) {}
+}
+
+function renderNotifList() {
+  const list = document.getElementById("notifList");
+  if (_cachedAnnouncements.length === 0) {
+    list.innerHTML = `<div style="padding:30px;text-align:center;color:var(--gray);font-size:13.5px;">لا توجد إشعارات حتى الآن</div>`;
+    return;
+  }
+
+  list.innerHTML = _cachedAnnouncements.map(a => `
+    <div style="padding:12px 14px;border-bottom:1px solid var(--line);${a.is_read ? "" : "background:#FBF3DD;"}">
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">
+        <span style="font-weight:700;font-size:14px;color:var(--navy);">${a.is_read ? "" : "🔵 "}${a.title}</span>
+        <span style="font-size:11px;color:var(--gray);white-space:nowrap;">${a.created_at}</span>
+      </div>
+      ${a.body ? `<div style="font-size:13px;color:var(--ink);margin-top:6px;white-space:pre-wrap;">${a.body}</div>` : ""}
+      ${a.file_name ? `<a href="${API_BASE}/uploads/${a.file_name}?token=${session.token}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12.5px;color:var(--navy);text-decoration:underline;">📎 ${a.original_name || "تحميل المرفق"}</a>` : ""}
+      <div style="margin-top:8px;">
+        <button onclick="toggleAnnouncementLike(${a.id})" id="likeBtn_${a.id}" style="background:none;border:1px solid ${a.is_liked ? "var(--gold)" : "var(--line)"};border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;color:${a.is_liked ? "var(--gold)" : "var(--gray)"};">
+          👍 <span id="likeCount_${a.id}">${a.like_count || 0}</span>
+        </button>
+      </div>
+    </div>
+  `).join("");
+
+  const unreadIds = _cachedAnnouncements.filter(a => !a.is_read).map(a => a.id);
+  unreadIds.forEach(id => {
+    apiFetch(`${API_BASE}/api/announcements/${id}/read`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.token}` },
+    }).catch(() => {});
+  });
+  if (unreadIds.length > 0) {
+    _cachedAnnouncements.forEach(a => { a.is_read = true; });
+    document.getElementById("notifBadge").classList.add("hidden");
+  }
+}
+
+function startLiveClock() {
+  const el = document.getElementById("liveClock");
+  const arabicDays = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+  function tick() {
+    const now = new Date();
+    const dayName = arabicDays[now.getDay()];
+    const dateStr = now.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const timeStr = now.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    el.textContent = `${dayName}، ${dateStr} — ${timeStr}`;
+  }
+  tick();
+  if (window._clockInterval) clearInterval(window._clockInterval);
+  window._clockInterval = setInterval(tick, 1000);
+}
+
+function switchTab(tab) {
+  document.getElementById("navAdmin").classList.toggle("active", tab === "admin");
+  document.getElementById("navPayslip").classList.toggle("active", tab === "payslip");
+  document.getElementById("navWage").classList.toggle("active", tab === "wage");
+  document.getElementById("navChangePass").classList.toggle("active", tab === "changepass");
+  document.getElementById("navContact").classList.toggle("active", tab === "contact");
+  document.getElementById("navRating").classList.toggle("active", tab === "rating");
+  document.getElementById("navHR").classList.toggle("active", tab === "hr");
+  document.getElementById("tabAdmin").classList.toggle("hidden", tab !== "admin");
+  document.getElementById("tabPayslip").classList.toggle("hidden", tab !== "payslip");
+  document.getElementById("tabWage").classList.toggle("hidden", tab !== "wage");
+  document.getElementById("tabChangePass").classList.toggle("hidden", tab !== "changepass");
+  document.getElementById("tabContact").classList.toggle("hidden", tab !== "contact");
+  document.getElementById("tabRating").classList.toggle("hidden", tab !== "rating");
+  document.getElementById("tabHR").classList.toggle("hidden", tab !== "hr");
+
+  if (tab === "admin") loadAdminInfo();
+  else if (tab === "payslip") renderPayslipShell();
+  else if (tab === "wage") renderWageShell();
+  else if (tab === "changepass") renderChangePasswordShell();
+  else if (tab === "contact") renderContactShell();
+  else if (tab === "rating") renderRatingShell();
+  else if (tab === "hr") renderHRPanel();
+
+  closeSidebar(); // قفل القائمة تلقائيًا بعد اختيار أي تبويب (سلوك طبيعي في الموبايل)
+}
+
+async function loadAdminInfo() {
+  const box = document.getElementById("tabAdmin");
+  box.innerHTML = `<div class="state-box"><span class="spin"></span> جاري تحميل البيانات...</div>`;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/employee/me`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    const rows = [
+      ["كود العامل", data.employee_code],
+      ["الرقم التأميني", data.insurance_number || "غير مسجل"],
+      ["الاسم بالكامل", data.full_name],
+      ["الوظيفة", data.job_title],
+      ["القسم / الإدارة", data.department],
+      ["تاريخ التعيين", data.hire_date],
+      ["الحالة الوظيفية", data.status === "active" ? "سارى العمل" : data.status],
+    ];
+
+    box.innerHTML = `
+      <div class="card">
+        <div class="card-header">البيانات الإدارية</div>
+        ${rows.map(([label, value]) => `
+          <div class="info-row"><span class="label">${label}</span><span class="value">${value ?? ""}</span></div>
+        `).join("")}
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header" style="background:var(--navy-light);">📱 بيانات التواصل</div>
+        <div class="edit-grid">
+          <div class="edit-field">
+            <label>رقم هاتف والواتساب</label>
+            <input type="text" id="myPhoneInput" value="${data.phone || ""}" placeholder="01xxxxxxxxx" maxlength="11" inputmode="numeric">
+          </div>
+          <div class="edit-field">
+            <label>الرقم القومي</label>
+            <input type="text" id="myNationalIdInput" value="${data.national_id || ""}" placeholder="14 رقم" maxlength="14" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-save" onclick="saveMyContactInfo()">حفظ البيانات</button>
+        </div>
+        <div id="myContactMsg" class="save-msg hidden"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header" style="background:var(--navy-light);">📧 البريد الإلكتروني</div>
+        <div class="edit-grid" style="grid-template-columns:1fr;">
+          <div class="edit-field">
+            <label>بريدك الإلكتروني (يُستخدم لاستعادة كلمة المرور لو نسيتها)</label>
+            <input type="email" id="myEmailInput" value="${data.email || ""}" placeholder="example@gmail.com">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-save" onclick="saveMyEmail()">حفظ البريد الإلكتروني</button>
+        </div>
+        <div id="myEmailMsg" class="save-msg hidden"></div>
+      </div>
+    `;
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message || "مش قادر أجيب البيانات"}</div>`;
+  }
+}
+
+async function saveMyContactInfo() {
+  const phone = document.getElementById("myPhoneInput").value.trim();
+  const nationalId = document.getElementById("myNationalIdInput").value.trim();
+  const msg = document.getElementById("myContactMsg");
+  msg.className = "save-msg hidden";
+
+  if (!/^\d{11}$/.test(phone)) {
+    msg.textContent = "⚠ رقم الهاتف لازم يكون 11 رقم بالظبط، أرقام فقط";
+    msg.className = "save-msg err";
+    return;
+  }
+  if (!/^\d{14}$/.test(nationalId)) {
+    msg.textContent = "⚠ الرقم القومي لازم يكون 14 رقم بالظبط";
+    msg.className = "save-msg err";
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/employee/contact-info`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify({ phone, national_id: nationalId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = "✓ " + data.message;
+    msg.className = "save-msg ok";
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  }
+}
+
+async function saveMyEmail() {
+  const email = document.getElementById("myEmailInput").value.trim();
+  const msg = document.getElementById("myEmailMsg");
+  msg.className = "save-msg hidden";
+
+  if (!email || !email.includes("@")) {
+    msg.textContent = "⚠ من فضلك ادخل بريد إلكتروني صحيح";
+    msg.className = "save-msg err";
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/employee/email`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = "✓ " + data.message;
+    msg.className = "save-msg ok";
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  }
+}
+
+function renderPayslipShell() {
+  const box = document.getElementById("tabPayslip");
+  box.innerHTML = `
+    <div class="selectors">
+      <div><label>الشهر</label>
+        <select id="monthSelect" onchange="onPayslipFilterChange()">
+          ${MONTHS.map((m, i) => `<option value="${i}" ${i === selectedMonth ? "selected" : ""}>${m}</option>`).join("")}
+        </select>
+      </div>
+      <div><label>السنة</label>
+        <select id="yearSelect" onchange="onPayslipFilterChange()">
+          <option value="2025" ${selectedYear === 2025 ? "selected" : ""}>2025</option>
+          <option value="2026" ${selectedYear === 2026 ? "selected" : ""}>2026</option>
+        </select>
+      </div>
+      <button class="btn-print hidden" id="printBtn" onclick="window.print()">🖨 طباعة</button>
+      <button class="btn-print hidden" id="pdfDownloadBtn" onclick="downloadPayslipPdf()" style="background:var(--gold);color:var(--navy);">📄 تحميل PDF</button>
+    </div>
+    <div id="payslipBody"></div>
+  `;
+  loadPayslip();
+}
+
+let wageMonth = new Date().getMonth();
+let wageYear = 2026;
+
+function renderWageShell() {
+  const box = document.getElementById("tabWage");
+  box.innerHTML = `
+    <div class="selectors">
+      <div><label>الشهر</label>
+        <select id="wageMonthSelect" onchange="onWageFilterChange()">
+          ${MONTHS.map((m, i) => `<option value="${i}" ${i === wageMonth ? "selected" : ""}>${m}</option>`).join("")}
+        </select>
+      </div>
+      <div><label>السنة</label>
+        <select id="wageYearSelect" onchange="onWageFilterChange()">
+          <option value="2025" ${wageYear === 2025 ? "selected" : ""}>2025</option>
+          <option value="2026" ${wageYear === 2026 ? "selected" : ""}>2026</option>
+        </select>
+      </div>
+      <button class="btn-print hidden" id="wagePrintBtn" onclick="window.print()">🖨 طباعة</button>
+      <button class="btn-print hidden" id="wagePdfDownloadBtn" onclick="downloadWageRecordPdf()" style="background:var(--gold);color:var(--navy);">📄 تحميل PDF</button>
+    </div>
+    <div id="wageRecordBody"></div>
+  `;
+  loadWageRecord();
+}
+
+function onWageFilterChange() {
+  wageMonth = Number(document.getElementById("wageMonthSelect").value);
+  wageYear = Number(document.getElementById("wageYearSelect").value);
+  loadWageRecord();
+}
+
+async function loadWageRecord() {
+  const body = document.getElementById("wageRecordBody");
+  const printBtn = document.getElementById("wagePrintBtn");
+  const pdfBtn = document.getElementById("wagePdfDownloadBtn");
+  printBtn.classList.add("hidden");
+  pdfBtn.classList.add("hidden");
+  body.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/wage-record?month=${wageMonth + 1}&year=${wageYear}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+
+    if (res.status === 404) {
+      body.innerHTML = `<div class="state-box dashed">لا يوجد سجل أجور إضافي لشهر ${MONTHS[wageMonth]} ${wageYear}</div>`;
+      return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    printBtn.classList.remove("hidden");
+    pdfBtn.classList.remove("hidden");
+
+    body.innerHTML = `<div class="print-watermark">سري للاستعلام فقط</div><div class="print-watermark-author">Created by Khaled Youssif Elmansy</div>` + data.disbursements.map(d => {
+      const earnings = d.items.filter(i => i.type === "earning");
+      const deductions = d.items.filter(i => i.type === "deduction");
+      return `
+        <div class="card" style="margin-bottom:18px;">
+          <div class="payslip-header">
+            <div>
+              <div class="payslip-title">صرفية رقم ${d.sarfia_no}</div>
+              <div class="payslip-sub">${MONTHS[wageMonth]} ${wageYear} — ${session.fullName} (كود ${session.employeeCode})</div>
+            </div>
+          </div>
+          <div class="payslip-columns">
+            <div class="payslip-col earnings">
+              <div class="col-title">الاستحقاقات</div>
+              ${earnings.length
+                ? earnings.map(i => `<div class="payslip-line"><span>${i.name}</span><span class="pos">${fmt(i.amount)}</span></div>`).join("")
+                : `<div class="payslip-line"><span style="color:var(--gray)">لا توجد استحقاقات</span></div>`}
+              <div class="col-total"><span>الإجمالي</span><span>${fmt(d.earnings_total)} ج.م</span></div>
+            </div>
+            <div class="payslip-col deductions">
+              <div class="col-title">الاستقطاعات</div>
+              ${deductions.length
+                ? deductions.map(i => `<div class="payslip-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span></div>`).join("")
+                : `<div class="payslip-line"><span style="color:var(--gray)">لا توجد استقطاعات</span></div>`}
+              <div class="col-total"><span>الإجمالي</span><span>${fmt(d.deductions_total)} ج.م</span></div>
+            </div>
+          </div>
+          <div class="net-box">
+            <span class="label">صافي الصرفية رقم ${d.sarfia_no}</span>
+            <span class="value">${fmt(d.net_salary)} ج.م</span>
+          </div>
+        </div>
+      `;
+    }).join("") + `
+      <div class="print-footer-note">لا يعتد بهذا البيان كمستند رسمي أمام أي جهة خارجية بدون اعتماد جهة العمل والختم</div>
+      <div class="print-dev-signature">
+        ──────────────────────────────<br>
+        تم إنشاء وتصميم وتطوير هذا النظام بالكامل بواسطة المبرمج / خالد يوسف المنسي<br>
+        ${APP_VERSION} — © 2026 All Rights Reserved<br>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=${encodeURIComponent(window.location.origin + '/#about')}" style="width:44px;height:44px;margin-top:4px;">
+      </div>
+    `;
+  } catch (e) {
+    body.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function downloadPayslipPdf() {
+  const btn = document.getElementById("pdfDownloadBtn");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳ جاري التجهيز...";
+  try {
+    const res = await apiFetch(`${API_BASE}/api/payslip/pdf?month=${selectedMonth + 1}&year=${selectedYear}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "حصل خطأ أثناء إنشاء الملف");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `شريط_المرتب_${MONTHS[selectedMonth]}_${selectedYear}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("⚠ " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function downloadWageRecordPdf() {
+  const btn = document.getElementById("wagePdfDownloadBtn");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳ جاري التجهيز...";
+  try {
+    const res = await apiFetch(`${API_BASE}/api/wage-record/pdf?month=${wageMonth + 1}&year=${wageYear}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "حصل خطأ أثناء إنشاء الملف");
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `سجل_الأجور_${MONTHS[wageMonth]}_${wageYear}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("⚠ " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+function onPayslipFilterChange() {
+  selectedMonth = Number(document.getElementById("monthSelect").value);
+  selectedYear = Number(document.getElementById("yearSelect").value);
+  loadPayslip();
+}
+
+async function loadPayslip() {
+  const body = document.getElementById("payslipBody");
+  const printBtn = document.getElementById("printBtn");
+  const pdfBtn = document.getElementById("pdfDownloadBtn");
+  printBtn.classList.add("hidden");
+  pdfBtn.classList.add("hidden");
+  body.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/payslip?month=${selectedMonth + 1}&year=${selectedYear}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+
+    if (res.status === 404) {
+      body.innerHTML = `<div class="state-box dashed">لا يوجد سجل أجور لشهر ${MONTHS[selectedMonth]} ${selectedYear}</div>`;
+      return;
+    }
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    printBtn.classList.remove("hidden");
+    pdfBtn.classList.remove("hidden");
+
+    const earnings = data.items.filter(i => i.type === "earning");
+    const deductions = data.items.filter(i => i.type === "deduction");
+
+    body.innerHTML = `
+      <div class="print-watermark">سري للاستعلام فقط</div>
+      <div class="print-watermark-author">Created by Khaled Youssif Elmansy</div>
+      <div class="card">
+        <div class="payslip-header">
+          <div>
+            <div class="payslip-title">شريط المرتب</div>
+            <div class="payslip-sub">${MONTHS[selectedMonth]} ${selectedYear} — ${session.fullName} (كود ${session.employeeCode})${data.code_sarf ? ` — كود الصرف: ${data.code_sarf}` : ""}</div>
+          </div>
+          <div class="seal">🛡<span>معتمد</span></div>
+        </div>
+
+        <div class="payslip-columns">
+          <div class="payslip-col earnings">
+            <div class="col-title">الاستحقاقات</div>
+            ${earnings.length
+              ? earnings.map(i => `<div class="payslip-line"><span>${i.name}</span><span class="pos">${fmt(i.amount)}</span></div>`).join("")
+              : `<div class="payslip-line"><span style="color:var(--gray)">لا توجد استحقاقات</span></div>`}
+            <div class="col-total"><span>الإجمالي</span><span>${fmt(data.earnings_total)} ج.م</span></div>
+          </div>
+          <div class="payslip-col deductions">
+            <div class="col-title">الاستقطاعات</div>
+            ${deductions.length
+              ? deductions.map(i => `<div class="payslip-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span></div>`).join("")
+              : `<div class="payslip-line"><span style="color:var(--gray)">لا توجد استقطاعات</span></div>`}
+            <div class="col-total"><span>الإجمالي</span><span>${fmt(data.deductions_total)} ج.م</span></div>
+          </div>
+        </div>
+
+        <div class="net-box">
+          <span class="label">صافي المرتب</span>
+          <span class="value">${fmt(data.net_salary)} ج.م</span>
+        </div>
+      </div>
+      <div class="print-footer-note">لا يعتد بهذا البيان كمستند رسمي أمام أي جهة خارجية بدون اعتماد جهة العمل والختم</div>
+      <div class="print-dev-signature">
+        ──────────────────────────────<br>
+        تم إنشاء وتصميم وتطوير هذا النظام بالكامل بواسطة المبرمج / خالد يوسف المنسي<br>
+        ${APP_VERSION} — © 2026 All Rights Reserved<br>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=${encodeURIComponent(window.location.origin + '/#about')}" style="width:44px;height:44px;margin-top:4px;">
+      </div>
+    `;
+  } catch (e) {
+    body.innerHTML = `<div class="conn-error">⚠ ${e.message || "مش قادر أجيب شريط المرتب"}</div>`;
+  }
+}
+
+/* ============================================================
+   تغيير كلمة المرور (للموظف نفسه، وهو مسجل دخول)
+   ============================================================ */
+
+function renderChangePasswordShell() {
+  const box = document.getElementById("tabChangePass");
+  box.innerHTML = `
+    <div class="card" style="max-width:420px;">
+      <div class="card-header">تغيير كلمة المرور</div>
+      <div class="edit-grid" style="grid-template-columns:1fr;">
+        <div class="edit-field">
+          <label>كلمة المرور الحالية</label>
+          <input type="password" id="cpOldPassword" placeholder="••••">
+        </div>
+        <div class="edit-field">
+          <label>كلمة المرور الجديدة</label>
+          <input type="password" id="cpNewPassword1" placeholder="••••">
+        </div>
+        <div class="edit-field">
+          <label>تأكيد كلمة المرور الجديدة</label>
+          <input type="password" id="cpNewPassword2" placeholder="••••">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" id="cpSubmitBtn" onclick="submitChangePassword()">حفظ كلمة المرور الجديدة</button>
+      </div>
+      <div id="cpMsg" class="save-msg hidden"></div>
+    </div>
+  `;
+}
+
+async function submitChangePassword() {
+  const oldPass = document.getElementById("cpOldPassword").value;
+  const newPass1 = document.getElementById("cpNewPassword1").value;
+  const newPass2 = document.getElementById("cpNewPassword2").value;
+  const msg = document.getElementById("cpMsg");
+  const btn = document.getElementById("cpSubmitBtn");
+  msg.className = "save-msg hidden";
+
+  if (!oldPass || !newPass1 || !newPass2) {
+    msg.textContent = "⚠ من فضلك املأ كل الحقول";
+    msg.className = "save-msg err";
+    return;
+  }
+  if (newPass1 !== newPass2) {
+    msg.textContent = "⚠ كلمتا المرور الجديدتان غير متطابقتين";
+    msg.className = "save-msg err";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "جاري الحفظ...";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/change-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify({ old_password: oldPass, new_password: newPass1 }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = "✓ " + data.message;
+    msg.className = "save-msg ok";
+    document.getElementById("cpOldPassword").value = "";
+    document.getElementById("cpNewPassword1").value = "";
+    document.getElementById("cpNewPassword2").value = "";
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "حفظ كلمة المرور الجديدة";
+  }
+}
+
+/* ============================================================
+   تواصل معنا - محادثة مستمرة رد ورد بين الموظف والأدمن
+   ============================================================ */
+
+function renderChatBubbles(messages) {
+  if (messages.length === 0) {
+    return `<div class="state-box dashed">لسه مفيش رسائل، ابعت أول رسالة ليك 👇</div>`;
+  }
+  return messages.map(m => {
+    const mine = m.sender_role === "employee";
+    return `
+      <div style="display:flex; justify-content:${mine ? "flex-start" : "flex-end"}; margin-bottom:10px;">
+        <div style="max-width:78%; padding:9px 13px; border-radius:12px; font-size:13.5px; line-height:1.6;
+                    background:${mine ? "var(--gold-soft)" : "var(--navy)"};
+                    color:${mine ? "var(--navy)" : "#fff"};
+                    ${mine ? "border-bottom-right-radius:2px;" : "border-bottom-left-radius:2px;"}">
+          <div style="white-space:pre-wrap;">${m.body}</div>
+          <div style="font-size:10.5px; opacity:.7; margin-top:4px; text-align:left;">${m.created_at}${mine ? "" : " — الإدارة"}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderContactShell() {
+  const box = document.getElementById("tabContact");
+  box.innerHTML = `
+    <div class="card" style="max-width:560px;">
+      <div class="card-header">✉️ تواصل معنا</div>
+      <div id="chatThreadBox" style="max-height:420px;overflow-y:auto;padding:16px 20px;background:#fdfcf8;"></div>
+      <div style="padding:14px 20px;border-top:1px solid var(--line);">
+        <textarea id="contactMessage" rows="2" placeholder="اكتب رسالتك هنا..." style="width:100%;padding:10px 12px;border-radius:6px;border:1.5px solid var(--line);font-family:'Cairo',sans-serif;font-size:14px;resize:vertical;"></textarea>
+        ${emojiPickerHTML("contactMessage")}
+        <button class="btn-save" style="margin-top:8px;" onclick="submitContactMessage()">إرسال</button>
+        <div id="contactMsgResult" class="save-msg hidden"></div>
+      </div>
+    </div>
+  `;
+  loadMyMessages();
+}
+
+async function loadMyMessages() {
+  const box = document.getElementById("chatThreadBox");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/messages/my`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    box.innerHTML = renderChatBubbles(data.messages);
+    box.scrollTop = box.scrollHeight;
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function submitContactMessage() {
+  const textarea = document.getElementById("contactMessage");
+  const message = textarea.value.trim();
+  const result = document.getElementById("contactMsgResult");
+  result.className = "save-msg hidden";
+
+  if (!message) {
+    result.textContent = "⚠ من فضلك اكتب رسالة";
+    result.className = "save-msg err";
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    textarea.value = "";
+    loadMyMessages();
+  } catch (e) {
+    result.textContent = "⚠ " + e.message;
+    result.className = "save-msg err";
+  }
+}
+
+/* ============================================================
+   تقييم الخدمة (الموظف يقيّم من 1-5 نجوم + تعليق اختياري)
+   ============================================================ */
+
+function renderRatingShell() {
+  _selectedRating = 0;
+  const box = document.getElementById("tabRating");
+  box.innerHTML = `
+    <div class="card" style="max-width:480px;">
+      <div class="card-header">⭐ تقييم الخدمة</div>
+      <div style="padding:16px 24px 4px;font-size:13px;color:var(--gray);">
+        رأيك يهمنا لتحسين الخدمة باستمرار.
+      </div>
+      <div style="padding:16px 24px;text-align:center;">
+        <div id="starPicker" style="font-size:36px;letter-spacing:6px;cursor:pointer;">
+          ${[1,2,3,4,5].map(n => `<span onclick="selectStar(${n})" onmouseover="hoverStar(${n})" onmouseout="hoverStar(_selectedRating)" id="star_${n}" style="color:var(--line);transition:color 0.15s;">★</span>`).join("")}
+        </div>
+      </div>
+      <div class="edit-grid" style="grid-template-columns:1fr;">
+        <div class="edit-field">
+          <label>تعليق (اختياري)</label>
+          <textarea id="ratingComment" rows="3" style="width:100%;padding:10px 12px;border-radius:6px;border:1.5px solid var(--line);font-family:'Cairo',sans-serif;font-size:14px;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" onclick="submitRating()">إرسال التقييم</button>
+      </div>
+      <div id="ratingMsg" class="save-msg hidden"></div>
+    </div>
+
+    <div style="margin-top:18px;max-width:480px;">
+      <div style="font-family:'Tajawal',sans-serif;font-weight:800;color:var(--navy);font-size:14px;margin-bottom:8px;">تقييماتي السابقة</div>
+      <div id="myRatingsBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+    </div>
+  `;
+  loadMyRatings();
+}
+
+async function loadMyRatings() {
+  const box = document.getElementById("myRatingsBox");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/service-rating/my`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    if (data.length === 0) {
+      box.innerHTML = `<div class="state-box dashed">لسه معملتش أي تقييم</div>`;
+      return;
+    }
+
+    box.innerHTML = data.map(r => `
+      <div class="card" style="margin-bottom:8px;">
+        <div style="padding:10px 14px;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <span style="color:var(--gold);font-size:15px;">${"⭐".repeat(r.rating)}</span>
+            <span style="font-size:11px;color:var(--gray);">${r.created_at}</span>
+          </div>
+          ${r.comment ? `<div style="font-size:13px;color:var(--ink);margin-top:6px;">${r.comment}</div>` : ""}
+        </div>
+      </div>
+    `).join("");
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+function hoverStar(upTo) {
+  for (let n = 1; n <= 5; n++) {
+    document.getElementById(`star_${n}`).style.color = n <= upTo ? "var(--gold)" : "var(--line)";
+  }
+}
+
+function selectStar(n) {
+  _selectedRating = n;
+  hoverStar(n);
+}
+
+async function submitRating() {
+  const msg = document.getElementById("ratingMsg");
+  msg.className = "save-msg hidden";
+
+  if (_selectedRating < 1) {
+    msg.textContent = "⚠ اختار عدد النجوم الأول";
+    msg.className = "save-msg err";
+    return;
+  }
+
+  const comment = document.getElementById("ratingComment").value.trim();
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/service-rating`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify({ rating: _selectedRating, comment }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = "✓ " + data.message;
+    msg.className = "save-msg ok";
+    document.getElementById("ratingComment").value = "";
+    _selectedRating = 0;
+    hoverStar(0);
+    loadMyRatings();
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  }
+}
+
+/* ============================================================
+   لوحة تحكم المدير (hr_admin بس)
+   ============================================================ */
+
+function renderHRPanel() {
+  const box = document.getElementById("tabHR");
+  box.innerHTML = `
+    <div class="search-row">
+      <input type="text" id="hrSearchInput" placeholder="اكتب كود الموظف أو جزء من الاسم..."
+             onkeydown="if(event.key==='Enter') hrSearch()">
+      <button onclick="hrSearch()">بحث</button>
+    </div>
+    <div id="hrResults"></div>
+
+    <div class="section-divider">📢 نشر إشعار</div>
+    <div class="card">
+      <div class="edit-grid" style="grid-template-columns:1fr;">
+        <div class="edit-field">
+          <label>عنوان الإشعار</label>
+          <input type="text" id="annTitle" placeholder="مثال: إجازة عيد العمال">
+        </div>
+        <div class="edit-field">
+          <label>نص الإشعار (اختياري)</label>
+          <textarea id="annBody" rows="3" style="width:100%;padding:8px 12px;border-radius:6px;border:1.5px solid var(--line);font-family:'Cairo',sans-serif;font-size:14px;resize:vertical;"></textarea>
+          ${emojiPickerHTML("annBody")}
+        </div>
+        <div class="edit-field">
+          <label>كود موظف معيّن (اختياري — سيبها فاضية عشان يوصل لكل الموظفين)</label>
+          <input type="text" id="annTargetCode" placeholder="مثال: 9999">
+        </div>
+        <div class="edit-field">
+          <label>مرفق (PDF أو صورة - اختياري)</label>
+          <input type="file" id="annFile" accept=".pdf,.png,.jpg,.jpeg">
+        </div>
+      </div>
+      <div style="padding:0 24px 4px;font-size:12px;color:var(--gray);">
+        📧 هيتبعت إيميل تلقائي لصاحب الإشعار (أو لكل الموظفين اللي عندهم إيميل مسجل لو الإشعار عام).
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" onclick="submitAnnouncement()">نشر الإشعار</button>
+      </div>
+      <div id="annMsg" class="save-msg hidden"></div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <div id="annListBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+    </div>
+
+    <div class="section-divider">✉️ رسائل الموظفين</div>
+    <div id="messagesInboxBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+
+    <div class="section-divider">⭐ تقييم الخدمة</div>
+    <div id="ratingsBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+
+    <div class="section-divider">🕵️ سجل التدقيق (آخر 200 عملية)</div>
+    <div id="auditLogBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+  `;
+  document.getElementById("hrSearchInput").focus();
+  loadMessagesInbox();
+  loadAnnouncementsList();
+  loadServiceRatings();
+  loadAuditLog();
+}
+
+async function loadAuditLog() {
+  const box = document.getElementById("auditLogBox");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/audit-log`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    if (data.length === 0) {
+      box.innerHTML = `<div class="state-box dashed">لا توجد عمليات مسجّلة حتى الآن</div>`;
+      return;
+    }
+
+    box.innerHTML = `
+      <div style="max-height:400px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;">
+        ${data.map(a => `
+          <div style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+              <span><b style="color:var(--navy);">${a.action_type}</b> — بواسطة ${a.admin_name} (${a.admin_code})</span>
+              <span style="color:var(--gray);white-space:nowrap;">${a.created_at}</span>
+            </div>
+            ${a.target_name ? `<div style="color:var(--gray);margin-top:2px;">على الموظف: ${a.target_name} (${a.target_code})</div>` : ""}
+            ${a.details ? `<div style="color:var(--gray);margin-top:2px;font-size:11.5px;">${a.details}</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    `;
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function loadAnnouncementsList() {
+  const box = document.getElementById("annListBox");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/announcements/list`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    if (data.length === 0) {
+      box.innerHTML = `<div class="state-box dashed">لا توجد إشعارات منشورة</div>`;
+      return;
+    }
+
+    box.innerHTML = data.map(a => `
+      <div class="card" style="margin-bottom:8px;">
+        <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:start;gap:10px;">
+          <div>
+            <span style="font-weight:700;color:var(--navy);font-size:13.5px;">${a.title}</span>
+            ${a.target_name ? `<span style="font-size:11.5px;color:var(--gold);font-weight:700;"> (خاص بـ ${a.target_name})</span>` : `<span style="font-size:11.5px;color:var(--gray);"> (للجميع)</span>`}
+            <div style="font-size:11px;color:var(--gray);margin-top:2px;">${a.created_at} — 👍 ${a.like_count || 0}</div>
+          </div>
+          <button onclick="deleteAnnouncement(${a.id})" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">🗑 حذف</button>
+        </div>
+      </div>
+    `).join("");
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function deleteAnnouncement(annId) {
+  if (!confirm("متأكد إنك عايز تحذف الإشعار ده؟")) return;
+  try {
+    await apiFetch(`${API_BASE}/api/admin/announcements/${annId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    loadAnnouncementsList();
+  } catch (e) {}
+}
+
+async function loadMessagesInbox() {
+  const box = document.getElementById("messagesInboxBox");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/messages`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    if (data.length === 0) {
+      box.innerHTML = `<div class="state-box dashed">لا توجد محادثات حتى الآن</div>`;
+      return;
+    }
+
+    box.innerHTML = data.map(t => `
+      <div class="result-item" onclick="openThread(${t.thread_id})" style="${t.unread_count > 0 ? "border-color:var(--gold);" : ""}">
+        <div>
+          <div class="r-name">${t.unread_count > 0 ? "🟡 " : ""}${t.full_name} <span style="color:var(--gray);font-weight:500;font-size:12px;">(كود ${t.employee_code})</span></div>
+          <div class="r-meta">${t.last_sender === "employee" ? "" : "أنت: "}${(t.last_body || "").slice(0, 60)}</div>
+        </div>
+        <div class="r-meta" style="white-space:nowrap;">${t.updated_at}</div>
+      </div>
+    `).join("");
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function openThread(threadId) {
+  const box = document.getElementById("messagesInboxBox");
+  box.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/messages/${threadId}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    box.innerHTML = `
+      <button class="back-link" onclick="loadMessagesInbox()">← رجوع لكل المحادثات</button>
+      <div class="card">
+        <div class="card-header">${data.full_name} (كود ${data.employee_code})</div>
+        <div id="adminThreadMessages" style="max-height:400px;overflow-y:auto;padding:16px 20px;background:#fdfcf8;">
+          ${renderChatBubbles(data.messages)}
+        </div>
+        <div style="padding:14px 20px;border-top:1px solid var(--line);">
+          <textarea id="adminReplyInput" rows="2" placeholder="اكتب ردك هنا..." style="width:100%;padding:10px 12px;border-radius:6px;border:1.5px solid var(--line);font-family:'Cairo',sans-serif;font-size:14px;resize:vertical;"></textarea>
+          ${emojiPickerHTML("adminReplyInput")}
+          <button class="btn-save" style="margin-top:8px;" onclick="submitAdminReply(${threadId})">إرسال الرد</button>
+          <div id="adminReplyMsg" class="save-msg hidden"></div>
+        </div>
+      </div>
+    `;
+    const scrollBox = document.getElementById("adminThreadMessages");
+    scrollBox.scrollTop = scrollBox.scrollHeight;
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function submitAdminReply(threadId) {
+  const textarea = document.getElementById("adminReplyInput");
+  const reply = textarea.value.trim();
+  const msgEl = document.getElementById("adminReplyMsg");
+  msgEl.className = "save-msg hidden";
+
+  if (!reply) {
+    msgEl.textContent = "⚠ اكتب رد الأول";
+    msgEl.className = "save-msg err";
+    return;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/messages/${threadId}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify({ reply }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    textarea.value = "";
+    openThread(threadId);
+  } catch (e) {
+    msgEl.textContent = "⚠ " + e.message;
+    msgEl.className = "save-msg err";
+  }
+}
+
+async function loadServiceRatings() {
+  const box = document.getElementById("ratingsBox");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/service-ratings`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    const summary = data.average
+      ? `<div class="card" style="margin-bottom:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
+           <span style="font-weight:700;color:var(--navy);">متوسط التقييم</span>
+           <span style="font-size:20px;font-weight:800;color:var(--gold);">${"⭐".repeat(Math.round(data.average))} (${data.average}/5 — ${data.total} تقييم)</span>
+         </div>`
+      : `<div class="state-box dashed">لا توجد تقييمات حتى الآن</div>`;
+
+    const list = data.ratings.map(r => `
+      <div class="card" style="margin-bottom:8px;">
+        <div style="padding:10px 14px;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <span style="font-weight:700;color:var(--navy);font-size:13.5px;">${r.full_name} (كود ${r.employee_code})</span>
+            <span style="font-size:11px;color:var(--gray);">${r.created_at}</span>
+          </div>
+          <div style="color:var(--gold);font-size:14px;margin-top:4px;">${"⭐".repeat(r.rating)}</div>
+          ${r.comment ? `<div style="font-size:13px;color:var(--ink);margin-top:6px;">${r.comment}</div>` : ""}
+        </div>
+      </div>
+    `).join("");
+
+    box.innerHTML = summary + list;
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function submitAnnouncement() {
+  const title = document.getElementById("annTitle").value.trim();
+  const body = document.getElementById("annBody").value.trim();
+  const targetCode = document.getElementById("annTargetCode").value.trim();
+  const fileInput = document.getElementById("annFile");
+  const msg = document.getElementById("annMsg");
+  msg.className = "save-msg hidden";
+
+  if (!title) {
+    msg.textContent = "⚠ العنوان مطلوب";
+    msg.className = "save-msg err";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("body", body);
+  if (targetCode) formData.append("target_employee_code", targetCode);
+  if (fileInput.files[0]) {
+    formData.append("file", fileInput.files[0]);
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/announcements`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = "✓ " + data.message + (typeof data.emails_queued === "number" ? ` (${data.emails_queued} إيميل في الطابور)` : "");
+    msg.className = "save-msg ok";
+    document.getElementById("annTitle").value = "";
+    document.getElementById("annBody").value = "";
+    document.getElementById("annTargetCode").value = "";
+    fileInput.value = "";
+    loadAnnouncementsList();
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  }
+}
+
+async function hrSearch() {
+  const query = document.getElementById("hrSearchInput").value.trim();
+  const results = document.getElementById("hrResults");
+
+  if (!query) {
+    results.innerHTML = "";
+    return;
+  }
+
+  results.innerHTML = `<div class="state-box"><span class="spin"></span> جاري البحث...</div>`;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/employees?search=${encodeURIComponent(query)}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    if (data.length === 0) {
+      results.innerHTML = `<div class="state-box dashed">مفيش نتائج مطابقة</div>`;
+      return;
+    }
+
+    results.innerHTML = data.map(emp => `
+      <div class="result-item" onclick="openEmployeeDetails(${emp.id})">
+        <div>
+          <div class="r-name">${emp.full_name || "بدون اسم"}</div>
+          <div class="r-meta">${emp.job_title || "بدون وظيفة"} — ${emp.status === "active" ? "سارى" : emp.status}</div>
+        </div>
+        <div class="r-code">${emp.employee_code}</div>
+      </div>
+    `).join("");
+  } catch (e) {
+    results.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+let currentEditEmployee = null;
+let currentPayrollMonth = new Date().getMonth();
+let currentPayrollYear = 2026;
+
+async function openEmployeeDetails(empId) {
+  const box = document.getElementById("tabHR");
+  box.innerHTML = `<div class="state-box"><span class="spin"></span> جاري تحميل بيانات الموظف...</div>`;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/employees/${empId}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    currentEditEmployee = data;
+    renderEmployeeEditForm(data);
+  } catch (e) {
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div><button class="back-link" onclick="renderHRPanel()">← رجوع للبحث</button>`;
+  }
+}
+
+function renderEmployeeEditForm(emp) {
+  const box = document.getElementById("tabHR");
+  box.innerHTML = `
+    <button class="back-link" onclick="renderHRPanel()">← رجوع للبحث</button>
+
+    <div class="card">
+      <div class="card-header">تعديل بيانات: ${emp.full_name} (كود ${emp.employee_code})</div>
+      <div class="edit-grid">
+        <div class="edit-field"><label>الاسم بالكامل</label><input id="edit_full_name" value="${emp.full_name || ""}"></div>
+        <div class="edit-field"><label>الوظيفة</label><input id="edit_job_title" value="${emp.job_title || ""}"></div>
+        <div class="edit-field"><label>رقم الهاتف والواتساب</label><input id="edit_phone" value="${emp.phone || ""}"></div>
+        <div class="edit-field"><label>الرقم القومي</label><input id="edit_national_id" value="${emp.national_id || ""}"></div>
+        <div class="edit-field"><label>البريد الإلكتروني</label><input value="${emp.email || "غير مسجل"}" disabled style="background:#F0EEE6;color:var(--gray);"></div>
+        <div class="edit-field">
+          <label>الحالة الوظيفية</label>
+          <select id="edit_status">
+            <option value="active" ${emp.status === "active" ? "selected" : ""}>سارى العمل</option>
+            <option value="suspended" ${emp.status === "suspended" ? "selected" : ""}>متوقف</option>
+            <option value="resigned" ${emp.status === "resigned" ? "selected" : ""}>استقالة</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" onclick="saveEmployeeDetails(${emp.id})">حفظ التعديلات</button>
+      </div>
+      <div id="editSaveMsg" class="save-msg hidden"></div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <div class="card-header" style="background:var(--navy-light);">🔑 كلمة المرور</div>
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label>كلمة مرور جديدة (اتركها فارغة لتوليد كلمة مرور مؤقتة قوية)</label>
+          <input id="edit_new_password" type="text" placeholder="توليد تلقائي">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" style="background:var(--red);" onclick="resetEmployeePassword(${emp.id})">إعادة تعيين كلمة المرور</button>
+      </div>
+      <div id="resetPassMsg" class="save-msg hidden"></div>
+    </div>
+
+    <div class="section-divider">مرتب شهري</div>
+    <div class="selectors">
+      <div><label>الشهر</label>
+        <select id="hrMonthSelect" onchange="onHRPayrollFilterChange(${emp.id})">
+          ${MONTHS.map((m, i) => `<option value="${i}" ${i === currentPayrollMonth ? "selected" : ""}>${m}</option>`).join("")}
+        </select>
+      </div>
+      <div><label>السنة</label>
+        <select id="hrYearSelect" onchange="onHRPayrollFilterChange(${emp.id})">
+          <option value="2025" ${currentPayrollYear === 2025 ? "selected" : ""}>2025</option>
+          <option value="2026" ${currentPayrollYear === 2026 ? "selected" : ""}>2026</option>
+        </select>
+      </div>
+    </div>
+    <div id="hrPayrollForm"></div>
+  `;
+  loadHRPayrollForm(emp.id);
+}
+
+async function resetEmployeePassword(empId) {
+  const msg = document.getElementById("resetPassMsg");
+  msg.className = "save-msg hidden";
+  const newPass = document.getElementById("edit_new_password").value.trim();
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/employees/${empId}/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify(newPass ? { new_password: newPass } : {}),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = `✓ تم تغيير كلمة المرور بنجاح إلى: ${data.new_password}`;
+    msg.className = "save-msg ok";
+    document.getElementById("edit_new_password").value = "";
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  }
+}
+
+async function saveEmployeeDetails(empId) {
+  const msg = document.getElementById("editSaveMsg");
+  msg.className = "save-msg hidden";
+
+  const payload = {
+    full_name: document.getElementById("edit_full_name").value,
+    job_title: document.getElementById("edit_job_title").value,
+    phone: document.getElementById("edit_phone").value,
+    status: document.getElementById("edit_status").value,
+    national_id: document.getElementById("edit_national_id").value,
+  };
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/employees/${empId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = "✓ " + data.message;
+    msg.className = "save-msg ok";
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  }
+}
+
+function onHRPayrollFilterChange(empId) {
+  currentPayrollMonth = Number(document.getElementById("hrMonthSelect").value);
+  currentPayrollYear = Number(document.getElementById("hrYearSelect").value);
+  loadHRPayrollForm(empId);
+}
+
+async function loadHRPayrollForm(empId) {
+  const form = document.getElementById("hrPayrollForm");
+  form.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/payroll?employee_id=${empId}&month=${currentPayrollMonth + 1}&year=${currentPayrollYear}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    const v = data || {};
+
+    form.innerHTML = `
+      <div class="card">
+        <div class="edit-grid">
+          <div class="edit-field"><label>المرتب الأساسي</label><input type="number" id="pay_basic" value="${v.basic_salary ?? 0}"></div>
+          <div class="edit-field"><label>بدل انتقال</label><input type="number" id="pay_transport" value="${v.transport_allowance ?? 0}"></div>
+          <div class="edit-field"><label>بدل سكن</label><input type="number" id="pay_housing" value="${v.housing_allowance ?? 0}"></div>
+          <div class="edit-field"><label>حافز / مكافأة</label><input type="number" id="pay_bonus" value="${v.bonus ?? 0}"></div>
+          <div class="edit-field"><label>التأمينات</label><input type="number" id="pay_insurance" value="${v.insurance_deduction ?? 0}"></div>
+          <div class="edit-field"><label>الضريبة</label><input type="number" id="pay_tax" value="${v.tax_deduction ?? 0}"></div>
+          <div class="edit-field"><label>خصم غياب</label><input type="number" id="pay_absence" value="${v.absence_deduction ?? 0}"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-save" onclick="saveHRPayroll(${empId})">${data ? "تحديث سجل المرتب" : "إضافة سجل مرتب جديد"}</button>
+        </div>
+        <div id="paySaveMsg" class="save-msg hidden"></div>
+      </div>
+    `;
+  } catch (e) {
+    form.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function saveHRPayroll(empId) {
+  const msg = document.getElementById("paySaveMsg");
+  msg.className = "save-msg hidden";
+
+  const payload = {
+    employee_id: empId,
+    month: currentPayrollMonth + 1,
+    year: currentPayrollYear,
+    basic_salary: Number(document.getElementById("pay_basic").value) || 0,
+    transport_allowance: Number(document.getElementById("pay_transport").value) || 0,
+    housing_allowance: Number(document.getElementById("pay_housing").value) || 0,
+    bonus: Number(document.getElementById("pay_bonus").value) || 0,
+    insurance_deduction: Number(document.getElementById("pay_insurance").value) || 0,
+    tax_deduction: Number(document.getElementById("pay_tax").value) || 0,
+    absence_deduction: Number(document.getElementById("pay_absence").value) || 0,
+  };
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/payroll`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    msg.textContent = "✓ " + data.message;
+    msg.className = "save-msg ok";
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
+  }
+}
+
+/* ============================================================
+   بوابة اللمبة - اسحب الحبل عشان تنور وتظهر شاشة الدخول
+   ============================================================ */
+(function initLampGate() {
+  const gate = document.getElementById('lampGate');
+  const chainWrap = document.getElementById('chainWrap');
+  let fired = false;
+
+  function pullChain() {
+    if (fired) return;
+    fired = true;
+    gate.classList.add('on');
+    chainWrap.classList.remove('idle');
+    chainWrap.classList.add('pulled');
+    setTimeout(() => { gate.classList.add('hidden'); }, 700);
+  }
+
+  chainWrap.addEventListener('click', pullChain);
+  chainWrap.addEventListener('touchstart', (e) => { e.preventDefault(); pullChain(); }, { passive: false });
+})();
+
+/* ============================================================
+   إظهار / إخفاء كلمة المرور في شاشة الدخول
+   ============================================================ */
+(function initPasswordToggle() {
+  const pwInput = document.getElementById('loginPassword');
+  const eyeBtn = document.getElementById('pwEyeToggle');
+
+  eyeBtn.addEventListener('click', () => {
+    const showing = eyeBtn.classList.toggle('showing');
+    pwInput.type = showing ? 'text' : 'password';
+    eyeBtn.setAttribute('aria-label', showing ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+  });
+})();
+
+/* ============================================================
+   القائمة الجانبية المتحركة (فتح/غلق + همبرغر) - بورتريه ولاندسكيب
+   ============================================================ */
+const sidebarEl = document.getElementById('sidebar');
+const sidebarBackdropEl = document.getElementById('sidebarBackdrop');
+const menuToggleEl = document.getElementById('menuToggle');
+const sidebarCloseBtnEl = document.getElementById('sidebarCloseBtn');
+
+function openSidebar() {
+  sidebarEl.classList.add('open');
+  sidebarBackdropEl.classList.add('show');
+  menuToggleEl.classList.add('open');
+  menuToggleEl.setAttribute('aria-label', 'إغلاق القائمة');
+}
+function closeSidebar() {
+  sidebarEl.classList.remove('open');
+  sidebarBackdropEl.classList.remove('show');
+  menuToggleEl.classList.remove('open');
+  menuToggleEl.setAttribute('aria-label', 'فتح القائمة');
+}
+function toggleSidebar() {
+  sidebarEl.classList.contains('open') ? closeSidebar() : openSidebar();
+}
+menuToggleEl.addEventListener('click', toggleSidebar);
+sidebarBackdropEl.addEventListener('click', closeSidebar);
+sidebarCloseBtnEl.addEventListener('click', closeSidebar);
+</script>
+  <div id="devCredit" style="position:fixed;bottom:0;left:0;right:0;font-size:12px;font-weight:600;color:#ffffff;font-family:'Cairo',sans-serif;line-height:1.6;z-index:50;background:rgba(22,10,14,0.92);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;text-align:center;border-top:1px solid var(--gold);">
+    <span>تم تصميم وتطوير وبرمجة هذا النظام بالكامل بواسطة <b style="color:var(--gold-soft);">خالد يوسف المنسي</b> — واتساب: 01201413051</span>
+    <span style="opacity:0.7;">|</span>
+    <span id="footerVersion" style="opacity:0.85;"></span>
+    <span style="opacity:0.7;">|</span>
+    <span style="opacity:0.85;">© 2026 جميع الحقوق محفوظة</span>
+    <span style="opacity:0.7;">|</span>
+    <button onclick="showAboutPage()" style="background:none;border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;cursor:pointer;">ℹ️ حول النظام</button>
+    <a href="https://www.facebook.com/EgyptEETC/" target="_blank" rel="noopener" title="صفحة الشركة المصرية لنقل الكهرباء - الفيسبوك الرسمي" style="display:flex;align-items:center;justify-content:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
+    </a>
+    <a href="https://www.facebook.com/share/g/1EVn6FzQuq/" target="_blank" rel="noopener" title="صفحة المنظومة الإلكترونية الموحدة - منطقة الدلتا" style="display:flex;align-items:center;justify-content:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#C9A24B"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
+    </a>
+  </div>
+
+  <!-- شاشة "حول النظام" -->
+  <div id="aboutOverlay" class="hidden" onclick="if(event.target===this) closeAboutPage()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <div style="background:var(--navy);color:#fff;padding:18px 22px;text-align:center;">
+        <div style="font-family:'Tajawal',sans-serif;font-weight:800;font-size:17px;">حول النظام</div>
+        <div style="font-size:12px;color:var(--gold-soft);margin-top:2px;">Payroll Portal — بوابة الموظفين</div>
+      </div>
+      <div style="padding:20px 22px;font-size:13.5px;color:var(--ink);line-height:2;">
+        <div><b>اسم النظام:</b> بوابة الموظفين الإلكترونية — الشركة المصرية لنقل الكهرباء</div>
+        <div><b>الإصدار:</b> <span id="aboutVersion"></span></div>
+        <div><b>تاريخ الإنشاء:</b> يوليو 2026</div>
+        <div><b>المطوّر:</b> خالد يوسف المنسي</div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);">
+          تم تصميم وبرمجة هذا النظام بالكامل بواسطة خالد يوسف المنسي منفردًا، دون مشاركة أي جهة أو شخص آخر.
+        </div>
+        <div style="margin-top:8px;"><b>للتواصل:</b> واتساب 01201413051</div>
+        <div style="margin-top:10px;font-size:11.5px;color:var(--gray);">
+          © 2026 خالد يوسف المنسي. جميع الحقوق محفوظة. لا يجوز نسخ أو تعديل أو إعادة استخدام هذا النظام أو أي جزء منه بدون إذن كتابي من المطوّر.
+        </div>
+      </div>
+      <div style="padding:12px 22px 18px;text-align:center;">
+        <button onclick="closeAboutPage()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 24px;font-size:13px;cursor:pointer;">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة البداية (Splash) -->
+  <div id="splashScreen" style="position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:'Cairo',sans-serif;">
+    <div style="font-family:'Tajawal',sans-serif;font-weight:800;font-size:22px;letter-spacing:1px;">Payroll Portal</div>
+    <div style="color:var(--gold-soft);font-size:13px;margin-top:10px;">Designed &amp; Developed by</div>
+    <div style="color:var(--gold);font-weight:800;font-size:16px;margin-top:2px;">Khaled Youssif Elmansy</div>
+  </div>
+
+
+</body>
+</html>
