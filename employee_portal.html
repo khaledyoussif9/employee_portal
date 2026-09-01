@@ -1386,6 +1386,21 @@ async function loadAdminInfo() {
     ];
 
     box.innerHTML = `
+      <div class="card" style="margin-bottom:16px;text-align:center;padding:20px;">
+        <div class="card-header" style="margin:-20px -20px 18px;">الصورة الشخصية</div>
+        <img id="myProfilePhoto"
+             src="${data.photo_url ? `${API_BASE}${data.photo_url}?token=${encodeURIComponent(session.token)}&v=${Date.now()}` : 'assets/logo.png'}"
+             alt="الصورة الشخصية"
+             onerror="this.src='assets/logo.png'"
+             style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:4px solid var(--gold);background:#fff;">
+        <div style="margin-top:14px;">
+          <input id="myPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" style="max-width:100%;">
+          <button class="btn-save" style="margin-top:10px;" onclick="uploadMyProfilePhoto()">📷 رفع الصورة</button>
+        </div>
+        <div style="font-size:12px;color:var(--gray);margin-top:8px;">PNG أو JPG أو WEBP — بحد أقصى 2MB</div>
+        <div id="myPhotoMsg" class="save-msg hidden"></div>
+      </div>
+
       <div class="card">
         <div class="card-header">البيانات الإدارية</div>
         ${rows.map(([label, value]) => `
@@ -1427,6 +1442,46 @@ async function loadAdminInfo() {
     `;
   } catch (e) {
     box.innerHTML = `<div class="conn-error">⚠ ${e.message || "مش قادر أجيب البيانات"}</div>`;
+  }
+}
+
+async function uploadMyProfilePhoto() {
+  const input = document.getElementById("myPhotoInput");
+  const msg = document.getElementById("myPhotoMsg");
+  const file = input.files?.[0];
+  msg.className = "save-msg hidden";
+
+  if (!file) {
+    msg.textContent = "⚠ اختر صورة أولًا";
+    msg.className = "save-msg err";
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    msg.textContent = "⚠ حجم الصورة يجب ألا يزيد عن 2MB";
+    msg.className = "save-msg err";
+    return;
+  }
+
+  const form = new FormData();
+  form.append("photo", file, file.name);
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/employee/photo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.token}` },
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تعذر رفع الصورة");
+
+    const image = document.getElementById("myProfilePhoto");
+    image.src = `${API_BASE}${data.photo_url}?token=${encodeURIComponent(session.token)}&v=${Date.now()}`;
+    msg.textContent = "✓ تم رفع الصورة بنجاح";
+    msg.className = "save-msg ok";
+    input.value = "";
+  } catch (e) {
+    msg.textContent = "⚠ " + e.message;
+    msg.className = "save-msg err";
   }
 }
 
@@ -1850,11 +1905,42 @@ function renderChatBubbles(messages) {
                     background:${mine ? "var(--gold-soft)" : "var(--navy)"};
                     color:${mine ? "var(--navy)" : "#fff"};
                     ${mine ? "border-bottom-right-radius:2px;" : "border-bottom-left-radius:2px;"}">
-          <div style="white-space:pre-wrap;">${m.body}</div>
-          <div style="font-size:10.5px; opacity:.7; margin-top:4px; text-align:left;">${m.created_at}${mine ? "" : " — الإدارة"}</div>
+          <div style="white-space:pre-wrap;">${escapeHtml(m.body)}</div>
+          <div style="font-size:10.5px; opacity:.7; margin-top:4px; text-align:left;">${escapeHtml(m.created_at)}${mine ? "" : " — الإدارة"}</div>
         </div>
       </div>
     `;
+  }).join("");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderAdminChatBubbles(messages, threadId) {
+  if (messages.length === 0) {
+    return `<div class="state-box dashed">لا توجد رسائل داخل المحادثة</div>`;
+  }
+  return messages.map(m => {
+    const fromEmployee = m.sender_role === "employee";
+    return `
+      <div style="display:flex;justify-content:${fromEmployee ? "flex-start" : "flex-end"};margin-bottom:10px;">
+        <div style="max-width:78%;padding:9px 13px;border-radius:12px;font-size:13.5px;line-height:1.6;
+                    background:${fromEmployee ? "var(--gold-soft)" : "var(--navy)"};
+                    color:${fromEmployee ? "var(--navy)" : "#fff"};">
+          <div style="white-space:pre-wrap;">${escapeHtml(m.body)}</div>
+          <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:5px;">
+            <span style="font-size:10.5px;opacity:.7;">${escapeHtml(m.created_at)}${fromEmployee ? "" : " — الإدارة"}</span>
+            <button type="button" onclick="deleteThreadMessage(${threadId}, ${m.id})"
+                    style="border:0;background:transparent;color:${fromEmployee ? "var(--red)" : "#ffd7d7"};cursor:pointer;font-size:12px;">🗑 حذف</button>
+          </div>
+        </div>
+      </div>`;
   }).join("");
 }
 
@@ -2213,9 +2299,12 @@ async function openThread(threadId) {
     box.innerHTML = `
       <button class="back-link" onclick="loadMessagesInbox()">← رجوع لكل المحادثات</button>
       <div class="card">
-        <div class="card-header">${data.full_name} (كود ${data.employee_code})</div>
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <span>${escapeHtml(data.full_name)} (كود ${escapeHtml(data.employee_code)})</span>
+          <button type="button" onclick="deleteWholeThread(${threadId})" style="border:1px solid #ffd0d0;background:#fff1f1;color:var(--red);padding:6px 10px;border-radius:6px;cursor:pointer;">🗑 حذف المحادثة</button>
+        </div>
         <div id="adminThreadMessages" style="max-height:400px;overflow-y:auto;padding:16px 20px;background:#fdfcf8;">
-          ${renderChatBubbles(data.messages)}
+          ${renderAdminChatBubbles(data.messages, threadId)}
         </div>
         <div style="padding:14px 20px;border-top:1px solid var(--line);">
           <textarea id="adminReplyInput" rows="2" placeholder="اكتب ردك هنا..." style="width:100%;padding:10px 12px;border-radius:6px;border:1.5px solid var(--line);font-family:'Cairo',sans-serif;font-size:14px;resize:vertical;"></textarea>
@@ -2229,6 +2318,36 @@ async function openThread(threadId) {
     scrollBox.scrollTop = scrollBox.scrollHeight;
   } catch (e) {
     box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+  }
+}
+
+async function deleteThreadMessage(threadId, messageId) {
+  if (!confirm("حذف هذه الرسالة نهائيًا من المحادثة عند الطرفين؟")) return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/messages/${threadId}/messages/${messageId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تعذر حذف الرسالة");
+    openThread(threadId);
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function deleteWholeThread(threadId) {
+  if (!confirm("تحذير: سيتم حذف المحادثة ورسائلها بالكامل عند الطرفين. هل أنت متأكد؟")) return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/messages/${threadId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تعذر حذف المحادثة");
+    loadMessagesInbox();
+  } catch (e) {
+    alert(e.message);
   }
 }
 

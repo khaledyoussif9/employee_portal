@@ -1712,6 +1712,84 @@ def admin_get_thread(thread_id):
     })
 
 
+@app.route("/api/admin/messages/<int:thread_id>/messages/<int:message_id>", methods=["DELETE"])
+@admin_required
+def admin_delete_thread_message(thread_id, message_id):
+    """يحذف المسؤول رسالة واحدة فقط من المحادثة، وتختفي عند الطرفين."""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT employee_id FROM message_threads WHERE id = ?",
+        thread_id,
+    )
+    thread = cursor.fetchone()
+    if thread is None:
+        conn.close()
+        return jsonify({"error": "المحادثة غير موجودة"}), 404
+
+    cursor.execute(
+        "DELETE FROM thread_messages WHERE id = ? AND thread_id = ?",
+        message_id, thread_id,
+    )
+    deleted = cursor.rowcount
+    if deleted == 0:
+        conn.close()
+        return jsonify({"error": "الرسالة غير موجودة داخل هذه المحادثة"}), 404
+
+    cursor.execute(
+        """
+        UPDATE message_threads
+        SET updated_at = COALESCE(
+            (SELECT MAX(created_at) FROM thread_messages WHERE thread_id = ?),
+            GETDATE()
+        )
+        WHERE id = ?
+        """,
+        thread_id, thread_id,
+    )
+    conn.commit()
+    conn.close()
+
+    log_action(
+        admin_id=request.employee_id,
+        action_type="delete_thread_message",
+        target_employee_id=thread.employee_id,
+        details=f"thread_id={thread_id}, message_id={message_id}",
+    )
+    return jsonify({"message": "تم حذف الرسالة من المحادثة للطرفين"})
+
+
+@app.route("/api/admin/messages/<int:thread_id>", methods=["DELETE"])
+@admin_required
+def admin_delete_thread(thread_id):
+    """يحذف المسؤول المحادثة ورسائلها بالكامل، فتختفي عند الطرفين."""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT employee_id FROM message_threads WHERE id = ?",
+        thread_id,
+    )
+    thread = cursor.fetchone()
+    if thread is None:
+        conn.close()
+        return jsonify({"error": "المحادثة غير موجودة"}), 404
+
+    cursor.execute("DELETE FROM thread_messages WHERE thread_id = ?", thread_id)
+    cursor.execute("DELETE FROM message_threads WHERE id = ?", thread_id)
+    conn.commit()
+    conn.close()
+
+    log_action(
+        admin_id=request.employee_id,
+        action_type="delete_message_thread",
+        target_employee_id=thread.employee_id,
+        details=f"thread_id={thread_id}",
+    )
+    return jsonify({"message": "تم حذف المحادثة بالكامل للطرفين"})
+
+
 @app.route("/api/admin/messages/<int:thread_id>/reply", methods=["POST"])
 @admin_required
 def admin_reply_thread(thread_id):
