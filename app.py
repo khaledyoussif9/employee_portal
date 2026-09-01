@@ -40,6 +40,9 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
 
+ASSET_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+os.makedirs(ASSET_FOLDER, exist_ok=True)
+
 # صور الموظفين تحفظ باسم ثابت لكل موظف، ولا نحتاج لإضافة عمود جديد في قاعدة البيانات.
 PROFILE_PHOTO_FOLDER = os.path.join(UPLOAD_FOLDER, "profile_photos")
 os.makedirs(PROFILE_PHOTO_FOLDER, exist_ok=True)
@@ -92,6 +95,11 @@ def log_action(admin_id, action_type, target_employee_id=None, details=None):
 @app.route("/")
 def home():
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "employee_portal.html")
+
+
+@app.route("/assets/<path:filename>")
+def serve_asset(filename):
+    return send_from_directory(ASSET_FOLDER, filename)
 
 
 def token_required(f):
