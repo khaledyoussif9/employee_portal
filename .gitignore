@@ -9,5 +9,7 @@ __pycache__/
 .vscode/
 uploads/
 pdf_temp/
+temp_pdfs/
+.test-venv/
 *.zip
 *.bak
