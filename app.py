@@ -55,6 +55,80 @@ if not SECRET_KEY:
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
+# حساب عرض افتراضي لا يرتبط بأي موظف أو بيانات حقيقية في قاعدة البيانات.
+DEMO_EMPLOYEE_CODE = os.getenv("DEMO_EMPLOYEE_CODE", "11092026")
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "11092026")
+DEMO_EMPLOYEE_ID = 0
+
+
+def demo_payslip(month, year):
+    """بيانات وهمية ثابتة تسمح بتجربة شريط المرتب بدون كشف بيانات حقيقية."""
+    items = [
+        {"name": "الأساسي", "type": "earning", "amount": 7250.00},
+        {"name": "حافز أداء", "type": "earning", "amount": 1850.00},
+        {"name": "بدل انتقال", "type": "earning", "amount": 650.00},
+        {"name": "التأمينات الاجتماعية", "type": "deduction", "amount": 820.00},
+        {"name": "ضريبة كسب العمل", "type": "deduction", "amount": 430.00},
+    ]
+    earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
+    deductions_total = sum(i["amount"] for i in items if i["type"] == "deduction")
+    return {
+        "month": month,
+        "year": year,
+        "source": "demo",
+        "code_sarf": "DEMO",
+        "items": items,
+        "earnings_total": earnings_total,
+        "deductions_total": deductions_total,
+        "net_salary": earnings_total - deductions_total,
+        "is_demo": True,
+    }
+
+
+def demo_wage_record(month, year):
+    """صرفيات إضافية وهمية لحساب العرض."""
+    items = [
+        {"name": "مكافأة مجهود غير عادي", "type": "earning", "amount": 1200.00},
+        {"name": "ضريبة كسب العمل", "type": "deduction", "amount": 120.00},
+    ]
+    earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
+    deductions_total = sum(i["amount"] for i in items if i["type"] == "deduction")
+    return {
+        "month": month,
+        "year": year,
+        "disbursements": [{
+            "sarfia_no": 2,
+            "items": items,
+            "earnings_total": earnings_total,
+            "deductions_total": deductions_total,
+            "net_salary": earnings_total - deductions_total,
+        }],
+        "is_demo": True,
+    }
+
+
+@app.before_request
+def block_demo_writes():
+    """حماية مركزية: حساب العرض لا ينفّذ أي عملية كتابة حتى باستدعاء API مباشر."""
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+    if request.path == "/api/login":
+        return None
+
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if auth_header.startswith("Bearer ") else request.args.get("token")
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
+
+    if payload.get("is_demo"):
+        return jsonify({"error": "حساب العرض مخصص للاستعلام فقط ولا يسمح بحفظ أو تعديل البيانات"}), 403
+    return None
+
 
 def send_email(to_address, subject, body):
     """
@@ -118,6 +192,7 @@ def token_required(f):
             payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             request.employee_id = payload["employee_id"]
             request.role = payload.get("role", "employee")
+            request.is_demo = bool(payload.get("is_demo", False))
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "انتهت صلاحية الجلسة، سجل دخول تاني"}), 401
         except jwt.InvalidTokenError:
@@ -148,6 +223,30 @@ def login():
 
     if not employee_code or not password:
         return jsonify({"error": "من فضلك ادخل كود الموظف وكلمة المرور"}), 400
+
+    # حساب العرض افتراضي بالكامل ولا يحتاج سجلًا داخل قاعدة البيانات.
+    if employee_code == DEMO_EMPLOYEE_CODE:
+        if not secrets.compare_digest(password, DEMO_PASSWORD):
+            return jsonify({"error": "كود الموظف أو كلمة المرور غير صحيحة"}), 401
+
+        token = jwt.encode(
+            {
+                "employee_id": DEMO_EMPLOYEE_ID,
+                "role": "viewer",
+                "is_demo": True,
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=8),
+            },
+            SECRET_KEY,
+            algorithm="HS256",
+        )
+        return jsonify({
+            "token": token,
+            "full_name": "خالد المنسي",
+            "role": "viewer",
+            "employee_code": DEMO_EMPLOYEE_CODE,
+            "is_demo": True,
+            "read_only": True,
+        })
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -400,6 +499,23 @@ def complete_profile():
 @app.route("/api/employee/me", methods=["GET"])
 @token_required
 def get_my_info():
+    if request.is_demo:
+        return jsonify({
+            "employee_code": DEMO_EMPLOYEE_CODE,
+            "insurance_number": "000000000",
+            "full_name": "خالد المنسي",
+            "job_title": "مطور",
+            "hire_date": "2026-09-11",
+            "national_id": "00000000000000",
+            "phone": "01000000000",
+            "status": "active",
+            "department": "المنظومة الإلكترونية الموحدة",
+            "email": "demo@example.com",
+            "photo_url": None,
+            "is_demo": True,
+            "read_only": True,
+        })
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -536,6 +652,9 @@ def get_payslip():
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
 
+    if request.is_demo:
+        return jsonify(demo_payslip(month, year))
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -653,6 +772,9 @@ def get_wage_record():
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
 
+    if request.is_demo:
+        return jsonify(demo_wage_record(month, year))
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -723,6 +845,25 @@ def download_payslip_pdf():
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
+
+    if request.is_demo:
+        data = demo_payslip(month, year)
+        earnings = [(i["name"], i["amount"]) for i in data["items"] if i["type"] == "earning"]
+        deductions = [(i["name"], i["amount"]) for i in data["items"] if i["type"] == "deduction"]
+        filename = f"payslip_demo_{year}_{month}_{uuid.uuid4().hex[:8]}.pdf"
+        filepath = os.path.join(PDF_TEMP_FOLDER, filename)
+        generate_payslip_pdf(
+            filepath,
+            employee_name="خالد المنسي",
+            employee_code=DEMO_EMPLOYEE_CODE,
+            month_name=MONTHS_AR[month - 1],
+            year=year,
+            code_sarf="DEMO",
+            earnings=earnings,
+            deductions=deductions,
+            net_salary=data["net_salary"],
+        )
+        return send_file(filepath, as_attachment=True, download_name=f"شريط_مرتب_تجريبي_{MONTHS_AR[month-1]}_{year}.pdf")
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -796,6 +937,30 @@ def download_wage_record_pdf():
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
+
+    if request.is_demo:
+        data = demo_wage_record(month, year)
+        disbursements = []
+        for entry in data["disbursements"]:
+            earnings = [(i["name"], i["amount"]) for i in entry["items"] if i["type"] == "earning"]
+            deductions = [(i["name"], i["amount"]) for i in entry["items"] if i["type"] == "deduction"]
+            disbursements.append({
+                "sarfia_no": entry["sarfia_no"],
+                "earnings": earnings,
+                "deductions": deductions,
+                "net_salary": entry["net_salary"],
+            })
+        filename = f"wage_demo_{year}_{month}_{uuid.uuid4().hex[:8]}.pdf"
+        filepath = os.path.join(PDF_TEMP_FOLDER, filename)
+        generate_wage_record_pdf(
+            filepath,
+            employee_name="خالد المنسي",
+            employee_code=DEMO_EMPLOYEE_CODE,
+            month_name=MONTHS_AR[month - 1],
+            year=year,
+            disbursements=disbursements,
+        )
+        return send_file(filepath, as_attachment=True, download_name=f"سجل_أجور_تجريبي_{MONTHS_AR[month-1]}_{year}.pdf")
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -1406,6 +1571,19 @@ def admin_create_announcement():
 @app.route("/api/announcements", methods=["GET"])
 @token_required
 def get_announcements():
+    if request.is_demo:
+        return jsonify([{
+            "id": 0,
+            "title": "مرحبًا بك في الحساب التجريبي",
+            "body": "هذه بيانات وهمية للعرض فقط، ولا تؤثر على أي موظف أو بيانات حقيقية.",
+            "file_name": None,
+            "original_name": None,
+            "created_at": "2026-09-11 09:00",
+            "is_read": True,
+            "is_liked": False,
+            "like_count": 0,
+        }])
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -1596,6 +1774,14 @@ def send_message_to_admin():
 @app.route("/api/messages/my", methods=["GET"])
 @token_required
 def get_my_thread():
+    if request.is_demo:
+        return jsonify({"messages": [{
+            "id": 0,
+            "sender_role": "admin",
+            "body": "مرحبًا بك في تجربة الرسائل. الإرسال والتعديل غير متاحين في حساب العرض.",
+            "created_at": "2026-09-11 09:00",
+        }]})
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -1890,6 +2076,9 @@ def submit_service_rating():
 @app.route("/api/service-rating/my", methods=["GET"])
 @token_required
 def get_my_service_ratings():
+    if request.is_demo:
+        return jsonify([])
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
