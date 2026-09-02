@@ -926,7 +926,13 @@ async function submitCompleteProfile() {
       return;
     }
 
-    session = { token: data.token, fullName: data.full_name, role: data.role, employeeCode: data.employee_code };
+    session = {
+      token: data.token,
+      fullName: data.full_name,
+      role: data.role,
+      employeeCode: data.employee_code,
+      isDemo: Boolean(data.is_demo),
+    };
     showApp();
   } catch (e) {
     errBox.textContent = "مش قادر أوصل للسيرفر";
@@ -1170,10 +1176,14 @@ function handleLogout() {
 function showApp() {
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appScreen").classList.remove("hidden");
-  document.getElementById("topbarName").textContent = session.fullName;
+  document.getElementById("topbarName").textContent = session.isDemo
+    ? `${session.fullName} — عرض فقط`
+    : session.fullName;
   if (session.role === "hr_admin") {
     document.getElementById("navHR").classList.remove("hidden");
   }
+  document.getElementById("navChangePass").classList.toggle("hidden", session.isDemo);
+  document.getElementById("navRating").classList.toggle("hidden", session.isDemo);
   setWelcomeBanner();
   startLiveClock();
   refreshNotifBadge();
@@ -1386,6 +1396,11 @@ async function loadAdminInfo() {
     ];
 
     box.innerHTML = `
+      ${data.is_demo ? `
+        <div class="card" style="margin-bottom:16px;padding:14px 18px;text-align:center;background:var(--gold-soft);color:var(--navy);font-weight:700;">
+          👁 حساب تجريبي للعرض فقط — جميع البيانات الظاهرة وهمية ولا يمكن تعديلها
+        </div>
+      ` : ""}
       <div class="card" style="margin-bottom:16px;text-align:center;padding:20px;">
         <div class="card-header" style="margin:-20px -20px 18px;">الصورة الشخصية</div>
         <img id="myProfilePhoto"
@@ -1393,12 +1408,14 @@ async function loadAdminInfo() {
              alt="الصورة الشخصية"
              onerror="this.onerror=null;this.src='assets/logo.jpg?v=delta-original'"
              style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:4px solid var(--gold);background:#fff;">
-        <div style="margin-top:14px;">
-          <input id="myPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" style="max-width:100%;">
-          <button class="btn-save" style="margin-top:10px;" onclick="uploadMyProfilePhoto()">📷 رفع الصورة</button>
-        </div>
-        <div style="font-size:12px;color:var(--gray);margin-top:8px;">PNG أو JPG أو WEBP — بحد أقصى 2MB</div>
-        <div id="myPhotoMsg" class="save-msg hidden"></div>
+        ${data.is_demo ? "" : `
+          <div style="margin-top:14px;">
+            <input id="myPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" style="max-width:100%;">
+            <button class="btn-save" style="margin-top:10px;" onclick="uploadMyProfilePhoto()">📷 رفع الصورة</button>
+          </div>
+          <div style="font-size:12px;color:var(--gray);margin-top:8px;">PNG أو JPG أو WEBP — بحد أقصى 2MB</div>
+          <div id="myPhotoMsg" class="save-msg hidden"></div>
+        `}
       </div>
 
       <div class="card">
@@ -1408,7 +1425,7 @@ async function loadAdminInfo() {
         `).join("")}
       </div>
 
-      <div class="card" style="margin-top:16px;">
+      ${data.is_demo ? "" : `<div class="card" style="margin-top:16px;">
         <div class="card-header" style="background:var(--navy-light);">📱 بيانات التواصل</div>
         <div class="edit-grid">
           <div class="edit-field">
@@ -1424,9 +1441,9 @@ async function loadAdminInfo() {
           <button class="btn-save" onclick="saveMyContactInfo()">حفظ البيانات</button>
         </div>
         <div id="myContactMsg" class="save-msg hidden"></div>
-      </div>
+      </div>`}
 
-      <div class="card" style="margin-top:16px;">
+      ${data.is_demo ? "" : `<div class="card" style="margin-top:16px;">
         <div class="card-header" style="background:var(--navy-light);">📧 البريد الإلكتروني</div>
         <div class="edit-grid" style="grid-template-columns:1fr;">
           <div class="edit-field">
@@ -1438,7 +1455,7 @@ async function loadAdminInfo() {
           <button class="btn-save" onclick="saveMyEmail()">حفظ البريد الإلكتروني</button>
         </div>
         <div id="myEmailMsg" class="save-msg hidden"></div>
-      </div>
+      </div>`}
     `;
   } catch (e) {
     box.innerHTML = `<div class="conn-error">⚠ ${e.message || "مش قادر أجيب البيانات"}</div>`;
@@ -1950,12 +1967,16 @@ function renderContactShell() {
     <div class="card" style="max-width:560px;">
       <div class="card-header">✉️ تواصل معنا</div>
       <div id="chatThreadBox" style="max-height:420px;overflow-y:auto;padding:16px 20px;background:#fdfcf8;"></div>
-      <div style="padding:14px 20px;border-top:1px solid var(--line);">
+      ${session.isDemo ? `
+        <div style="padding:14px 20px;border-top:1px solid var(--line);color:var(--gray);text-align:center;">
+          حساب العرض يتيح مشاهدة نموذج المحادثة فقط ولا يسمح بإرسال رسائل.
+        </div>
+      ` : `<div style="padding:14px 20px;border-top:1px solid var(--line);">
         <textarea id="contactMessage" rows="2" placeholder="اكتب رسالتك هنا..." style="width:100%;padding:10px 12px;border-radius:6px;border:1.5px solid var(--line);font-family:'Cairo',sans-serif;font-size:14px;resize:vertical;"></textarea>
         ${emojiPickerHTML("contactMessage")}
         <button class="btn-save" style="margin-top:8px;" onclick="submitContactMessage()">إرسال</button>
         <div id="contactMsgResult" class="save-msg hidden"></div>
-      </div>
+      </div>`}
     </div>
   `;
   loadMyMessages();
