@@ -61,6 +61,35 @@ DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "11092026")
 DEMO_EMPLOYEE_ID = 0
 
 
+def _loan_key(name):
+    """اسم موحّد لربط بند القسط ببند الرصيد المقابل له."""
+    value = re.sub(r"(?:قسط|رصيد|المتبقي|متبقى|متبقي|باقي)", " ", name or "", flags=re.IGNORECASE)
+    return re.sub(r"[^\w\u0600-\u06ff]+", "", value).lower()
+
+
+def attach_installment_balances(items):
+    """يدمج بنود الرصيد مع الأقساط دون إدخال الرصيد في إجمالي الاستقطاعات."""
+    balances = [item for item in items if "رصيد" in (item.get("name") or "")]
+    visible_items = [item for item in items if item not in balances]
+    unmatched = balances.copy()
+
+    for item in visible_items:
+        if "قسط" not in (item.get("name") or ""):
+            continue
+
+        key = _loan_key(item.get("name"))
+        match = next((b for b in unmatched if key and _loan_key(b.get("name")) == key), None)
+        if match is None and len(unmatched) == 1:
+            match = unmatched[0]
+        if match is not None:
+            item["balance"] = float(match.get("amount") or 0)
+            unmatched.remove(match)
+
+    # لو تعذر الربط، نظهر الرصيد كبند معلومات مستقل بدل فقده.
+    visible_items.extend({**item, "type": "balance"} for item in unmatched)
+    return visible_items
+
+
 def demo_payslip(month, year):
     """بيانات وهمية ثابتة تسمح بتجربة شريط المرتب بدون كشف بيانات حقيقية."""
     items = [
@@ -69,6 +98,7 @@ def demo_payslip(month, year):
         {"name": "بدل انتقال", "type": "earning", "amount": 650.00},
         {"name": "التأمينات الاجتماعية", "type": "deduction", "amount": 820.00},
         {"name": "ضريبة كسب العمل", "type": "deduction", "amount": 430.00},
+        {"name": "قسط قرض", "type": "deduction", "amount": 600.00, "balance": 5400.00},
     ]
     earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
     deductions_total = sum(i["amount"] for i in items if i["type"] == "deduction")
@@ -674,7 +704,7 @@ def get_payslip():
         FROM payroll_items
         WHERE employee_id = ? AND month = ? AND year = ?
           AND sarfia_no = 1
-          AND NOT (band_name LIKE N'ت %' AND band_name NOT LIKE N'%حصة العامل%')
+          AND NOT (band_name LIKE N'ت %' AND band_name NOT LIKE N'%حصة العامل%' AND band_name NOT LIKE N'%رصيد%')
           AND band_name NOT LIKE N'%مصاريف ادارية%'
         GROUP BY
             CASE WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
@@ -691,14 +721,14 @@ def get_payslip():
     item_rows = cursor.fetchall()
 
     if item_rows:
-        items = [
+        items = attach_installment_balances([
             {
                 "name": r.display_name or "بند غير مسمى",
                 "type": r.band_type,
                 "amount": float(r.amount),
             }
             for r in item_rows
-        ]
+        ])
         earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
         deductions_total = sum(i["amount"] for i in items if i["type"] == "deduction")
 
@@ -784,7 +814,7 @@ def get_wage_record():
         FROM payroll_items
         WHERE employee_id = ? AND month = ? AND year = ?
           AND sarfia_no > 1
-          AND NOT (band_name LIKE N'ت %' AND band_name NOT LIKE N'%حصة العامل%')
+          AND NOT (band_name LIKE N'ت %' AND band_name NOT LIKE N'%حصة العامل%' AND band_name NOT LIKE N'%رصيد%')
           AND band_name NOT LIKE N'%مصاريف ادارية%'
         GROUP BY sarfia_no, band_name, band_type
         ORDER BY sarfia_no, band_type DESC, amount DESC
@@ -907,8 +937,15 @@ def download_payslip_pdf():
     if not rows:
         return jsonify({"error": "لا يوجد سجل أجور لهذا الشهر"}), 404
 
-    earnings = [(r.display_name or "بند غير مسمى", float(r.amount)) for r in rows if r.band_type == "earning"]
-    deductions = [(r.display_name or "بند غير مسمى", float(r.amount)) for r in rows if r.band_type == "deduction"]
+    pdf_items = attach_installment_balances([
+        {"name": r.display_name or "بند غير مسمى", "type": r.band_type, "amount": float(r.amount)}
+        for r in rows
+    ])
+    earnings = [(i["name"], i["amount"]) for i in pdf_items if i["type"] == "earning"]
+    deductions = [
+        (f'{i["name"]} (الرصيد المتبقي: {i["balance"]:,.2f})' if "balance" in i else i["name"], i["amount"])
+        for i in pdf_items if i["type"] == "deduction"
+    ]
     net_salary = sum(a for _, a in earnings) - sum(a for _, a in deductions)
 
     filename = f"payslip_{emp_row.employee_code}_{year}_{month}_{uuid.uuid4().hex[:8]}.pdf"

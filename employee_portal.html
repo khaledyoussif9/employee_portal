@@ -261,6 +261,9 @@
     .payslip-col.earnings { border-left: none; border-bottom: 1px solid var(--line); }
   }
   .payslip-line { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+  .installment-line { display:grid; grid-template-columns:minmax(0,1fr) 90px 115px; gap:8px; align-items:center; }
+  .installment-head { color:var(--gray); font-size:11px; font-weight:800; border-bottom:1px solid var(--line); }
+  .installment-line span:not(:first-child) { text-align:center; }
   .payslip-line .neg { color: var(--red); font-weight: 700; }
   .payslip-line .pos { font-weight: 700; }
   .divider { margin: 0 24px; border-top: 1px dashed var(--line); }
@@ -1806,7 +1809,9 @@ async function loadPayslip() {
           <div class="payslip-col deductions">
             <div class="col-title">الاستقطاعات</div>
             ${deductions.length
-              ? deductions.map(i => `<div class="payslip-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span></div>`).join("")
+              ? `${deductions.some(i => i.balance != null) ? `<div class="payslip-line installment-line installment-head"><span>اسم البند</span><span>قيمة القسط</span><span>الرصيد المتبقي</span></div>` : ""}${deductions.map(i => i.balance != null
+                  ? `<div class="payslip-line installment-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span><span>${fmt(i.balance)}</span></div>`
+                  : `<div class="payslip-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span></div>`).join("")}`
               : `<div class="payslip-line"><span style="color:var(--gray)">لا توجد استقطاعات</span></div>`}
             <div class="col-total"><span>الإجمالي</span><span>${fmt(data.deductions_total)} ج.م</span></div>
           </div>
