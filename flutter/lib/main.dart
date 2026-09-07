@@ -3817,10 +3817,19 @@ class _PayslipPageState extends State<PayslipPage> {
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                       ),
                     ),
-                    Text(
-                      money(item['amount']),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-                    ),
+                    if (item['balance'] != null) ...[
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('القسط: ${money(item['amount'])}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                          Text('الرصيد: ${money(item['balance'])}', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                        ],
+                      ),
+                    ] else
+                      Text(
+                        money(item['amount']),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                      ),
                   ],
                 ),
               ),
