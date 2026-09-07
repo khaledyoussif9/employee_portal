@@ -60,6 +60,11 @@ DEMO_EMPLOYEE_CODE = os.getenv("DEMO_EMPLOYEE_CODE", "11092026")
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "11092026")
 DEMO_EMPLOYEE_ID = 0
 
+# قاعدة المرتبات القديمة التي تحتوي الرصيد التاريخي للأقساط.
+PAYROLL_SOURCE_DATABASE = os.getenv("PAYROLL_SOURCE_DATABASE", "human_r_ash")
+if not re.fullmatch(r"[A-Za-z0-9_]+", PAYROLL_SOURCE_DATABASE):
+    raise RuntimeError("PAYROLL_SOURCE_DATABASE يحتوي اسم قاعدة بيانات غير صالح")
+
 
 def _loan_key(name):
     """اسم موحّد لربط بند القسط ببند الرصيد المقابل له."""
@@ -96,11 +101,11 @@ def get_monthly_installment_balances(cursor, employee_code, month, year, sarfia_
         cursor.execute(
             """
             SELECT band_code, MAX(raseed_val) AS balance
-            FROM payroll_annual_ALL
+            FROM [{PAYROLL_SOURCE_DATABASE}].[dbo].[payroll_annual_ALL]
             WHERE emp_no = ? AND MONTH_P = ? AND YEAR_P = ? AND sarfia_no = ?
               AND raseed_val IS NOT NULL
             GROUP BY band_code
-            """,
+            """.format(PAYROLL_SOURCE_DATABASE=PAYROLL_SOURCE_DATABASE),
             employee_code,
             month,
             year,
