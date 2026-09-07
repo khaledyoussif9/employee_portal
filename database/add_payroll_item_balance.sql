@@ -12,32 +12,48 @@ BEGIN
 END;
 GO
 
-;WITH Balances AS
-(
-    SELECT
-        emp_no,
-        MONTH_P,
-        YEAR_P,
-        sarfia_no,
-        band_code,
-        MAX(raseed_val) AS raseed_val
-    FROM human_r_ash.dbo.payroll_annual_ALL
-    WHERE raseed_val IS NOT NULL
-    GROUP BY emp_no, MONTH_P, YEAR_P, sarfia_no, band_code
-)
-UPDATE p
-SET p.balance = b.raseed_val
-FROM dbo.payroll_items AS p
-INNER JOIN dbo.employees AS e
-    ON e.id = p.employee_id
-INNER JOIN Balances AS b
-    ON b.emp_no = TRY_CONVERT(BIGINT, e.employee_code)
-   AND b.MONTH_P = p.month
-   AND b.YEAR_P = p.year
-   AND b.sarfia_no = p.sarfia_no
-   AND b.band_code = p.band_code;
+BEGIN TRY
+    BEGIN TRANSACTION;
 
-SELECT @@ROWCOUNT AS updated_rows;
+    /* إزالة الربط السابق حتى لا تبقى بنود عادية ظهرت كأقساط بسبب رصيد صفر. */
+    UPDATE dbo.payroll_items
+    SET balance = NULL
+    WHERE balance IS NOT NULL;
+
+    ;WITH Balances AS
+    (
+        SELECT
+            emp_no,
+            MONTH_P,
+            YEAR_P,
+            sarfia_no,
+            band_code,
+            MAX(raseed_val) AS raseed_val
+        FROM human_r_ash.dbo.payroll_annual_ALL
+        WHERE raseed_val > 0
+        GROUP BY emp_no, MONTH_P, YEAR_P, sarfia_no, band_code
+    )
+    UPDATE p
+    SET p.balance = b.raseed_val
+    FROM dbo.payroll_items AS p
+    INNER JOIN dbo.employees AS e
+        ON e.id = p.employee_id
+    INNER JOIN Balances AS b
+        ON b.emp_no = TRY_CONVERT(BIGINT, e.employee_code)
+       AND b.MONTH_P = p.month
+       AND b.YEAR_P = p.year
+       AND b.sarfia_no = p.sarfia_no
+       AND b.band_code = p.band_code;
+
+    DECLARE @UpdatedRows INT = @@ROWCOUNT;
+    COMMIT TRANSACTION;
+
+    SELECT @UpdatedRows AS updated_installment_rows;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
 GO
 
 SELECT TOP (200)
