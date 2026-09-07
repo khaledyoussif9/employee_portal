@@ -3776,6 +3776,8 @@ class _PayslipPageState extends State<PayslipPage> {
   }
 
   Widget _itemsTable(String title, List<Map<String, dynamic>> items, Color headerColor) {
+    final regularItems = items.where((item) => item['balance'] == null).toList();
+    final installmentItems = items.where((item) => item['balance'] != null).toList();
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFFFFDF8),
@@ -3803,7 +3805,7 @@ class _PayslipPageState extends State<PayslipPage> {
               child: Text('لا توجد بنود'),
             )
           else
-            ...items.map(
+            ...regularItems.map(
               (item) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: const BoxDecoration(
@@ -3817,23 +3819,58 @@ class _PayslipPageState extends State<PayslipPage> {
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                       ),
                     ),
-                    if (item['balance'] != null) ...[
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('القسط: ${money(item['amount'])}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
-                          Text('الرصيد: ${money(item['balance'])}', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-                        ],
-                      ),
-                    ] else
-                      Text(
-                        money(item['amount']),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-                      ),
+                    Text(
+                      money(item['amount']),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                    ),
                   ],
                 ),
               ),
             ),
+          if (installmentItems.isNotEmpty) ...[
+            const Divider(height: 2, thickness: 2, color: EmployeePortalApp.gold),
+            ...installmentItems.map(
+              (item) => Container(
+                margin: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE0D4C5)),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(7),
+                      color: EmployeePortalApp.goldSoft,
+                      child: Text('${item['name'] ?? ''}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                    IntrinsicHeight(
+                      child: Row(
+                        children: [
+                          Expanded(child: _installmentValue('القسط', item['amount'], EmployeePortalApp.red)),
+                          const VerticalDivider(width: 1, thickness: 1.5, color: EmployeePortalApp.gold),
+                          Expanded(child: _installmentValue('الرصيد', item['balance'], EmployeePortalApp.navy)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _installmentValue(String label, dynamic value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 5),
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 3),
+          Text(money(value), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: color)),
         ],
       ),
     );
