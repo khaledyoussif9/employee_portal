@@ -261,9 +261,14 @@
     .payslip-col.earnings { border-left: none; border-bottom: 1px solid var(--line); }
   }
   .payslip-line { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
-  .installment-line { display:grid; grid-template-columns:minmax(0,1fr) 90px 115px; gap:8px; align-items:center; }
-  .installment-head { color:var(--gray); font-size:11px; font-weight:800; border-bottom:1px solid var(--line); }
-  .installment-line span:not(:first-child) { text-align:center; }
+  .installments-section { margin-top:10px; padding-top:10px; border-top:2px solid var(--gold); }
+  .installment-card { margin-top:8px; border:1px solid var(--line); border-radius:7px; overflow:hidden; background:#fff; }
+  .installment-name { padding:7px 10px; background:var(--gold-soft); font-weight:800; font-size:12px; text-align:center; }
+  .installment-values { display:grid; grid-template-columns:1fr 1fr; }
+  .installment-value { padding:8px 6px; text-align:center; }
+  .installment-value + .installment-value { border-right:1.5px solid var(--gold); }
+  .installment-value b { display:block; color:var(--navy); font-size:11px; margin-bottom:4px; }
+  .installment-value span { font-weight:800; font-size:13px; }
   .payslip-line .neg { color: var(--red); font-weight: 700; }
   .payslip-line .pos { font-weight: 700; }
   .divider { margin: 0 24px; border-top: 1px dashed var(--line); }
@@ -1785,6 +1790,8 @@ async function loadPayslip() {
 
     const earnings = data.items.filter(i => i.type === "earning");
     const deductions = data.items.filter(i => i.type === "deduction");
+    const regularDeductions = deductions.filter(i => i.balance == null);
+    const installments = deductions.filter(i => i.balance != null);
 
     body.innerHTML = `
       <div class="print-watermark">سري للاستعلام فقط</div>
@@ -1809,9 +1816,16 @@ async function loadPayslip() {
           <div class="payslip-col deductions">
             <div class="col-title">الاستقطاعات</div>
             ${deductions.length
-              ? `${deductions.some(i => i.balance != null) ? `<div class="payslip-line installment-line installment-head"><span>اسم البند</span><span>قيمة القسط</span><span>الرصيد المتبقي</span></div>` : ""}${deductions.map(i => i.balance != null
-                  ? `<div class="payslip-line installment-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span><span>${fmt(i.balance)}</span></div>`
-                  : `<div class="payslip-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span></div>`).join("")}`
+              ? `${regularDeductions.map(i => `<div class="payslip-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span></div>`).join("")}
+                 ${installments.length ? `<div class="installments-section">
+                   ${installments.map(i => `<div class="installment-card">
+                     <div class="installment-name">${i.name}</div>
+                     <div class="installment-values">
+                       <div class="installment-value"><b>القسط</b><span class="neg">${fmt(i.amount)}</span></div>
+                       <div class="installment-value"><b>الرصيد</b><span>${fmt(i.balance)}</span></div>
+                     </div>
+                   </div>`).join("")}
+                 </div>` : ""}`
               : `<div class="payslip-line"><span style="color:var(--gray)">لا توجد استقطاعات</span></div>`}
             <div class="col-total"><span>الإجمالي</span><span>${fmt(data.deductions_total)} ج.م</span></div>
           </div>
