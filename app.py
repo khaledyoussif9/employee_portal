@@ -60,12 +60,6 @@ DEMO_EMPLOYEE_CODE = os.getenv("DEMO_EMPLOYEE_CODE", "11092026")
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "11092026")
 DEMO_EMPLOYEE_ID = 0
 
-# قاعدة المرتبات القديمة التي تحتوي الرصيد التاريخي للأقساط.
-PAYROLL_SOURCE_DATABASE = os.getenv("PAYROLL_SOURCE_DATABASE", "human_r_ash")
-if not re.fullmatch(r"[A-Za-z0-9_]+", PAYROLL_SOURCE_DATABASE):
-    raise RuntimeError("PAYROLL_SOURCE_DATABASE يحتوي اسم قاعدة بيانات غير صالح")
-
-
 def _loan_key(name):
     """اسم موحّد لربط بند القسط ببند الرصيد المقابل له."""
     value = re.sub(r"(?:قسط|رصيد|المتبقي|متبقى|متبقي|باقي)", " ", name or "", flags=re.IGNORECASE)
@@ -93,37 +87,6 @@ def attach_installment_balances(items):
     # لو تعذر الربط، نظهر الرصيد كبند معلومات مستقل بدل فقده.
     visible_items.extend({**item, "type": "balance"} for item in unmatched)
     return visible_items
-
-
-def get_monthly_installment_balances(cursor, employee_code, month, year, sarfia_no=1):
-    """يجلب الرصيد التاريخي للقسط من جدول ترحيل المرتبات، إن كان متاحًا."""
-    try:
-        cursor.execute(
-            """
-            SELECT band_code, MAX(raseed_val) AS balance
-            FROM [{PAYROLL_SOURCE_DATABASE}].[dbo].[payroll_annual_ALL]
-            WHERE emp_no = ? AND MONTH_P = ? AND YEAR_P = ? AND sarfia_no = ?
-              AND raseed_val IS NOT NULL
-            GROUP BY band_code
-            """.format(PAYROLL_SOURCE_DATABASE=PAYROLL_SOURCE_DATABASE),
-            employee_code,
-            month,
-            year,
-            sarfia_no,
-        )
-        return {int(r.band_code): float(r.balance) for r in cursor.fetchall()}
-    except Exception:
-        # يظل شريط المرتب يعمل على النسخ القديمة التي لا تحتوي جدول الأرصدة.
-        return {}
-
-
-def apply_installment_balances(items, balances):
-    """يربط قيمة الرصيد ببند الاستقطاع المطابق من خلال كود البند."""
-    for item in items:
-        band_code = item.get("band_code")
-        if item.get("type") == "deduction" and band_code in balances:
-            item["balance"] = balances[band_code]
-    return items
 
 
 def demo_payslip(month, year):
@@ -724,10 +687,9 @@ def get_payslip():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT employee_code, code_sarf FROM employees WHERE id = ?", request.employee_id)
+    cursor.execute("SELECT code_sarf FROM employees WHERE id = ?", request.employee_id)
     code_sarf_row = cursor.fetchone()
     code_sarf = code_sarf_row.code_sarf if code_sarf_row else None
-    employee_code = code_sarf_row.employee_code if code_sarf_row else None
 
     cursor.execute(
         """
@@ -738,7 +700,8 @@ def get_payslip():
             END AS display_name,
             MIN(band_code) AS band_code,
             band_type,
-            SUM(amount) AS amount
+            SUM(amount) AS amount,
+            MAX(balance) AS balance
         FROM payroll_items
         WHERE employee_id = ? AND month = ? AND year = ?
           AND sarfia_no = 1
@@ -765,11 +728,10 @@ def get_payslip():
                 "band_code": int(r.band_code),
                 "type": r.band_type,
                 "amount": float(r.amount),
+                **({"balance": float(r.balance)} if r.balance is not None and r.band_type == "deduction" else {}),
             }
             for r in item_rows
         ])
-        balances = get_monthly_installment_balances(cursor, employee_code, month, year)
-        apply_installment_balances(items, balances)
         earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
         deductions_total = sum(i["amount"] for i in items if i["type"] == "deduction")
 
@@ -957,7 +919,8 @@ def download_payslip_pdf():
             END AS display_name,
             MIN(band_code) AS band_code,
             band_type,
-            SUM(amount) AS amount
+            SUM(amount) AS amount,
+            MAX(balance) AS balance
         FROM payroll_items
         WHERE employee_id = ? AND month = ? AND year = ?
           AND sarfia_no = 1
@@ -974,17 +937,21 @@ def download_payslip_pdf():
         request.employee_id, month, year,
     )
     rows = cursor.fetchall()
-    balances = get_monthly_installment_balances(cursor, emp_row.employee_code, month, year)
     conn.close()
 
     if not rows:
         return jsonify({"error": "لا يوجد سجل أجور لهذا الشهر"}), 404
 
     pdf_items = attach_installment_balances([
-        {"name": r.display_name or "بند غير مسمى", "band_code": int(r.band_code), "type": r.band_type, "amount": float(r.amount)}
+        {
+            "name": r.display_name or "بند غير مسمى",
+            "band_code": int(r.band_code),
+            "type": r.band_type,
+            "amount": float(r.amount),
+            **({"balance": float(r.balance)} if r.balance is not None and r.band_type == "deduction" else {}),
+        }
         for r in rows
     ])
-    apply_installment_balances(pdf_items, balances)
     earnings = [(i["name"], i["amount"]) for i in pdf_items if i["type"] == "earning"]
     deductions = [
         (f'{i["name"]} (الرصيد المتبقي: {i["balance"]:,.2f})' if "balance" in i else i["name"], i["amount"])
