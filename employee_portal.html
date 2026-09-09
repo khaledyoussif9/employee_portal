@@ -2466,10 +2466,12 @@ function renderStatisticsPanel() {
     <div class="card" style="margin-bottom:14px;">
       <div class="card-header">📊 إحصائيات المرتبات والمعاشات</div>
       <div class="selectors" style="padding:18px;margin:0;">
-        <div><label>الشهر</label><select id="statsMonth">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
-        <div><label>السنة</label><input id="statsYear" type="number" min="2020" max="2100" value="${now.getFullYear()}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
+        <div><label>الشهر</label><select id="statsMonth" onchange="loadIncentiveBands()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
+        <div><label>السنة</label><input id="statsYear" onchange="loadIncentiveBands()" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
+        <div><label>بند الحافز</label><select id="statsIncentiveBand"><option value="">جاري تحميل بنود الحوافز...</option></select></div>
         <button class="btn-save" onclick="loadStatistics()">عرض الإحصائيات</button>
       </div>
+      <div style="padding:0 18px 16px;font-size:12px;color:var(--gray);">حساب النسبة يستخدم الأساسي (البند 1) في يونيو 2026 كمرجع فقط.</div>
     </div>
     <div id="statisticsResults"><div class="state-box">اختر الفترة ثم اضغط عرض الإحصائيات</div></div>
     <div class="card" style="margin-top:14px;">
@@ -2479,8 +2481,17 @@ function renderStatisticsPanel() {
         <button class="btn-save" onclick="loadSelectedItemTotal()">حساب الإجمالي</button>
       </div>
       <div id="itemTotalResult"></div>
+    </div>
+    <div class="card" style="margin-top:14px;">
+      <div class="card-header">حركة أكواد الصرف من يوليو 2026</div>
+      <div class="selectors" style="padding:18px;margin:0;">
+        <select id="movementMonth"><option value="">السنة بالكامل</option>${MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("")}</select>
+        <input id="movementYear" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;">
+        <button class="btn-save" onclick="loadEmployeeMovements()">عرض الحركة</button>
+      </div><div id="movementResults"></div>
     </div>`;
   loadStatisticItems();
+  loadIncentiveBands();
 }
 
 async function loadStatistics() {
@@ -2489,20 +2500,31 @@ async function loadStatistics() {
   const box = document.getElementById("statisticsResults");
   box.innerHTML = `<div class="state-box"><span class="spin"></span> جاري الحساب...</div>`;
   try {
-    const res = await apiFetch(`${API_BASE}/api/admin/statistics/summary?month=${month}&year=${year}`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const bandCode = document.getElementById("statsIncentiveBand").value;
+    if (!bandCode) throw new Error("اختر بند الحافز أولًا");
+    const res = await apiFetch(`${API_BASE}/api/admin/statistics/incentives?month=${month}&year=${year}&band_code=${bandCode}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر تحميل الإحصائيات");
+    const names = rows => rows?.length ? rows.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("") : `<div class="stat-person">لا توجد بيانات</div>`;
     box.innerHTML = `<div class="stats-grid">
-      ${statisticCard("أعلى إجمالي", data.highest_gross)}
-      ${statisticCard("أعلى صافي", data.highest_net)}
-      ${statisticCard("أقل صافي", data.lowest_net)}
-      ${statisticCard("أعلى نسبة حافز", data.highest_incentive_percentage, "%")}
-      ${statisticCard("أقل نسبة حافز", data.lowest_incentive_percentage, "%")}
-      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال الشهر</div><div class="stat-value">${data.retirements.month}</div></div>
-      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال السنة</div><div class="stat-value">${data.retirements.year}</div></div>
-      <div class="stat-card"><div class="stat-title">عدد الموظفين في كشف الفترة</div><div class="stat-value">${data.employee_count}</div></div>
-    </div>`;
+      <div class="stat-card"><div class="stat-title">أعلى نسبة حافز</div><div class="stat-value">${data.highest_percent ?? "—"}%</div>${names(data.highest_employees)}</div>
+      <div class="stat-card"><div class="stat-title">أقل نسبة حافز</div><div class="stat-value">${data.lowest_percent ?? "—"}%</div>${names(data.lowest_employees)}</div>
+    </div>${data.employees_without_june_basic?.length ? `<div class="state-box dashed">${data.employees_without_june_basic.length} موظف بدون أساسي مرجعي في يونيو 2026</div>` : ""}`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
+}
+
+async function loadIncentiveBands() {
+  const select=document.getElementById("statsIncentiveBand"), month=document.getElementById("statsMonth").value, year=document.getElementById("statsYear").value;
+  try { const res=await apiFetch(`${API_BASE}/api/admin/statistics/incentive-bands?month=${month}&year=${year}`,{headers:{Authorization:`Bearer ${session.token}`}}); const data=await res.json(); if(!res.ok)throw new Error(data.error); select.innerHTML=data.length?data.map(b=>`<option value="${b.band_code}">${escapeHtml(b.band_name)}</option>`).join(""):`<option value="">لا توجد بنود حوافز</option>`; }
+  catch(e){select.innerHTML=`<option value="">تعذر تحميل البنود</option>`;}
+}
+
+async function loadEmployeeMovements() {
+  const box=document.getElementById("movementResults"), month=document.getElementById("movementMonth").value, year=document.getElementById("movementYear").value;
+  try { const res=await apiFetch(`${API_BASE}/api/admin/statistics/employee-movements?year=${year}${month?"&month="+month:""}`,{headers:{Authorization:`Bearer ${session.token}`}}); const data=await res.json(); if(!res.ok)throw new Error(data.error);
+    const table=data.movements.length?`<div style="overflow:auto;padding:0 18px 18px"><table style="width:100%;border-collapse:collapse;text-align:center"><thead><tr><th>الكود</th><th>الاسم</th><th>من</th><th>إلى</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${data.movements.map(r=>`<tr><td>${escapeHtml(r.employee_code)}</td><td>${escapeHtml(r.full_name)}</td><td>${r.old_code_sarf??"—"}</td><td>${r.new_code_sarf}</td><td>${escapeHtml(r.reason)}</td><td>${r.effective_date}</td></tr>`).join("")}</tbody></table></div>`:`<div class="state-box dashed">لا توجد حركة في الفترة المختارة</div>`;
+    box.innerHTML=`<div class="stats-grid" style="padding:0 18px 18px">${[["إجمالي الحركة",data.total],["المعاشات (908)",data.retirements.length],["الوفيات (909)",data.deaths.length],["النقل (904/906)",data.transfers.length]].map(x=>`<div class="stat-card"><div class="stat-title">${x[0]}</div><div class="stat-value">${x[1]}</div></div>`).join("")}</div>${table}`;
+  } catch(e){box.innerHTML=`<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`;}
 }
 
 async function loadStatisticItems() {
