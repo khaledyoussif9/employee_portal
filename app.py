@@ -241,6 +241,45 @@ def admin_required(f):
     return decorated
 
 
+EMPLOYEE_EXIT_CODES = {
+    901: "إجازة بدون مرتب", 902: "حبس أو خدمة عسكرية", 903: "فصل من الخدمة",
+    904: "نقل إلى منطقة أخرى", 905: "استقالة", 906: "نقل إلى شركة أخرى",
+    908: "معاش", 909: "وفاة",
+}
+
+
+def _ensure_code_sarf_history(cursor):
+    cursor.execute("""
+        IF OBJECT_ID(N'dbo.employee_code_sarf_history', N'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.employee_code_sarf_history (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                employee_id INT NOT NULL,
+                old_code_sarf INT NULL,
+                new_code_sarf INT NOT NULL,
+                effective_date DATE NOT NULL,
+                detected_at DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+                CONSTRAINT FK_code_sarf_history_employee FOREIGN KEY (employee_id) REFERENCES dbo.employees(id)
+            );
+            CREATE INDEX IX_code_sarf_history_date_code ON dbo.employee_code_sarf_history(effective_date, new_code_sarf);
+        END
+    """)
+
+
+def _sync_code_sarf_history(cursor, effective_date):
+    cursor.execute("""
+        INSERT INTO dbo.employee_code_sarf_history (employee_id, old_code_sarf, new_code_sarf, effective_date)
+        SELECT e.id, last_h.new_code_sarf, TRY_CONVERT(INT, e.code_sarf), ?
+        FROM dbo.employees e
+        OUTER APPLY (
+            SELECT TOP 1 h.new_code_sarf FROM dbo.employee_code_sarf_history h
+            WHERE h.employee_id = e.id ORDER BY h.effective_date DESC, h.id DESC
+        ) last_h
+        WHERE TRY_CONVERT(INT, e.code_sarf) BETWEEN 2 AND 999
+          AND (last_h.new_code_sarf IS NULL OR last_h.new_code_sarf <> TRY_CONVERT(INT, e.code_sarf))
+    """, effective_date)
+
+
 # ------------------------------------------------------------
 # 1) تسجيل الدخول
 # ------------------------------------------------------------
@@ -2187,7 +2226,92 @@ def admin_list_service_ratings():
 
 
 # ------------------------------------------------------------
-# 10) سجل التدقيق (Audit Log)
+# 10) إحصائيات الحوافز وحركة أكواد الصرف (للأدمن فقط)
+# ------------------------------------------------------------
+@app.route("/api/admin/statistics/incentive-bands", methods=["GET"])
+@admin_required
+def admin_incentive_bands():
+    month, year = request.args.get("month", type=int), request.args.get("year", type=int)
+    if not month or not year or not 1 <= month <= 12:
+        return jsonify({"error": "لازم تحدد شهر وسنة صحيحين"}), 400
+    conn = get_connection(); cursor = conn.cursor()
+    cursor.execute("""
+        SELECT band_code, MAX(band_name) AS band_name FROM payroll_items
+        WHERE month=? AND year=? AND sarfia_no=1 AND band_type='earning'
+          AND band_code<>1 AND band_name LIKE N'%حافز%'
+        GROUP BY band_code ORDER BY MAX(band_name)
+    """, month, year)
+    rows = cursor.fetchall(); conn.close()
+    return jsonify([{"band_code": r.band_code, "band_name": r.band_name} for r in rows])
+
+
+@app.route("/api/admin/statistics/incentives", methods=["GET"])
+@admin_required
+def admin_incentive_statistics():
+    month, year = request.args.get("month", type=int), request.args.get("year", type=int)
+    band_code = request.args.get("band_code", type=int)
+    if not month or not year or not band_code or not 1 <= month <= 12:
+        return jsonify({"error": "اختيار الشهر والسنة وبند الحافز مطلوب"}), 400
+    conn = get_connection(); cursor = conn.cursor()
+    cursor.execute("""
+        WITH june_basic AS (
+            SELECT employee_id, SUM(amount) AS june_basic FROM payroll_items
+            WHERE month=6 AND year=2026 AND sarfia_no=1 AND band_code=1 AND band_type='earning'
+            GROUP BY employee_id
+        ), incentive AS (
+            SELECT employee_id, MAX(band_name) AS band_name, SUM(amount) AS incentive_value
+            FROM payroll_items WHERE month=? AND year=? AND sarfia_no=1
+              AND band_code=? AND band_type='earning' GROUP BY employee_id
+        )
+        SELECT e.employee_code,e.full_name,i.band_name,CAST(june_basic.june_basic AS FLOAT) june_basic,
+               CAST(i.incentive_value AS FLOAT) incentive_value,
+               CAST(i.incentive_value*100.0/NULLIF(june_basic.june_basic,0) AS FLOAT) incentive_percent
+        FROM incentive i JOIN employees e ON e.id=i.employee_id
+        LEFT JOIN june_basic ON june_basic.employee_id=i.employee_id
+        ORDER BY incentive_percent DESC,e.full_name
+    """, month, year, band_code)
+    rows = cursor.fetchall(); conn.close()
+    def item(r):
+        return {"employee_code":r.employee_code,"full_name":r.full_name,"band_name":r.band_name,
+                "june_2026_basic":float(r.june_basic) if r.june_basic is not None else None,
+                "incentive_value":float(r.incentive_value),
+                "incentive_percent":round(float(r.incentive_percent),2) if r.incentive_percent is not None else None}
+    valid=[item(r) for r in rows if r.incentive_percent is not None]
+    high=max((r["incentive_percent"] for r in valid),default=None)
+    low=min((r["incentive_percent"] for r in valid),default=None)
+    return jsonify({"highest_percent":high,"lowest_percent":low,
+        "highest_employees":[r for r in valid if r["incentive_percent"]==high],
+        "lowest_employees":[r for r in valid if r["incentive_percent"]==low],
+        "employees_without_june_basic":[item(r) for r in rows if r.incentive_percent is None]})
+
+
+@app.route("/api/admin/statistics/employee-movements", methods=["GET"])
+@admin_required
+def admin_employee_movements():
+    month, year = request.args.get("month",type=int), request.args.get("year",type=int,default=2026)
+    if year<2026 or (year==2026 and month is not None and month<7):
+        return jsonify({"error":"متابعة الحركة تبدأ من يوليو 2026"}),400
+    conn=get_connection(); cursor=conn.cursor(); _ensure_code_sarf_history(cursor)
+    _sync_code_sarf_history(cursor,datetime.date.today()); conn.commit()
+    clause="YEAR(h.effective_date)=?"; params=[year]
+    if month: clause+=" AND MONTH(h.effective_date)=?"; params.append(month)
+    cursor.execute(f"""SELECT h.old_code_sarf,h.new_code_sarf,h.effective_date,e.employee_code,e.full_name
+        FROM employee_code_sarf_history h JOIN employees e ON e.id=h.employee_id
+        WHERE h.effective_date>='2026-07-01' AND {clause} AND h.new_code_sarf BETWEEN 2 AND 999
+          AND (h.old_code_sarf IS NOT NULL OR h.new_code_sarf IN (901,902,903,904,905,906,908,909))
+        ORDER BY h.effective_date DESC,h.new_code_sarf,e.full_name""",*params)
+    rows=cursor.fetchall(); conn.close(); movements=[]
+    for r in rows:
+        code=int(r.new_code_sarf); movements.append({"employee_code":r.employee_code,"full_name":r.full_name,
+            "old_code_sarf":r.old_code_sarf,"new_code_sarf":code,"reason":EMPLOYEE_EXIT_CODES.get(code,"تحويل إلى كود صرف آخر"),
+            "effective_date":r.effective_date.isoformat()})
+    return jsonify({"total":len(movements),"retirements":[m for m in movements if m["new_code_sarf"]==908],
+        "deaths":[m for m in movements if m["new_code_sarf"]==909],
+        "transfers":[m for m in movements if m["new_code_sarf"] in (904,906)],"movements":movements})
+
+
+# ------------------------------------------------------------
+# 11) سجل التدقيق (Audit Log)
 # ------------------------------------------------------------
 @app.route("/api/admin/audit-log", methods=["GET"])
 @admin_required
