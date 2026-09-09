@@ -2543,14 +2543,17 @@ async function loadSelectedItemTotal() {
     const retirementNames = data.retirements?.length
       ? data.retirements.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("")
       : `<div class="stat-person">لا يوجد محالون على المعاش في هذا الشهر</div>`;
-    const percentageNames = rows => rows?.length
-      ? rows.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("")
-      : `<div class="stat-person">لا توجد بيانات</div>`;
+    const varianceNames = rows => rows?.length
+      ? rows.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)} — النسبة ${r.item_percent}% — الفرق ${r.difference_percent > 0 ? "+" : ""}${r.difference_percent}%</div>`).join("")
+      : `<div class="stat-person">لا يوجد موظفون</div>`;
+    const standardCards = data.standard_percent == null ? "" : `
+      <div class="stat-card"><div class="stat-title">النسبة المقررة</div><div class="stat-value">${data.standard_percent}%</div><div class="stat-person">المطابقون: ${data.matching_standard_count} موظف</div></div>
+      <div class="stat-card"><div class="stat-title">أعلى من النسبة المقررة</div><div class="stat-value">${data.above_standard.length}</div>${varianceNames(data.above_standard)}</div>
+      <div class="stat-card"><div class="stat-title">أقل من النسبة المقررة</div><div class="stat-value">${data.below_standard.length}</div>${varianceNames(data.below_standard)}</div>`;
     box.innerHTML = `<div class="stats-grid">
       <div class="stat-card"><div class="stat-title">إجمالي ${escapeHtml(data.band_name)}</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>
       <div class="stat-card"><div class="stat-title">عدد الموظفين</div><div class="stat-value">${data.employee_count}</div></div>
-      <div class="stat-card"><div class="stat-title">أعلى نسبة للبند من أساسي يونيو 2026</div><div class="stat-value">${data.highest_percent == null ? "—" : data.highest_percent + "%"}</div>${percentageNames(data.highest_employees)}</div>
-      <div class="stat-card"><div class="stat-title">أقل نسبة للبند من أساسي يونيو 2026</div><div class="stat-value">${data.lowest_percent == null ? "—" : data.lowest_percent + "%"}</div>${percentageNames(data.lowest_employees)}</div>
+      ${standardCards}
       <div class="stat-card"><div class="stat-title">المحالون على المعاش</div><div class="stat-value">${data.retirement_count}</div>${retirementNames}</div>
     </div>${data.employees_without_june_basic?.length ? `<div class="state-box dashed">${data.employees_without_june_basic.length} موظف بدون أساسي مرجعي في يونيو 2026</div>` : ""}`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
