@@ -773,6 +773,7 @@
         <button class="nav-btn" id="navContact" onclick="switchTab('contact')">✉️ تواصل معنا</button>
         <button class="nav-btn" id="navRating" onclick="switchTab('rating')">⭐ تقييم الخدمة</button>
         <button class="nav-btn hidden" id="navHR" onclick="switchTab('hr')">🗂 لوحة التحكم</button>
+        <button class="nav-btn hidden" id="navStats" onclick="switchTab('stats')">📊 الإحصائيات</button>
       </div>
 
       <div class="content">
@@ -783,6 +784,7 @@
         <div id="tabContact" class="hidden"></div>
         <div id="tabRating" class="hidden"></div>
         <div id="tabHR" class="hidden"></div>
+        <div id="tabStats" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -1189,6 +1191,7 @@ function showApp() {
     : session.fullName;
   if (session.role === "hr_admin") {
     document.getElementById("navHR").classList.remove("hidden");
+    document.getElementById("navStats").classList.remove("hidden");
   }
   document.getElementById("navChangePass").classList.toggle("hidden", session.isDemo);
   document.getElementById("navRating").classList.toggle("hidden", session.isDemo);
@@ -1363,6 +1366,7 @@ function switchTab(tab) {
   document.getElementById("navContact").classList.toggle("active", tab === "contact");
   document.getElementById("navRating").classList.toggle("active", tab === "rating");
   document.getElementById("navHR").classList.toggle("active", tab === "hr");
+  document.getElementById("navStats").classList.toggle("active", tab === "stats");
   document.getElementById("tabAdmin").classList.toggle("hidden", tab !== "admin");
   document.getElementById("tabPayslip").classList.toggle("hidden", tab !== "payslip");
   document.getElementById("tabWage").classList.toggle("hidden", tab !== "wage");
@@ -1370,6 +1374,7 @@ function switchTab(tab) {
   document.getElementById("tabContact").classList.toggle("hidden", tab !== "contact");
   document.getElementById("tabRating").classList.toggle("hidden", tab !== "rating");
   document.getElementById("tabHR").classList.toggle("hidden", tab !== "hr");
+  document.getElementById("tabStats").classList.toggle("hidden", tab !== "stats");
 
   if (tab === "admin") loadAdminInfo();
   else if (tab === "payslip") renderPayslipShell();
@@ -1378,6 +1383,7 @@ function switchTab(tab) {
   else if (tab === "contact") renderContactShell();
   else if (tab === "rating") renderRatingShell();
   else if (tab === "hr") renderHRPanel();
+  else if (tab === "stats") renderStatisticsPanel();
 
   closeSidebar(); // قفل القائمة تلقائيًا بعد اختيار أي تبويب (سلوك طبيعي في الموبايل)
 }
@@ -2161,6 +2167,38 @@ async function submitRating() {
 /* ============================================================
    لوحة تحكم المدير (hr_admin بس)
    ============================================================ */
+
+function renderStatisticsPanel() {
+  const now=new Date(), currentMonth=now.getMonth()+1, currentYear=Math.max(2026,now.getFullYear());
+  document.getElementById('tabStats').innerHTML=`
+    <div class="section-divider">📊 إحصائيات الحوافز</div>
+    <div class="card" style="padding:18px 22px"><div class="selectors">
+      <div><label>الشهر</label><select id="statsMonth" onchange="loadIncentiveBands()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===currentMonth?'selected':''}>${m}</option>`).join('')}</select></div>
+      <div><label>السنة</label><select id="statsYear" onchange="loadIncentiveBands()">${[2026,2027,2028,2029,2030].map(y=>`<option ${y===currentYear?'selected':''}>${y}</option>`).join('')}</select></div>
+      <div><label>بند الحافز</label><select id="statsBand"><option value="">جاري التحميل...</option></select></div>
+      <button class="btn-save" onclick="loadIncentiveStats()">عرض النسب</button>
+    </div><div style="font-size:12px;color:var(--gray);margin-top:8px">يستخدم الأساسي (البند 1) في يونيو 2026 كمرجع للحساب فقط، دون تغيير باقي بيانات يونيو.</div></div>
+    <div id="incentiveStatsBox"></div>
+    <div class="section-divider">👥 حركة أكواد الصرف من يوليو 2026</div>
+    <div class="card" style="padding:18px 22px"><div class="selectors">
+      <div><label>الشهر</label><select id="movementMonth"><option value="">السنة بالكامل</option>${MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('')}</select></div>
+      <div><label>السنة</label><select id="movementYear">${[2026,2027,2028,2029,2030].map(y=>`<option ${y===currentYear?'selected':''}>${y}</option>`).join('')}</select></div>
+      <button class="btn-save" onclick="loadEmployeeMovements()">عرض الحركة</button>
+    </div></div><div id="movementStatsBox"></div>`;
+  loadIncentiveBands(); loadEmployeeMovements();
+}
+
+function statisticTable(rows,type='incentive') {
+  if(!rows?.length)return '<div class="state-box dashed">لا توجد بيانات</div>';
+  if(type==='movement')return `<div class="card" style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--navy);color:#fff"><th style="padding:9px">الكود</th><th>الاسم</th><th>من</th><th>إلى</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${rows.map(r=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:9px">${r.employee_code}</td><td>${r.full_name}</td><td>${r.old_code_sarf??'—'}</td><td>${r.new_code_sarf}</td><td>${r.reason}</td><td>${r.effective_date}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--navy);color:#fff"><th style="padding:9px">الكود</th><th>الاسم</th><th>أساسي يونيو</th><th>الحافز</th><th>النسبة</th></tr></thead><tbody>${rows.map(r=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:9px">${r.employee_code}</td><td>${r.full_name}</td><td>${r.june_2026_basic==null?'غير موجود':fmt(r.june_2026_basic)}</td><td>${fmt(r.incentive_value)}</td><td>${r.incentive_percent==null?'—':r.incentive_percent+'%'}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+async function loadIncentiveBands(){const m=statsMonth.value,y=statsYear.value;try{const res=await apiFetch(`${API_BASE}/api/admin/statistics/incentive-bands?month=${m}&year=${y}`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await res.json();if(!res.ok)throw new Error(d.error);statsBand.innerHTML=d.length?d.map(b=>`<option value="${b.band_code}">${b.band_name}</option>`).join(''):'<option value="">لا توجد بنود حوافز</option>'}catch(e){statsBand.innerHTML=`<option value="">${e.message}</option>`}}
+
+async function loadIncentiveStats(){const box=document.getElementById('incentiveStatsBox');if(!statsBand.value){box.innerHTML='<div class="conn-error">⚠ اختر بند الحافز</div>';return}box.innerHTML='<div class="state-box"><span class="spin"></span> جاري الحساب...</div>';try{const res=await apiFetch(`${API_BASE}/api/admin/statistics/incentives?month=${statsMonth.value}&year=${statsYear.value}&band_code=${statsBand.value}`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await res.json();if(!res.ok)throw new Error(d.error);box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px"><div class="card" style="padding:18px"><b>أعلى نسبة حافز</b><div style="font-size:28px;color:var(--navy);font-weight:800">${d.highest_percent==null?'—':d.highest_percent+'%'}</div>${statisticTable(d.highest_employees)}</div><div class="card" style="padding:18px"><b>أقل نسبة حافز</b><div style="font-size:28px;color:var(--red);font-weight:800">${d.lowest_percent==null?'—':d.lowest_percent+'%'}</div>${statisticTable(d.lowest_employees)}</div></div>${d.employees_without_june_basic.length?`<div class="card" style="padding:16px"><b>بدون أساسي مرجعي في يونيو 2026</b>${statisticTable(d.employees_without_june_basic)}</div>`:''}`}catch(e){box.innerHTML=`<div class="conn-error">⚠ ${e.message}</div>`}}
+
+async function loadEmployeeMovements(){const box=document.getElementById('movementStatsBox');box.innerHTML='<div class="state-box"><span class="spin"></span> جاري التحميل...</div>';try{const month=movementMonth.value,res=await apiFetch(`${API_BASE}/api/admin/statistics/employee-movements?year=${movementYear.value}${month?'&month='+month:''}`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await res.json();if(!res.ok)throw new Error(d.error);box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0">${[['إجمالي الحركة',d.total],['المعاشات (908)',d.retirements.length],['الوفيات (909)',d.deaths.length],['النقل (904/906)',d.transfers.length]].map(x=>`<div class="card" style="padding:16px"><b>${x[0]}</b><div style="font-size:26px;font-weight:800">${x[1]}</div></div>`).join('')}</div>${statisticTable(d.movements,'movement')}`}catch(e){box.innerHTML=`<div class="conn-error">⚠ ${e.message}</div>`}}
 
 function renderHRPanel() {
   const box = document.getElementById("tabHR");
