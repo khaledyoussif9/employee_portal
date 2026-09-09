@@ -2466,22 +2466,13 @@ function renderStatisticsPanel() {
     <div class="card" style="margin-bottom:14px;">
       <div class="card-header">📊 إحصائيات البنود والمعاشات</div>
       <div class="selectors" style="padding:18px;margin:0;">
-        <div><label>الشهر</label><select id="statsMonth" onchange="loadStatisticItems();loadIncentiveBands()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
-        <div><label>السنة</label><input id="statsYear" onchange="loadStatisticItems();loadIncentiveBands()" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
+        <div><label>الشهر</label><select id="statsMonth" onchange="loadStatisticItems()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
+        <div><label>السنة</label><input id="statsYear" onchange="loadStatisticItems()" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
         <div><label>البند</label><select id="statsItem" style="min-width:240px;"><option value="">جاري تحميل البنود...</option></select></div>
         <button class="btn-save" onclick="loadSelectedItemTotal()">عرض الإحصائيات</button>
       </div>
     </div>
     <div id="itemTotalResult"><div class="state-box">اختر الشهر والبند ثم اضغط عرض الإحصائيات</div></div>
-    <div class="card" style="margin-top:14px;">
-      <div class="card-header">نسب الحوافز من أساسي يونيو 2026</div>
-      <div class="selectors" style="padding:18px;margin:0;">
-        <select id="statsIncentiveBand"><option value="">جاري تحميل بنود الحوافز...</option></select>
-        <button class="btn-save" onclick="loadStatistics()">عرض أعلى وأقل نسبة</button>
-      </div>
-      <div style="padding:0 18px 16px;font-size:12px;color:var(--gray);">حساب النسبة يستخدم الأساسي (البند 1) في يونيو 2026 كمرجع فقط.</div>
-      <div id="statisticsResults"></div>
-    </div>
     <div class="card" style="margin-top:14px;">
       <div class="card-header">الحركة الشهرية لأكواد الصرف من كود 901 حتى 909</div>
       <div class="selectors" style="padding:18px;margin:0;">
@@ -2491,7 +2482,6 @@ function renderStatisticsPanel() {
       </div><div id="movementResults"></div>
     </div>`;
   loadStatisticItems();
-  loadIncentiveBands();
 }
 
 async function loadStatistics() {
@@ -2553,11 +2543,16 @@ async function loadSelectedItemTotal() {
     const retirementNames = data.retirements?.length
       ? data.retirements.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("")
       : `<div class="stat-person">لا يوجد محالون على المعاش في هذا الشهر</div>`;
+    const percentageNames = rows => rows?.length
+      ? rows.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("")
+      : `<div class="stat-person">لا توجد بيانات</div>`;
     box.innerHTML = `<div class="stats-grid">
       <div class="stat-card"><div class="stat-title">إجمالي ${escapeHtml(data.band_name)}</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>
       <div class="stat-card"><div class="stat-title">عدد الموظفين</div><div class="stat-value">${data.employee_count}</div></div>
+      <div class="stat-card"><div class="stat-title">أعلى نسبة للبند من أساسي يونيو 2026</div><div class="stat-value">${data.highest_percent == null ? "—" : data.highest_percent + "%"}</div>${percentageNames(data.highest_employees)}</div>
+      <div class="stat-card"><div class="stat-title">أقل نسبة للبند من أساسي يونيو 2026</div><div class="stat-value">${data.lowest_percent == null ? "—" : data.lowest_percent + "%"}</div>${percentageNames(data.lowest_employees)}</div>
       <div class="stat-card"><div class="stat-title">المحالون على المعاش</div><div class="stat-value">${data.retirement_count}</div>${retirementNames}</div>
-    </div>`;
+    </div>${data.employees_without_june_basic?.length ? `<div class="state-box dashed">${data.employees_without_june_basic.length} موظف بدون أساسي مرجعي في يونيو 2026</div>` : ""}`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
 }
 
