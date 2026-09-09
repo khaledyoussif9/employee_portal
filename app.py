@@ -2283,7 +2283,8 @@ def admin_statistics_item_total():
         ), selected_item AS (
             SELECT employee_id, SUM(amount) AS item_value
             FROM payroll_items
-            WHERE month = ? AND year = ? AND CONVERT(NVARCHAR(50), band_code) = ?
+            WHERE month = ? AND year = ? AND sarfia_no = 1
+              AND CONVERT(NVARCHAR(50), band_code) = ?
             GROUP BY employee_id
         )
         SELECT e.employee_code, e.full_name,
