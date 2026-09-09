@@ -2464,28 +2464,28 @@ function renderStatisticsPanel() {
   const now = new Date();
   box.innerHTML = `
     <div class="card" style="margin-bottom:14px;">
-      <div class="card-header">📊 إحصائيات المرتبات والمعاشات</div>
+      <div class="card-header">📊 إحصائيات البنود والمعاشات</div>
       <div class="selectors" style="padding:18px;margin:0;">
-        <div><label>الشهر</label><select id="statsMonth" onchange="loadIncentiveBands()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
-        <div><label>السنة</label><input id="statsYear" onchange="loadIncentiveBands()" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
-        <div><label>بند الحافز</label><select id="statsIncentiveBand"><option value="">جاري تحميل بنود الحوافز...</option></select></div>
-        <button class="btn-save" onclick="loadStatistics()">عرض الإحصائيات</button>
+        <div><label>الشهر</label><select id="statsMonth" onchange="loadStatisticItems();loadIncentiveBands()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
+        <div><label>السنة</label><input id="statsYear" onchange="loadStatisticItems();loadIncentiveBands()" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
+        <div><label>البند</label><select id="statsItem" style="min-width:240px;"><option value="">جاري تحميل البنود...</option></select></div>
+        <button class="btn-save" onclick="loadSelectedItemTotal()">عرض الإحصائيات</button>
+      </div>
+    </div>
+    <div id="itemTotalResult"><div class="state-box">اختر الشهر والبند ثم اضغط عرض الإحصائيات</div></div>
+    <div class="card" style="margin-top:14px;">
+      <div class="card-header">نسب الحوافز من أساسي يونيو 2026</div>
+      <div class="selectors" style="padding:18px;margin:0;">
+        <select id="statsIncentiveBand"><option value="">جاري تحميل بنود الحوافز...</option></select>
+        <button class="btn-save" onclick="loadStatistics()">عرض أعلى وأقل نسبة</button>
       </div>
       <div style="padding:0 18px 16px;font-size:12px;color:var(--gray);">حساب النسبة يستخدم الأساسي (البند 1) في يونيو 2026 كمرجع فقط.</div>
-    </div>
-    <div id="statisticsResults"><div class="state-box">اختر الفترة ثم اضغط عرض الإحصائيات</div></div>
-    <div class="card" style="margin-top:14px;">
-      <div class="card-header">إجمالي بند محدد</div>
-      <div class="selectors" style="padding:18px;margin:0;">
-        <select id="statsItem" style="min-width:240px;"><option value="">جاري تحميل البنود...</option></select>
-        <button class="btn-save" onclick="loadSelectedItemTotal()">حساب الإجمالي</button>
-      </div>
-      <div id="itemTotalResult"></div>
+      <div id="statisticsResults"></div>
     </div>
     <div class="card" style="margin-top:14px;">
-      <div class="card-header">حركة أكواد الصرف من يوليو 2026</div>
+      <div class="card-header">الحركة الشهرية لأكواد الصرف من كود 901 حتى 909</div>
       <div class="selectors" style="padding:18px;margin:0;">
-        <select id="movementMonth"><option value="">السنة بالكامل</option>${MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("")}</select>
+        <select id="movementMonth">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select>
         <input id="movementYear" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;">
         <button class="btn-save" onclick="loadEmployeeMovements()">عرض الحركة</button>
       </div><div id="movementResults"></div>
@@ -2523,14 +2523,17 @@ async function loadEmployeeMovements() {
   const box=document.getElementById("movementResults"), month=document.getElementById("movementMonth").value, year=document.getElementById("movementYear").value;
   try { const res=await apiFetch(`${API_BASE}/api/admin/statistics/employee-movements?year=${year}${month?"&month="+month:""}`,{headers:{Authorization:`Bearer ${session.token}`}}); const data=await res.json(); if(!res.ok)throw new Error(data.error);
     const table=data.movements.length?`<div style="overflow:auto;padding:0 18px 18px"><table style="width:100%;border-collapse:collapse;text-align:center"><thead><tr><th>الكود</th><th>الاسم</th><th>من</th><th>إلى</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${data.movements.map(r=>`<tr><td>${escapeHtml(r.employee_code)}</td><td>${escapeHtml(r.full_name)}</td><td>${r.old_code_sarf??"—"}</td><td>${r.new_code_sarf}</td><td>${escapeHtml(r.reason)}</td><td>${r.effective_date}</td></tr>`).join("")}</tbody></table></div>`:`<div class="state-box dashed">لا توجد حركة في الفترة المختارة</div>`;
-    box.innerHTML=`<div class="stats-grid" style="padding:0 18px 18px">${[["إجمالي الحركة",data.total],["المعاشات (908)",data.retirements.length],["الوفيات (909)",data.deaths.length],["النقل (904/906)",data.transfers.length]].map(x=>`<div class="stat-card"><div class="stat-title">${x[0]}</div><div class="stat-value">${x[1]}</div></div>`).join("")}</div>${table}`;
+    box.innerHTML=`<div class="stats-grid" style="padding:0 18px 18px">${[["إجمالي الحركة من 901 إلى 909",data.total],["المعاشات (908)",data.retirements.length],["الوفيات (909)",data.deaths.length],["النقل (904/906)",data.transfers.length]].map(x=>`<div class="stat-card"><div class="stat-title">${x[0]}</div><div class="stat-value">${x[1]}</div></div>`).join("")}</div>${table}`;
   } catch(e){box.innerHTML=`<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`;}
 }
 
 async function loadStatisticItems() {
   const select = document.getElementById("statsItem");
+  const month = document.getElementById("statsMonth").value;
+  const year = document.getElementById("statsYear").value;
+  select.innerHTML = `<option value="">جاري تحميل البنود...</option>`;
   try {
-    const res = await apiFetch(`${API_BASE}/api/admin/statistics/items`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const res = await apiFetch(`${API_BASE}/api/admin/statistics/items?month=${month}&year=${year}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر تحميل البنود");
     select.innerHTML = `<option value="">اختر البند</option>` + data.map(i=>`<option value="${i.band_code}">${escapeHtml(i.band_name)} (${i.band_code})</option>`).join("");
@@ -2547,7 +2550,14 @@ async function loadSelectedItemTotal() {
     const res = await apiFetch(`${API_BASE}/api/admin/statistics/item-total?month=${month}&year=${year}&band_code=${bandCode}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر حساب البند");
-    box.innerHTML = `<div class="stat-card" style="margin:0 18px 18px;"><div class="stat-title">${escapeHtml(data.band_name)} — ${data.employee_count} موظف</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>`;
+    const retirementNames = data.retirements?.length
+      ? data.retirements.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("")
+      : `<div class="stat-person">لا يوجد محالون على المعاش في هذا الشهر</div>`;
+    box.innerHTML = `<div class="stats-grid">
+      <div class="stat-card"><div class="stat-title">إجمالي ${escapeHtml(data.band_name)}</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>
+      <div class="stat-card"><div class="stat-title">عدد الموظفين</div><div class="stat-value">${data.employee_count}</div></div>
+      <div class="stat-card"><div class="stat-title">المحالون على المعاش</div><div class="stat-value">${data.retirement_count}</div>${retirementNames}</div>
+    </div>`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
 }
 
@@ -2597,7 +2607,7 @@ function renderHRPanel() {
     <div class="section-divider">🕵️ سجل التدقيق (آخر 200 عملية)</div>
     <div id="auditLogBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
   `;
-  document.getElementById("hrSearchInput").focus();
+  document.getElementById("hrSearchInput")?.focus();
   loadMessagesInbox();
   loadAnnouncementsList();
   loadServiceRatings();
