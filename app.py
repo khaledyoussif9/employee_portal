@@ -2273,6 +2273,30 @@ def admin_statistics_item_total():
     """, month, year, str(band_code))
     item_row = cursor.fetchone()
 
+    cursor.execute("""
+        WITH june_basic AS (
+            SELECT employee_id, SUM(amount) AS june_basic
+            FROM payroll_items
+            WHERE month = 6 AND year = 2026 AND sarfia_no = 1
+              AND band_code = 1 AND band_type = 'earning'
+            GROUP BY employee_id
+        ), selected_item AS (
+            SELECT employee_id, SUM(amount) AS item_value
+            FROM payroll_items
+            WHERE month = ? AND year = ? AND CONVERT(NVARCHAR(50), band_code) = ?
+            GROUP BY employee_id
+        )
+        SELECT e.employee_code, e.full_name,
+               CAST(s.item_value AS FLOAT) AS item_value,
+               CAST(j.june_basic AS FLOAT) AS june_basic,
+               CAST(s.item_value * 100.0 / NULLIF(j.june_basic, 0) AS FLOAT) AS item_percent
+        FROM selected_item s
+        JOIN employees e ON e.id = s.employee_id
+        LEFT JOIN june_basic j ON j.employee_id = s.employee_id
+        ORDER BY item_percent DESC, e.full_name
+    """, month, year, str(band_code))
+    percentage_rows = cursor.fetchall()
+
     _ensure_code_sarf_history(cursor)
     _sync_code_sarf_history(cursor, datetime.date.today())
     conn.commit()
@@ -2292,11 +2316,26 @@ def admin_statistics_item_total():
         "full_name": r.full_name,
         "effective_date": r.effective_date.isoformat(),
     } for r in retirement_rows]
+    percentages = [{
+        "employee_code": r.employee_code,
+        "full_name": r.full_name,
+        "item_value": float(r.item_value or 0),
+        "june_2026_basic": float(r.june_basic) if r.june_basic is not None else None,
+        "item_percent": round(float(r.item_percent), 2) if r.item_percent is not None else None,
+    } for r in percentage_rows]
+    valid_percentages = [r for r in percentages if r["item_percent"] is not None]
+    highest_percent = max((r["item_percent"] for r in valid_percentages), default=None)
+    lowest_percent = min((r["item_percent"] for r in valid_percentages), default=None)
     return jsonify({
         "band_code": band_code,
         "band_name": item_row.band_name or "البند المختار",
         "total": float(item_row.total or 0),
         "employee_count": int(item_row.employee_count or 0),
+        "highest_percent": highest_percent,
+        "lowest_percent": lowest_percent,
+        "highest_employees": [r for r in valid_percentages if r["item_percent"] == highest_percent],
+        "lowest_employees": [r for r in valid_percentages if r["item_percent"] == lowest_percent],
+        "employees_without_june_basic": [r for r in percentages if r["item_percent"] is None],
         "retirement_count": len(retirements),
         "retirements": retirements,
     })
