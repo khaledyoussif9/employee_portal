@@ -716,6 +716,7 @@ def upload_my_photo():
 def get_payslip():
     month = request.args.get("month", type=int)
     year = request.args.get("year", type=int)
+    requested_employee_id = request.args.get("employee_id", type=int)
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
@@ -723,10 +724,16 @@ def get_payslip():
     if request.is_demo:
         return jsonify(demo_payslip(month, year))
 
+    target_employee_id = request.employee_id
+    if requested_employee_id:
+        if request.role != "hr_admin":
+            return jsonify({"error": "غير مسموح بعرض مرتب موظف آخر"}), 403
+        target_employee_id = requested_employee_id
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT code_sarf FROM employees WHERE id = ?", request.employee_id)
+    cursor.execute("SELECT code_sarf FROM employees WHERE id = ?", target_employee_id)
     code_sarf_row = cursor.fetchone()
     code_sarf = code_sarf_row.code_sarf if code_sarf_row else None
 
@@ -754,7 +761,7 @@ def get_payslip():
             band_type
         ORDER BY band_type DESC, amount DESC
         """,
-        request.employee_id,
+        target_employee_id,
         month,
         year,
     )
@@ -794,7 +801,7 @@ def get_payslip():
         FROM payroll_records
         WHERE employee_id = ? AND month = ? AND year = ?
         """,
-        request.employee_id,
+        target_employee_id,
         month,
         year,
     )
@@ -840,12 +847,19 @@ def get_payslip():
 def get_wage_record():
     month = request.args.get("month", type=int)
     year = request.args.get("year", type=int)
+    requested_employee_id = request.args.get("employee_id", type=int)
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
 
     if request.is_demo:
         return jsonify(demo_wage_record(month, year))
+
+    target_employee_id = request.employee_id
+    if requested_employee_id:
+        if request.role != "hr_admin":
+            return jsonify({"error": "غير مسموح بعرض سجل أجور موظف آخر"}), 403
+        target_employee_id = requested_employee_id
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -861,7 +875,7 @@ def get_wage_record():
         GROUP BY sarfia_no, band_name, band_type
         ORDER BY sarfia_no, band_type DESC, amount DESC
         """,
-        request.employee_id,
+        target_employee_id,
         month,
         year,
     )
