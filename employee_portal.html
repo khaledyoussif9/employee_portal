@@ -11,16 +11,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;800&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --navy: #5C1524;
-    --navy-light: #7A1F32;
-    --gold: #C9A24B;
-    --gold-soft: #E9D9AE;
-    --paper: #F7F4EC;
-    --ink: #242730;
-    --green: #2F7A4F;
-    --red: #B14A3D;
+    --navy: #092A4A;
+    --navy-light: #123B6D;
+    --gold: #1D5FA7;
+    --gold-soft: #C4CBD3;
+    --paper: #F7F9FC;
+    --ink: #172433;
+    --green: #22A06B;
+    --warning: #F59E0B;
+    --red: #D92D20;
     --gray: #6B7280;
-    --line: #DFD9C8;
+    --line: #C4CBD3;
+    --surface: #FFFFFF;
+    --surface-soft: #EDF3F8;
   }
   * { box-sizing: border-box; }
   body {
@@ -38,8 +41,8 @@
     align-items: center;
     justify-content: center;
     background:
-      linear-gradient(160deg, rgba(70,12,22,0.90) 0%, rgba(90,22,34,0.60) 45%, rgba(120,45,55,0.30) 100%),
-      url("https://commons.wikimedia.org/wiki/Special:FilePath/Transmission_tower_at_dusk_(Unsplash).jpg") center center / cover no-repeat;
+      linear-gradient(160deg, rgba(8,25,45,0.94) 0%, rgba(13,42,70,0.73) 50%, rgba(18,59,109,0.42) 100%),
+      url("/assets/login_bg_reference_v2.png?v=2.0.1") center center / cover no-repeat;
     padding: 24px;
     position: relative;
     overflow: hidden;
@@ -61,7 +64,7 @@
     left: 0; right: 0;
     height: 2px;
     top: 50%;
-    background: linear-gradient(90deg, transparent 0%, rgba(201,162,75,0) 35%, rgba(201,162,75,0.9) 50%, rgba(201,162,75,0) 65%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(29,95,167,0) 35%, rgba(29,95,167,0.9) 50%, rgba(29,95,167,0) 65%, transparent 100%);
     background-size: 200% 100%;
     animation: powerFlow 5.5s linear infinite;
     z-index: 1;
@@ -78,7 +81,7 @@
     width: 8px; height: 8px;
     border-radius: 50%;
     background: var(--gold);
-    box-shadow: 0 0 6px 2px rgba(201,162,75,0.7);
+    box-shadow: 0 0 6px 2px rgba(29,95,167,0.7);
     animation: gridPulse 2.6s ease-in-out infinite;
     z-index: 1;
     pointer-events: none;
@@ -97,7 +100,7 @@
     top: 50%; left: 50%;
     width: 480px; height: 480px;
     transform: translate(-50%, -50%);
-    background: radial-gradient(circle, rgba(201,162,75,0.22) 0%, rgba(201,162,75,0) 70%);
+    background: radial-gradient(circle, rgba(29,95,167,0.22) 0%, rgba(29,95,167,0) 70%);
     animation: goldPulse 4s ease-in-out infinite;
     z-index: 1;
     pointer-events: none;
@@ -121,16 +124,18 @@
   .login-card { position: relative; z-index: 2; }
   .login-card {
     width: 100%;
-    max-width: 420px;
-    background: var(--paper);
-    border-radius: 10px;
+    max-width: 440px;
+    background: rgba(247,249,252,0.97);
+    border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 20px 50px rgba(0,0,0,0.35);
   }
   .login-header {
-    background: var(--navy-light);
-    padding: 26px 32px;
+    background: linear-gradient(145deg, var(--navy), var(--navy-light));
+    padding: 25px 32px 22px;
     display: flex;
+    flex-direction: column;
+    text-align: center;
     align-items: center;
     gap: 12px;
     position: relative;
@@ -150,7 +155,7 @@
     100% { background-position: -260% 0; }
   }
   .logo-badge {
-    width: 62px; height: 62px; border-radius: 50%;
+    width: 88px; height: 88px; border-radius: 50%;
     background: #fff;
     display: flex; align-items: center; justify-content: center;
     color: var(--navy); font-weight: 800; font-family: 'Tajawal', sans-serif;
@@ -179,6 +184,51 @@
     margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--line);
     text-align: center; font-size: 12px; color: var(--gray);
   }
+
+  .system-status {
+    margin-top: 16px; display:flex; align-items:center; justify-content:center; gap:9px;
+    color:#176b39; font-size:12.5px; font-weight:700;
+  }
+  .status-lamp { width:12px; height:12px; border-radius:50%; background:#35c76f; box-shadow:0 0 0 5px rgba(53,199,111,.13),0 0 14px #35c76f; }
+  .admin-v2-nav { border-top:1px solid var(--line); margin-top:8px; padding-top:8px; }
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+  .stat-card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; box-shadow:0 5px 18px rgba(16,37,63,.06); }
+  .stat-card .stat-title { color:var(--gray); font-size:12px; font-weight:700; }
+  .stat-card .stat-value { color:var(--navy); font-size:21px; font-weight:800; margin-top:5px; }
+  .stat-card .stat-person { color:var(--gray); font-size:11.5px; margin-top:5px; }
+  .sidebar-profile { text-align:center; padding:6px 8px 14px; border-bottom:1px solid var(--line); margin-bottom:10px; }
+  .sidebar-profile img { width:72px; height:72px; object-fit:cover; border-radius:50%; border:3px solid var(--gold); background:#fff; }
+  .sidebar-profile strong { display:block; color:var(--navy); font-size:13px; margin-top:6px; }
+
+  /* الاستايل المعتمد من نموذج النسخة 2.0.0 */
+  #loginScreen { padding-bottom:92px; }
+  .login-card {
+    color:#fff;
+    background:linear-gradient(145deg,rgba(35,67,103,.80),rgba(12,35,61,.88));
+    border:2px solid rgba(171,211,244,.82);
+    box-shadow:0 24px 65px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.17);
+    backdrop-filter:blur(15px);
+    -webkit-backdrop-filter:blur(15px);
+  }
+  .login-header { background:transparent; padding-bottom:14px; }
+  .login-header::after { opacity:.85; }
+  .login-title { color:var(--gold); font-size:24px; }
+  .login-sub { color:#fff; }
+  .login-body { color:#fff; padding-top:22px; }
+  .field label { color:#e8f2fb; }
+  .field input {
+    color:#fff; background:rgba(24,52,82,.45); border-color:rgba(191,218,242,.72);
+    padding:13px 15px;
+  }
+  .field input::placeholder { color:rgba(232,242,251,.65); }
+  .remember-row,.remember-check { color:#eef6fc; }
+  .forgot-link { color:var(--gold-soft) !important; }
+  .btn-primary {
+    color:#102033; background:linear-gradient(180deg,#286FB9,#1D5FA7);
+    border:1px solid #C4CBD3; box-shadow:0 8px 20px rgba(0,0,0,.22);
+    font-size:18px; padding:13px;
+  }
+  .login-body a { color:var(--gold-soft) !important; }
 
   /* ---------- الصفحة الرئيسية ---------- */
   #appScreen { min-height: 100vh; }
@@ -293,8 +343,86 @@
 
   .conn-error {
     display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 6px;
-    background: #FBEAE7; border: 1px solid var(--red); color: var(--red); font-size: 13px; margin-bottom: 16px;
+    background: #FDECEC; border: 1px solid var(--red); color: var(--red); font-size: 13px; margin-bottom: 16px;
   }
+
+  /* هوية النسخة 2.0.0: أزرق ملكي + فضي */
+  .login-title { color:#fff; }
+  .btn-primary { color:#fff; background:linear-gradient(180deg,#286FB9,#1D5FA7); border-color:#C4CBD3; }
+  .topbar::after, .login-header::after, .col-title.gold-shimmer::after {
+    background:linear-gradient(90deg,transparent,#C4CBD3 45%,#fff 50%,#C4CBD3 55%,transparent);
+  }
+  .power-line { background:linear-gradient(90deg,transparent 0%,rgba(29,95,167,0) 35%,rgba(196,203,211,.9) 50%,rgba(29,95,167,0) 65%,transparent 100%); }
+  .gold-glow { background:radial-gradient(circle,rgba(29,95,167,.30) 0%,rgba(29,95,167,0) 70%); }
+  #welcomeBanner { background:var(--surface-soft) !important; color:var(--navy) !important; border-bottom:1px solid var(--line); }
+  #devCredit { border-top-color:#66788A !important; }
+  #devCredit::before {
+    content:"";position:absolute;left:0;right:0;top:-10px;height:10px;
+    background:linear-gradient(to bottom,#CE1126 0 33.33%,#fff 33.33% 66.66%,#000 66.66% 100%);
+    box-shadow:0 -1px 4px rgba(0,0,0,.28);
+  }
+
+  /* الوضع الليلي مع الاحتفاظ بنفس الهوية المؤسسية */
+  html[data-theme="dark"] {
+    --paper:#071728;
+    --ink:#EDF3F8;
+    --gray:#B5C2CF;
+    --line:#66788A;
+    --surface:#0D2741;
+    --surface-soft:#12324F;
+    color-scheme:dark;
+  }
+  html[data-theme="dark"] body, html[data-theme="dark"] #appScreen { background:var(--paper); color:var(--ink); }
+  html[data-theme="dark"] .card,
+  html[data-theme="dark"] .stat-card,
+  html[data-theme="dark"] .state-box.dashed,
+  html[data-theme="dark"] .installment-card,
+  html[data-theme="dark"] .sidebar,
+  html[data-theme="dark"] .result-item,
+  html[data-theme="dark"] .edit-field input,
+  html[data-theme="dark"] .selectors select { background:var(--surface) !important; color:var(--ink) !important; }
+  html[data-theme="dark"] .nav-btn { color:#D8E3ED; }
+  html[data-theme="dark"] .nav-btn.active { background:var(--surface-soft); color:#fff; border-color:var(--line); }
+  html[data-theme="dark"] .info-row .value,
+  html[data-theme="dark"] .stat-card .stat-value,
+  html[data-theme="dark"] .payslip-col .col-title,
+  html[data-theme="dark"] .installment-value b { color:#EDF3F8; }
+  html[data-theme="dark"] #welcomeBanner { background:var(--surface-soft) !important; color:#EDF3F8 !important; }
+  html[data-theme="dark"] #notifOverlay > div,
+  html[data-theme="dark"] #aboutOverlay > div { background:var(--surface) !important; color:var(--ink); }
+  html[data-theme="dark"] #notifList > div { background:var(--surface) !important; }
+
+  .theme-toggle { justify-content:space-between; border:1px solid var(--line); }
+  .theme-toggle .theme-switch { width:38px;height:21px;border-radius:12px;background:#A9B5C1;position:relative;flex:none; }
+  .theme-toggle .theme-switch::after { content:"";position:absolute;width:17px;height:17px;top:2px;right:2px;border-radius:50%;background:#fff;transition:transform .25s; }
+  html[data-theme="dark"] .theme-toggle .theme-switch { background:var(--gold); }
+  html[data-theme="dark"] .theme-toggle .theme-switch::after { transform:translateX(-17px); }
+
+  .birthday-overlay { position:fixed;inset:0;background:rgba(3,18,33,.74);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden; }
+  .birthday-card { position:relative;width:min(440px,94vw);text-align:center;padding:34px 26px 28px;border-radius:22px;background:linear-gradient(145deg,var(--surface),var(--surface-soft));border:2px solid var(--line);box-shadow:0 28px 80px rgba(0,0,0,.45);color:var(--ink); }
+  .birthday-logo { width:76px;height:76px;object-fit:contain;border-radius:50%;background:#fff;border:3px solid var(--line);padding:3px; }
+  .birthday-title { margin:14px 0 7px;font:800 25px 'Tajawal',sans-serif;color:var(--navy-light); }
+  html[data-theme="dark"] .birthday-title { color:#EDF3F8; }
+  .birthday-confetti { position:absolute;top:-24px;font-size:24px;animation:confettiFall 3.2s linear infinite;pointer-events:none; }
+  @keyframes confettiFall { to { transform:translateY(110vh) rotate(540deg); } }
+
+  /* الواجهة الداخلية المعتمدة للنسخة 2.0.0 */
+  .home-v2 { position:relative;min-height:690px;padding:26px;border-radius:18px;overflow:hidden;background:linear-gradient(rgba(247,249,252,.58),rgba(237,243,248,.68)),url("/assets/login_bg_reference_v2.png?v=2.0.1") center/cover no-repeat; }
+  .home-hero { display:grid;grid-template-columns:1.55fr .75fr;gap:20px;align-items:center;padding:25px 28px;border:1px solid rgba(196,203,211,.95);border-radius:18px;background:rgba(255,255,255,.78);box-shadow:0 12px 35px rgba(9,42,74,.12);backdrop-filter:blur(9px); }
+  .home-hero h1 { margin:0;color:var(--navy-light);font:800 28px 'Tajawal',sans-serif; }
+  .home-hero p { margin:8px 0 0;color:var(--gray);font-size:14px; }
+  .home-power-mark { text-align:center;color:var(--gold);font-size:56px;filter:drop-shadow(0 5px 12px rgba(29,95,167,.22)); }
+  .service-grid-v2 { display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:16px;margin-top:22px; }
+  .service-card-v2 { min-height:166px;padding:21px 14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.93);box-shadow:0 8px 24px rgba(9,42,74,.09);text-align:center;cursor:pointer;color:var(--ink);font-family:'Cairo',sans-serif;transition:transform .2s,box-shadow .2s,border-color .2s; }
+  .service-card-v2:hover { transform:translateY(-4px);border-color:var(--gold);box-shadow:0 14px 30px rgba(29,95,167,.18); }
+  .service-icon-v2 { width:66px;height:66px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--surface-soft);border:2px solid var(--line);font-size:30px; }
+  .service-card-v2 strong { display:block;color:var(--navy-light);font-size:15px;margin-bottom:5px; }
+  .service-card-v2 span { color:var(--gray);font-size:11.5px;line-height:1.6; }
+  html[data-theme="dark"] .home-v2 { background:linear-gradient(rgba(7,23,40,.70),rgba(13,39,65,.78)),url("/assets/login_bg_reference_v2.png?v=2.0.1") center/cover no-repeat; }
+  html[data-theme="dark"] .home-hero,html[data-theme="dark"] .service-card-v2 { background:rgba(13,39,65,.91); }
+  html[data-theme="dark"] .home-hero h1,html[data-theme="dark"] .service-card-v2 strong { color:#EDF3F8; }
+  @media(max-width:760px){.home-v2{padding:14px}.home-hero{grid-template-columns:1fr;padding:20px}.home-power-mark{display:none}.service-grid-v2{grid-template-columns:repeat(2,1fr);gap:11px}.service-card-v2{min-height:145px;padding:16px 8px}}
+  @media(max-width:420px){.service-grid-v2{grid-template-columns:1fr 1fr}.home-hero h1{font-size:21px}}
 
   @page {
     size: A4;
@@ -336,7 +464,7 @@
     transform: translate(-50%, -50%) rotate(-30deg);
     font-size: 42px;
     font-weight: 800;
-    color: rgba(180,70,61,0.18);
+    color: rgba(217,45,32,0.18);
     font-family: 'Tajawal', sans-serif;
     white-space: nowrap;
     z-index: 999;
@@ -348,7 +476,7 @@
     bottom: 4%; left: 50%;
     transform: translate(-50%, 0);
     font-size: 11px;
-    color: rgba(92,21,36,0.07);
+    color: rgba(9,42,74,0.07);
     font-family: 'Cairo', sans-serif;
     white-space: nowrap;
     z-index: 998;
@@ -431,7 +559,7 @@
     background: none; border: none; cursor: pointer; color: var(--gray); padding: 0;
     border-radius: 5px; transition: color .2s ease, background .2s ease;
   }
-  .eye-toggle:hover { color: var(--navy); background: rgba(92,21,36,0.06); }
+  .eye-toggle:hover { color: var(--navy); background: rgba(9,42,74,0.06); }
   .eye-toggle svg { width: 18px; height: 18px; }
   .eye-toggle .eye-off { display: none; }
   .eye-toggle.showing .eye-on { display: none; }
@@ -446,24 +574,24 @@
   /* ---------- شكل الزرار الجديد (تدرّج + شمعة دهبية عند الـ hover) ---------- */
   .btn-primary {
     position: relative; overflow: hidden;
-    box-shadow: 0 6px 16px rgba(92,21,36,0.35);
+    box-shadow: 0 6px 16px rgba(9,42,74,0.35);
     background: linear-gradient(135deg, var(--navy-light), var(--navy) 60%);
     transition: transform .15s ease, box-shadow .2s ease;
   }
   .btn-primary::before {
     content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
-    background: linear-gradient(90deg, transparent, rgba(201,162,75,0.55), transparent);
+    background: linear-gradient(90deg, transparent, rgba(29,95,167,0.55), transparent);
     transform: skewX(-20deg); transition: left .6s ease;
   }
   .btn-primary:hover::before { left: 130%; }
-  .btn-primary:hover { box-shadow: 0 8px 22px rgba(92,21,36,0.5); transform: translateY(-1px); opacity: 1; }
-  .btn-primary:active { transform: translateY(0) scale(.98); box-shadow: 0 4px 10px rgba(92,21,36,0.4); }
+  .btn-primary:hover { box-shadow: 0 8px 22px rgba(9,42,74,0.5); transform: translateY(-1px); opacity: 1; }
+  .btn-primary:active { transform: translateY(0) scale(.98); box-shadow: 0 4px 10px rgba(9,42,74,0.4); }
 
   /* ---------- بوابة اللمبة على شاشة الدخول ---------- */
   .lamp-gate {
     position: absolute; inset: 0; z-index: 10;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: linear-gradient(160deg, rgba(70,12,22,0.97) 0%, rgba(58,12,20,0.97) 100%);
+    background:linear-gradient(160deg,rgba(9,42,74,.84),rgba(7,31,56,.88)),url("/assets/login_bg_reference_v2.png?v=2.0.1") center/cover no-repeat;
     transition: opacity .8s ease, visibility .8s ease; padding: 24px; text-align: center;
   }
   .lamp-gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -475,10 +603,10 @@
   .cone {
     position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
     width: 320px; height: 400px; pointer-events: none;
-    background: radial-gradient(ellipse 160px 340px at 50% 0%, rgba(201,162,75,0) 0%, rgba(201,162,75,0) 100%);
+    background: radial-gradient(ellipse 160px 340px at 50% 0%, rgba(29,95,167,0) 0%, rgba(29,95,167,0) 100%);
     transition: background 1s ease;
   }
-  .lamp-gate.on .cone { background: radial-gradient(ellipse 180px 360px at 50% 0%, rgba(201,162,75,0.28) 0%, rgba(201,162,75,0.08) 55%, rgba(201,162,75,0) 80%); }
+  .lamp-gate.on .cone { background: radial-gradient(ellipse 180px 360px at 50% 0%, rgba(29,95,167,0.28) 0%, rgba(29,95,167,0.08) 55%, rgba(29,95,167,0) 80%); }
   .lamp { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
   .cord { width: 2px; height: 18px; background: var(--gold); }
   .shade {
@@ -489,10 +617,10 @@
   .lamp-gate.on .shade { filter: brightness(1.05); }
   .shade-rim { width: 116px; height: 8px; border-radius: 50%; background: var(--gold); margin-top: -4px; }
   .bulb-zone { width: 30px; height: 30px; display: flex; justify-content: center; margin-top: -4px; }
-  .bulb { width: 17px; height: 17px; border-radius: 50%; background: #5a3f2a; margin-top: 2px; transition: background .5s ease, box-shadow .5s ease; }
-  .lamp-gate.on .bulb { background: #ffe9b8; box-shadow: 0 0 16px 6px rgba(201,162,75,.9), 0 0 55px 26px rgba(201,162,75,.35); }
-  .pole { width: 5px; height: 120px; background: linear-gradient(90deg,#8d6a3a,var(--gold),#8d6a3a); border-radius: 3px; }
-  .base { width: 70px; height: 11px; border-radius: 7px; background: linear-gradient(180deg,var(--gold),#8d6a3a); margin-top: -2px; }
+  .bulb { width: 17px; height: 17px; border-radius: 50%; background: #66788A; margin-top: 2px; transition: background .5s ease, box-shadow .5s ease; }
+  .lamp-gate.on .bulb { background: #EDF3F8; box-shadow: 0 0 16px 6px rgba(29,95,167,.9), 0 0 55px 26px rgba(29,95,167,.35); }
+  .pole { width: 5px; height: 120px; background: linear-gradient(90deg,#66788A,var(--gold),#66788A); border-radius: 3px; }
+  .base { width: 70px; height: 11px; border-radius: 7px; background: linear-gradient(180deg,var(--gold),#66788A); margin-top: -2px; }
 
   .chain-wrap {
     position: absolute; top: 82px; left: calc(50% + 28px);
@@ -554,7 +682,34 @@
   .sidebar-close { background: none; border: none; font-size: 18px; color: var(--gray); cursor: pointer; padding: 4px; }
 
   @media (min-width: 900px) {
-    .sidebar { width: 270px; }
+    #appScreen { padding-bottom:48px; }
+    .topbar { min-height:110px;padding:18px 34px;background:linear-gradient(135deg,#092A4A,#123B6D); }
+    .topbar-brand { font-size:21px; }
+    .topbar .logo-badge { width:74px !important;height:74px !important; }
+    .menu-toggle { display:none; }
+    #welcomeBanner { display:none; }
+    .layout { display:flex;max-width:none;width:100%;margin:0;min-height:calc(100vh - 158px);align-items:stretch; }
+    .sidebar {
+      position:relative;top:auto;bottom:auto;right:auto;transform:none;width:270px;max-width:none;
+      padding:22px 14px;background:linear-gradient(180deg,#092A4A,#071F38);border-left:1px solid #315477;
+      box-shadow:-8px 0 24px rgba(0,0,0,.16);z-index:5;
+    }
+    .sidebar-head { display:none; }
+    .sidebar-profile { border-color:#466684;padding:8px 8px 18px;margin-bottom:14px; }
+    .sidebar-profile img { width:82px;height:82px;border-color:#C4CBD3; }
+    .sidebar-profile strong { color:#fff;font-size:15px; }
+    .sidebar .nav-btn { color:#E6EEF6;padding:12px 16px;border-radius:9px; }
+    .sidebar .nav-btn:hover { background:rgba(29,95,167,.35); }
+    .sidebar .nav-btn.active { color:#fff;background:#1D5FA7;border-color:#5A9CE0;box-shadow:0 6px 16px rgba(0,0,0,.18); }
+    .sidebar .theme-toggle { border-color:#466684;margin-top:8px; }
+    .sidebar #navPayslip,.sidebar #navWage,.sidebar #navContact,.sidebar #navRating { display:none; }
+    .topbar .btn-logout { display:none; }
+    .content { min-width:0;padding:20px 24px 28px; }
+    .home-v2 { min-height:calc(100vh - 205px);border-radius:0;padding:28px 34px; }
+    .home-hero { max-width:1040px;margin:0 auto;padding:28px 34px; }
+    .service-grid-v2 { max-width:1040px;margin:22px auto 0; }
+    .service-card-v2 { min-height:155px; }
+  }
   }
 </style>
 </head>
@@ -579,7 +734,7 @@
       </div>
       <div class="login-body" id="loginFormBody">
         <div class="field">
-          <label>كود الموظف</label>
+          <label>كود العامل</label>
           <input type="text" id="loginCode" placeholder="مثال: 9999">
         </div>
         <div class="field">
@@ -593,20 +748,18 @@
           </div>
         </div>
         <div class="remember-row">
-          <label class="remember-check"><input type="checkbox" id="rememberMeCheckbox"> تذكرني</label>
+          <label class="remember-check"><input type="checkbox" id="rememberMeCheckbox"> تذكرني على هذا الجهاز</label>
           <button type="button" onclick="showForgotStep1()" class="forgot-link">نسيت كلمة المرور؟</button>
         </div>
         <div id="loginError" class="error-text hidden"></div>
         <button class="btn-primary" id="loginBtn" onclick="handleLogin()">تسجيل الدخول</button>
-        <div class="login-footer">
-          بيتصل بالسيرفر الحقيقي على <b id="apiBaseLabel"></b> — اتأكد إنه شغال (python app.py)
-        </div>
+        <div class="system-status"><span class="status-lamp"></span><span>النظام يعمل بصورة طبيعية</span></div>
         <div style="text-align:center;margin-top:12px;font-size:11.5px;color:var(--gray);line-height:1.6;">
           📍 تقاطع طريق الكورنيش مع طريق مدينة السماد، طلخا، المنصورة، محافظة الدقهلية
           <br>
           <a href="https://www.google.com/maps/search/?api=1&query=31.1197,31.3789" target="_blank" rel="noopener" style="color:var(--navy);text-decoration:underline;">عرض الموقع على خرائط جوجل</a>
           <div style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:var(--gold-soft);color:var(--navy);padding:4px 12px;border-radius:14px;font-weight:700;font-size:11px;">
-            🛟 دعم فني 24/7
+            🛟 للدعم الفني والتواصل: مسؤول منظومة التطوير
           </div>
         </div>
       </div>
@@ -630,7 +783,7 @@
 
       <!-- خطوة 2: إدخال الكود وكلمة مرور جديدة -->
       <div class="login-body hidden" id="forgotStep2Body">
-        <div style="background:#FBF3DD;border:1px solid var(--gold);color:var(--navy);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
+        <div style="background:#EDF3F8;border:1px solid var(--gold);color:var(--navy);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
           📧 تم إرسال كود مكوّن من 6 أرقام على بريدك الإلكتروني. الكود صالح لمدة 10 دقائق.
         </div>
         <div class="field">
@@ -654,7 +807,7 @@
 
       <!-- شاشة الإعداد الإجباري لأول دخول -->
       <div class="login-body hidden" id="firstLoginSetupBody">
-        <div style="background:#FBEAE7;border:1px solid var(--red);color:var(--red);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
+        <div style="background:#FDECEC;border:1px solid var(--red);color:var(--red);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
           ⚠️ هذه أول مرة تدخل فيها. لازم تسجّل بريدك الإلكتروني وتغيّر كلمة المرور الافتراضية قبل ما تكمل.
         </div>
         <div class="field">
@@ -679,7 +832,7 @@
 
       <!-- شاشة إتمام البيانات الإجباري -->
       <div class="login-body hidden" id="completeProfileBody">
-        <div style="background:#FBEAE7;border:1px solid var(--red);color:var(--red);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
+        <div style="background:#FDECEC;border:1px solid var(--red);color:var(--red);font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:14px;">
           ⚠️ بياناتك ناقصة. لازم تدخل رقم هاتف والواتساب (11 رقم) والرقم القومي (14 رقم) قبل ما تكمل.
         </div>
         <div class="field">
@@ -695,27 +848,17 @@
       </div>
     </div>
 
-    <!-- بوابة اللمبة: نضغط/نشد الحبل تنور وتكشف كارت تسجيل الدخول اللي وراها -->
+    <!-- صفحة البداية للإصدار 2.0.0 -->
     <div class="lamp-gate" id="lampGate">
+      <img src="assets/logo.jpg?v=delta-original" alt="شعار الشركة المصرية لنقل الكهرباء" style="width:110px;height:110px;object-fit:contain;border-radius:50%;background:#fff;padding:4px;border:3px solid var(--gold);margin-bottom:16px;">
       <div class="gate-title">الشركة المصرية لنقل الكهرباء</div>
       <div class="gate-sub">المنظومة الإلكترونية الموحدة — منطقة الدلتا</div>
-      <div class="gate-credit">تصميم وتطوير: خالد يوسف المنسي</div>
-      <div class="lamp-wrap">
-        <div class="cone"></div>
-        <div class="lamp">
-          <div class="cord"></div>
-          <div class="shade"></div>
-          <div class="shade-rim"></div>
-          <div class="bulb-zone"><div class="bulb"></div></div>
-          <div class="pole"></div>
-          <div class="base"></div>
-        </div>
-        <div class="chain-wrap idle" id="chainWrap">
-          <div class="chain"></div>
-          <div class="pull-knob"></div>
-        </div>
+      <button type="button" class="btn-primary" id="enterPortalBtn" style="max-width:260px;margin-top:28px;" onclick="enterPortal()">تسجيل الدخول</button>
+      <div class="system-status" style="color:#8af0ae;margin-top:22px;"><span class="status-lamp"></span><span>النظام يعمل بصورة طبيعية</span></div>
+      <div style="display:flex;gap:18px;color:#fff;font-size:11px;margin-top:16px;opacity:.9;">
+        <span>🟢 يعمل</span><span>🟠 تحسينات جارية</span><span>🔴 متوقف</span>
       </div>
-      <div class="hint">اسحب الحبل عشان تدخل ↴</div>
+      <div class="hint" style="margin-top:22px;">الإصدار 2.0.0</div>
     </div>
   </div>
 
@@ -766,17 +909,49 @@
           <span>القائمة</span>
           <button class="sidebar-close" id="sidebarCloseBtn" aria-label="إغلاق القائمة">✕</button>
         </div>
-        <button class="nav-btn active" id="navAdmin" onclick="switchTab('admin')">👤 بياناتي الإدارية</button>
+        <div class="sidebar-profile">
+          <img id="sidebarProfilePhoto" src="assets/logo.jpg?v=delta-original" alt="صورة الموظف">
+          <strong id="sidebarEmployeeName">الموظف</strong>
+        </div>
+        <button class="nav-btn active" id="navHome" onclick="switchTab('home')">🏠 الرئيسية</button>
+        <button class="nav-btn" id="navAdmin" onclick="switchTab('admin')">👤 تعديل البيانات</button>
         <button class="nav-btn" id="navPayslip" onclick="switchTab('payslip')">📄 شريط المرتب</button>
         <button class="nav-btn" id="navWage" onclick="switchTab('wage')">📋 سجل الأجور</button>
         <button class="nav-btn" id="navChangePass" onclick="switchTab('changepass')">🔑 تغيير كلمة المرور</button>
         <button class="nav-btn" id="navContact" onclick="switchTab('contact')">✉️ تواصل معنا</button>
         <button class="nav-btn" id="navRating" onclick="switchTab('rating')">⭐ تقييم الخدمة</button>
+        <button class="nav-btn" type="button" onclick="showAboutPage();closeSidebar();">ℹ️ حول النظام</button>
+        <button class="nav-btn theme-toggle" id="themeToggleBtn" type="button" onclick="toggleTheme()">
+          <span id="themeToggleLabel">🌙 الوضع الليلي</span><span class="theme-switch" aria-hidden="true"></span>
+        </button>
+        <button class="nav-btn" type="button" onclick="handleLogout()">🚪 خروج</button>
         <button class="nav-btn hidden" id="navHR" onclick="switchTab('hr')">🗂 لوحة التحكم</button>
-        <button class="nav-btn hidden" id="navStats" onclick="switchTab('stats')">📊 الإحصائيات</button>
+        <div class="admin-v2-nav hidden" id="adminV2Nav">
+          <button class="nav-btn" id="navEmployeeSearch" onclick="switchTab('employeeSearch')">🔎 البحث الشامل</button>
+          <button class="nav-btn" id="navStatistics" onclick="switchTab('statistics')">📊 الإحصائيات</button>
+        </div>
       </div>
 
       <div class="content">
+        <div id="tabHome">
+          <section class="home-v2">
+            <div class="home-hero">
+              <div>
+                <h1 id="homeWelcomeName">مرحبًا بك</h1>
+                <p>نتمنى لك يوم عمل موفقًا داخل المنظومة الإلكترونية الموحدة — منطقة الدلتا</p>
+              </div>
+              <div class="home-power-mark" aria-hidden="true">⚡</div>
+            </div>
+            <div class="service-grid-v2">
+              <button class="service-card-v2" onclick="switchTab('admin')"><span class="service-icon-v2">👤</span><strong>بياناتي الإدارية</strong><span>عرض البيانات الإدارية والوظيفية</span></button>
+              <button class="service-card-v2" onclick="switchTab('payslip')"><span class="service-icon-v2">📄</span><strong>شريط المرتب</strong><span>عرض وتحميل شريط المرتب الشهري</span></button>
+              <button class="service-card-v2" onclick="switchTab('wage')"><span class="service-icon-v2">📋</span><strong>سجل الأجور</strong><span>الاطلاع على سجل الأجور والاستحقاقات</span></button>
+              <button class="service-card-v2" onclick="openNotifPanel()"><span class="service-icon-v2">🔔</span><strong>الإشعارات</strong><span>متابعة التنبيهات والإعلانات</span></button>
+              <button class="service-card-v2" onclick="switchTab('contact')"><span class="service-icon-v2">💬</span><strong>تواصل معنا</strong><span>إرسال الاستفسارات والمقترحات</span></button>
+              <button class="service-card-v2" onclick="switchTab('rating')"><span class="service-icon-v2">⭐</span><strong>تقييم الخدمة</strong><span>شاركنا رأيك لتحسين خدماتنا</span></button>
+            </div>
+          </section>
+        </div>
         <div id="tabAdmin"></div>
         <div id="tabPayslip" class="hidden"></div>
         <div id="tabWage" class="hidden"></div>
@@ -784,16 +959,64 @@
         <div id="tabContact" class="hidden"></div>
         <div id="tabRating" class="hidden"></div>
         <div id="tabHR" class="hidden"></div>
-        <div id="tabStats" class="hidden"></div>
+        <div id="tabEmployeeSearch" class="hidden"></div>
+        <div id="tabStatistics" class="hidden"></div>
       </div>
     </div>
   </div>
 
 <script>
 const API_BASE = window.location.origin;
-document.getElementById("apiBaseLabel").textContent = API_BASE;
 
-const APP_VERSION = "Version 1.1.1";
+const APP_VERSION = "Version 2.0.0";
+const THEME_KEY = "eetc_portal_theme_v2";
+const BIRTHDAY_KEY_PREFIX = "eetc_birthday_seen_";
+
+function preferredTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const label = document.getElementById("themeToggleLabel");
+  if (label) label.textContent = theme === "dark" ? "☀️ الوضع النهاري" : "🌙 الوضع الليلي";
+  const button = document.getElementById("themeToggleBtn");
+  if (button) button.setAttribute("aria-label", theme === "dark" ? "تفعيل الوضع النهاري" : "تفعيل الوضع الليلي");
+}
+
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+
+applyTheme(preferredTheme());
+
+function birthdayStorageKey() {
+  const today = new Date();
+  return `${BIRTHDAY_KEY_PREFIX}${session?.employeeCode || "employee"}_${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+}
+
+function maybeShowBirthdayGreeting(employee) {
+  if (!employee || window._birthdayChecked) return;
+  window._birthdayChecked = true;
+  const today = new Date();
+  if (Number(employee.birth_day) !== today.getDate() || Number(employee.birth_month) !== today.getMonth() + 1) return;
+  if (localStorage.getItem(birthdayStorageKey()) === "1") return;
+  const firstName = String(employee.full_name || session?.fullName || "زميلنا العزيز").trim().split(/\s+/)[0];
+  document.getElementById("birthdayMessage").textContent = `كل سنة وأنت طيب يا أ/ ${firstName}، نتمنى لك عامًا سعيدًا مليئًا بالنجاح والصحة.`;
+  document.getElementById("birthdayConfetti").innerHTML = Array.from({length: 28}, (_, i) =>
+    `<span class="birthday-confetti" style="right:${(i * 37) % 100}%;animation-delay:${(i % 9) * -.35}s;color:${["#1D5FA7","#C4CBD3","#22A06B","#F59E0B","#D92D20"][i % 5]};">${i % 3 === 0 ? "●" : "◆"}</span>`
+  ).join("");
+  document.getElementById("birthdayOverlay").classList.remove("hidden");
+}
+
+function closeBirthdayGreeting() {
+  localStorage.setItem(birthdayStorageKey(), "1");
+  document.getElementById("birthdayOverlay").classList.add("hidden");
+}
 
 console.log(
   "%c====================================\n" +
@@ -801,11 +1024,11 @@ console.log(
   "  Developed by Khaled Youssif Elmansy\n" +
   "  © 2026 - All Rights Reserved\n" +
   "====================================",
-  "color:#C9A24B;font-weight:bold;font-family:monospace;"
+  "color:#1D5FA7;font-weight:bold;font-family:monospace;"
 );
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("footerVersion").textContent = APP_VERSION;
+  applyTheme(preferredTheme());
   document.getElementById("aboutVersion").textContent = APP_VERSION;
   setTimeout(() => {
     document.getElementById("splashScreen").classList.add("splash-hidden");
@@ -1178,6 +1401,7 @@ async function handleLogin() {
 
 function handleLogout() {
   session = null;
+  window._birthdayChecked = false;
   document.getElementById("appScreen").classList.add("hidden");
   document.getElementById("loginScreen").classList.remove("hidden");
   document.getElementById("loginPassword").value = "";
@@ -1189,16 +1413,18 @@ function showApp() {
   document.getElementById("topbarName").textContent = session.isDemo
     ? `${session.fullName} — عرض فقط`
     : session.fullName;
+  document.getElementById("sidebarEmployeeName").textContent = session.fullName;
+  document.getElementById("homeWelcomeName").textContent = `مرحبًا، ${session.fullName}`;
   if (session.role === "hr_admin") {
     document.getElementById("navHR").classList.remove("hidden");
-    document.getElementById("navStats").classList.remove("hidden");
+    document.getElementById("adminV2Nav").classList.remove("hidden");
   }
   document.getElementById("navChangePass").classList.toggle("hidden", session.isDemo);
   document.getElementById("navRating").classList.toggle("hidden", session.isDemo);
   setWelcomeBanner();
   startLiveClock();
   refreshNotifBadge();
-  switchTab("admin");
+  switchTab("home");
 }
 
 const MOTIVATIONAL_QUOTES = [
@@ -1315,7 +1541,7 @@ function renderNotifList() {
   }
 
   list.innerHTML = _cachedAnnouncements.map(a => `
-    <div style="padding:12px 14px;border-bottom:1px solid var(--line);${a.is_read ? "" : "background:#FBF3DD;"}">
+    <div style="padding:12px 14px;border-bottom:1px solid var(--line);${a.is_read ? "" : "background:#EDF3F8;"}">
       <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">
         <span style="font-weight:700;font-size:14px;color:var(--navy);">${a.is_read ? "" : "🔵 "}${a.title}</span>
         <span style="font-size:11px;color:var(--gray);white-space:nowrap;">${a.created_at}</span>
@@ -1359,6 +1585,7 @@ function startLiveClock() {
 }
 
 function switchTab(tab) {
+  document.getElementById("navHome").classList.toggle("active", tab === "home");
   document.getElementById("navAdmin").classList.toggle("active", tab === "admin");
   document.getElementById("navPayslip").classList.toggle("active", tab === "payslip");
   document.getElementById("navWage").classList.toggle("active", tab === "wage");
@@ -1366,7 +1593,9 @@ function switchTab(tab) {
   document.getElementById("navContact").classList.toggle("active", tab === "contact");
   document.getElementById("navRating").classList.toggle("active", tab === "rating");
   document.getElementById("navHR").classList.toggle("active", tab === "hr");
-  document.getElementById("navStats").classList.toggle("active", tab === "stats");
+  document.getElementById("navEmployeeSearch").classList.toggle("active", tab === "employeeSearch");
+  document.getElementById("navStatistics").classList.toggle("active", tab === "statistics");
+  document.getElementById("tabHome").classList.toggle("hidden", tab !== "home");
   document.getElementById("tabAdmin").classList.toggle("hidden", tab !== "admin");
   document.getElementById("tabPayslip").classList.toggle("hidden", tab !== "payslip");
   document.getElementById("tabWage").classList.toggle("hidden", tab !== "wage");
@@ -1374,18 +1603,32 @@ function switchTab(tab) {
   document.getElementById("tabContact").classList.toggle("hidden", tab !== "contact");
   document.getElementById("tabRating").classList.toggle("hidden", tab !== "rating");
   document.getElementById("tabHR").classList.toggle("hidden", tab !== "hr");
-  document.getElementById("tabStats").classList.toggle("hidden", tab !== "stats");
+  document.getElementById("tabEmployeeSearch").classList.toggle("hidden", tab !== "employeeSearch");
+  document.getElementById("tabStatistics").classList.toggle("hidden", tab !== "statistics");
 
-  if (tab === "admin") loadAdminInfo();
+  if (tab === "home") loadHomeExperience();
+  else if (tab === "admin") loadAdminInfo();
   else if (tab === "payslip") renderPayslipShell();
   else if (tab === "wage") renderWageShell();
   else if (tab === "changepass") renderChangePasswordShell();
   else if (tab === "contact") renderContactShell();
   else if (tab === "rating") renderRatingShell();
   else if (tab === "hr") renderHRPanel();
-  else if (tab === "stats") renderStatisticsPanel();
+  else if (tab === "employeeSearch") renderEmployeeSearchPanel();
+  else if (tab === "statistics") renderStatisticsPanel();
 
   closeSidebar(); // قفل القائمة تلقائيًا بعد اختيار أي تبويب (سلوك طبيعي في الموبايل)
+}
+
+async function loadHomeExperience() {
+  try {
+    const res = await apiFetch(`${API_BASE}/api/employee/me`, { headers: { Authorization: `Bearer ${session.token}` } });
+    if (!res.ok) return;
+    const data = await res.json();
+    maybeShowBirthdayGreeting(data);
+    const sidebarPhoto = document.getElementById("sidebarProfilePhoto");
+    if (sidebarPhoto && data.photo_url) sidebarPhoto.src = `${API_BASE}${data.photo_url}?token=${encodeURIComponent(session.token)}&v=${Date.now()}`;
+  } catch (_) {}
 }
 
 async function loadAdminInfo() {
@@ -1398,6 +1641,13 @@ async function loadAdminInfo() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "حصل خطأ");
+
+    maybeShowBirthdayGreeting(data);
+
+    const sidebarPhoto = document.getElementById("sidebarProfilePhoto");
+    if (sidebarPhoto && data.photo_url) {
+      sidebarPhoto.src = `${API_BASE}${data.photo_url}?token=${encodeURIComponent(session.token)}&v=${Date.now()}`;
+    }
 
     const rows = [
       ["كود العامل", data.employee_code],
@@ -1991,7 +2241,7 @@ function renderContactShell() {
   box.innerHTML = `
     <div class="card" style="max-width:560px;">
       <div class="card-header">✉️ تواصل معنا</div>
-      <div id="chatThreadBox" style="max-height:420px;overflow-y:auto;padding:16px 20px;background:#fdfcf8;"></div>
+      <div id="chatThreadBox" style="max-height:420px;overflow-y:auto;padding:16px 20px;background:#F7F9FC;"></div>
       ${session.isDemo ? `
         <div style="padding:14px 20px;border-top:1px solid var(--line);color:var(--gray);text-align:center;">
           حساب العرض يتيح مشاهدة نموذج المحادثة فقط ولا يسمح بإرسال رسائل.
@@ -2168,48 +2418,120 @@ async function submitRating() {
    لوحة تحكم المدير (hr_admin بس)
    ============================================================ */
 
+function renderEmployeeSearchPanel() {
+  const box = document.getElementById("tabEmployeeSearch");
+  box.innerHTML = `
+    <div class="card">
+      <div class="card-header">🔎 البحث الشامل عن موظف</div>
+      <div style="padding:18px;">
+        <div class="search-row" style="margin:0;">
+          <input type="search" id="hrSearchInput" placeholder="اكتب كود العامل أو جزءًا من الاسم..."
+                 autocomplete="off" oninput="scheduleEmployeeSearch()"
+                 onkeydown="if(event.key==='Enter') hrSearch()">
+          <button onclick="hrSearch()">بحث</button>
+        </div>
+        <div style="font-size:12px;color:var(--gray);margin-top:8px;">اختر الموظف لعرض بياناته الإدارية أو شريط المرتب أو سجل الأجور أو إعادة تعيين كلمة المرور.</div>
+      </div>
+    </div>
+    <div id="hrResults"></div>
+  `;
+  document.getElementById("hrSearchInput").focus();
+}
+
+let employeeSearchTimer = null;
+function scheduleEmployeeSearch() {
+  clearTimeout(employeeSearchTimer);
+  const query = document.getElementById("hrSearchInput")?.value.trim() || "";
+  if (query.length < 2) {
+    const results = document.getElementById("hrResults");
+    if (results) results.innerHTML = "";
+    return;
+  }
+  employeeSearchTimer = setTimeout(hrSearch, 280);
+}
+
+function statisticCard(title, metric, suffix = "جنيه") {
+  const value = metric?.value;
+  return `<div class="stat-card">
+    <div class="stat-title">${title}</div>
+    <div class="stat-value">${value == null ? "—" : Number(value).toLocaleString("ar-EG", {maximumFractionDigits:2}) + " " + suffix}</div>
+    <div class="stat-person">${metric?.full_name ? `${escapeHtml(metric.full_name)} — كود ${escapeHtml(metric.employee_code || "")}` : "لا توجد بيانات"}</div>
+  </div>`;
+}
+
 function renderStatisticsPanel() {
-  const now=new Date(), currentMonth=now.getMonth()+1, currentYear=Math.max(2026,now.getFullYear());
-  document.getElementById('tabStats').innerHTML=`
-    <div class="section-divider">📊 إحصائيات الحوافز</div>
-    <div class="card" style="padding:18px 22px"><div class="selectors">
-      <div><label>الشهر</label><select id="statsMonth" onchange="loadIncentiveBands()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i+1===currentMonth?'selected':''}>${m}</option>`).join('')}</select></div>
-      <div><label>السنة</label><select id="statsYear" onchange="loadIncentiveBands()">${[2026,2027,2028,2029,2030].map(y=>`<option ${y===currentYear?'selected':''}>${y}</option>`).join('')}</select></div>
-      <div><label>بند الحافز</label><select id="statsBand"><option value="">جاري التحميل...</option></select></div>
-      <button class="btn-save" onclick="loadIncentiveStats()">عرض النسب</button>
-    </div><div style="font-size:12px;color:var(--gray);margin-top:8px">يستخدم الأساسي (البند 1) في يونيو 2026 كمرجع للحساب فقط، دون تغيير باقي بيانات يونيو.</div></div>
-    <div id="incentiveStatsBox"></div>
-    <div class="section-divider">👥 حركة أكواد الصرف من يوليو 2026</div>
-    <div class="card" style="padding:18px 22px"><div class="selectors">
-      <div><label>الشهر</label><select id="movementMonth"><option value="">السنة بالكامل</option>${MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('')}</select></div>
-      <div><label>السنة</label><select id="movementYear">${[2026,2027,2028,2029,2030].map(y=>`<option ${y===currentYear?'selected':''}>${y}</option>`).join('')}</select></div>
-      <button class="btn-save" onclick="loadEmployeeMovements()">عرض الحركة</button>
-    </div></div><div id="movementStatsBox"></div>`;
-  loadIncentiveBands(); loadEmployeeMovements();
+  const box = document.getElementById("tabStatistics");
+  const now = new Date();
+  box.innerHTML = `
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-header">📊 إحصائيات المرتبات والمعاشات</div>
+      <div class="selectors" style="padding:18px;margin:0;">
+        <div><label>الشهر</label><select id="statsMonth">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
+        <div><label>السنة</label><input id="statsYear" type="number" min="2020" max="2100" value="${now.getFullYear()}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
+        <button class="btn-save" onclick="loadStatistics()">عرض الإحصائيات</button>
+      </div>
+    </div>
+    <div id="statisticsResults"><div class="state-box">اختر الفترة ثم اضغط عرض الإحصائيات</div></div>
+    <div class="card" style="margin-top:14px;">
+      <div class="card-header">إجمالي بند محدد</div>
+      <div class="selectors" style="padding:18px;margin:0;">
+        <select id="statsItem" style="min-width:240px;"><option value="">جاري تحميل البنود...</option></select>
+        <button class="btn-save" onclick="loadSelectedItemTotal()">حساب الإجمالي</button>
+      </div>
+      <div id="itemTotalResult"></div>
+    </div>`;
+  loadStatisticItems();
 }
 
-function statisticTable(rows,type='incentive') {
-  if(!rows?.length)return '<div class="state-box dashed">لا توجد بيانات</div>';
-  if(type==='movement')return `<div class="card" style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--navy);color:#fff"><th style="padding:9px">الكود</th><th>الاسم</th><th>من</th><th>إلى</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${rows.map(r=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:9px">${r.employee_code}</td><td>${r.full_name}</td><td>${r.old_code_sarf??'—'}</td><td>${r.new_code_sarf}</td><td>${r.reason}</td><td>${r.effective_date}</td></tr>`).join('')}</tbody></table></div>`;
-  return `<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--navy);color:#fff"><th style="padding:9px">الكود</th><th>الاسم</th><th>أساسي يونيو</th><th>الحافز</th><th>النسبة</th></tr></thead><tbody>${rows.map(r=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:9px">${r.employee_code}</td><td>${r.full_name}</td><td>${r.june_2026_basic==null?'غير موجود':fmt(r.june_2026_basic)}</td><td>${fmt(r.incentive_value)}</td><td>${r.incentive_percent==null?'—':r.incentive_percent+'%'}</td></tr>`).join('')}</tbody></table></div>`;
+async function loadStatistics() {
+  const month = document.getElementById("statsMonth").value;
+  const year = document.getElementById("statsYear").value;
+  const box = document.getElementById("statisticsResults");
+  box.innerHTML = `<div class="state-box"><span class="spin"></span> جاري الحساب...</div>`;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/statistics/summary?month=${month}&year=${year}`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تعذر تحميل الإحصائيات");
+    box.innerHTML = `<div class="stats-grid">
+      ${statisticCard("أعلى إجمالي", data.highest_gross)}
+      ${statisticCard("أعلى صافي", data.highest_net)}
+      ${statisticCard("أقل صافي", data.lowest_net)}
+      ${statisticCard("أعلى نسبة حافز", data.highest_incentive_percentage, "%")}
+      ${statisticCard("أقل نسبة حافز", data.lowest_incentive_percentage, "%")}
+      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال الشهر</div><div class="stat-value">${data.retirements.month}</div></div>
+      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال السنة</div><div class="stat-value">${data.retirements.year}</div></div>
+      <div class="stat-card"><div class="stat-title">عدد الموظفين في كشف الفترة</div><div class="stat-value">${data.employee_count}</div></div>
+    </div>`;
+  } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
 }
 
-async function loadIncentiveBands(){const m=statsMonth.value,y=statsYear.value;try{const res=await apiFetch(`${API_BASE}/api/admin/statistics/incentive-bands?month=${m}&year=${y}`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await res.json();if(!res.ok)throw new Error(d.error);statsBand.innerHTML=d.length?d.map(b=>`<option value="${b.band_code}">${b.band_name}</option>`).join(''):'<option value="">لا توجد بنود حوافز</option>'}catch(e){statsBand.innerHTML=`<option value="">${e.message}</option>`}}
+async function loadStatisticItems() {
+  const select = document.getElementById("statsItem");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/statistics/items`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تعذر تحميل البنود");
+    select.innerHTML = `<option value="">اختر البند</option>` + data.map(i=>`<option value="${i.band_code}">${escapeHtml(i.band_name)} (${i.band_code})</option>`).join("");
+  } catch (e) { select.innerHTML = `<option value="">تعذر تحميل البنود</option>`; }
+}
 
-async function loadIncentiveStats(){const box=document.getElementById('incentiveStatsBox');if(!statsBand.value){box.innerHTML='<div class="conn-error">⚠ اختر بند الحافز</div>';return}box.innerHTML='<div class="state-box"><span class="spin"></span> جاري الحساب...</div>';try{const res=await apiFetch(`${API_BASE}/api/admin/statistics/incentives?month=${statsMonth.value}&year=${statsYear.value}&band_code=${statsBand.value}`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await res.json();if(!res.ok)throw new Error(d.error);box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px"><div class="card" style="padding:18px"><b>أعلى نسبة حافز</b><div style="font-size:28px;color:var(--navy);font-weight:800">${d.highest_percent==null?'—':d.highest_percent+'%'}</div>${statisticTable(d.highest_employees)}</div><div class="card" style="padding:18px"><b>أقل نسبة حافز</b><div style="font-size:28px;color:var(--red);font-weight:800">${d.lowest_percent==null?'—':d.lowest_percent+'%'}</div>${statisticTable(d.lowest_employees)}</div></div>${d.employees_without_june_basic.length?`<div class="card" style="padding:16px"><b>بدون أساسي مرجعي في يونيو 2026</b>${statisticTable(d.employees_without_june_basic)}</div>`:''}`}catch(e){box.innerHTML=`<div class="conn-error">⚠ ${e.message}</div>`}}
-
-async function loadEmployeeMovements(){const box=document.getElementById('movementStatsBox');box.innerHTML='<div class="state-box"><span class="spin"></span> جاري التحميل...</div>';try{const month=movementMonth.value,res=await apiFetch(`${API_BASE}/api/admin/statistics/employee-movements?year=${movementYear.value}${month?'&month='+month:''}`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await res.json();if(!res.ok)throw new Error(d.error);box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0">${[['إجمالي الحركة',d.total],['المعاشات (908)',d.retirements.length],['الوفيات (909)',d.deaths.length],['النقل (904/906)',d.transfers.length]].map(x=>`<div class="card" style="padding:16px"><b>${x[0]}</b><div style="font-size:26px;font-weight:800">${x[1]}</div></div>`).join('')}</div>${statisticTable(d.movements,'movement')}`}catch(e){box.innerHTML=`<div class="conn-error">⚠ ${e.message}</div>`}}
+async function loadSelectedItemTotal() {
+  const bandCode = document.getElementById("statsItem").value;
+  const month = document.getElementById("statsMonth").value;
+  const year = document.getElementById("statsYear").value;
+  const box = document.getElementById("itemTotalResult");
+  if (!bandCode) { box.innerHTML = `<div class="save-msg err">اختر البند أولًا</div>`; return; }
+  try {
+    const res = await apiFetch(`${API_BASE}/api/admin/statistics/item-total?month=${month}&year=${year}&band_code=${bandCode}`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تعذر حساب البند");
+    box.innerHTML = `<div class="stat-card" style="margin:0 18px 18px;"><div class="stat-title">${escapeHtml(data.band_name)} — ${data.employee_count} موظف</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>`;
+  } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
+}
 
 function renderHRPanel() {
   const box = document.getElementById("tabHR");
   box.innerHTML = `
-    <div class="search-row">
-      <input type="text" id="hrSearchInput" placeholder="اكتب كود الموظف أو جزء من الاسم..."
-             onkeydown="if(event.key==='Enter') hrSearch()">
-      <button onclick="hrSearch()">بحث</button>
-    </div>
-    <div id="hrResults"></div>
-
     <div class="section-divider">📢 نشر إشعار</div>
     <div class="card">
       <div class="edit-grid" style="grid-template-columns:1fr;">
@@ -2381,7 +2703,7 @@ async function openThread(threadId) {
           <span>${escapeHtml(data.full_name)} (كود ${escapeHtml(data.employee_code)})</span>
           <button type="button" onclick="deleteWholeThread(${threadId})" style="border:1px solid #ffd0d0;background:#fff1f1;color:var(--red);padding:6px 10px;border-radius:6px;cursor:pointer;">🗑 حذف المحادثة</button>
         </div>
-        <div id="adminThreadMessages" style="max-height:400px;overflow-y:auto;padding:16px 20px;background:#fdfcf8;">
+        <div id="adminThreadMessages" style="max-height:400px;overflow-y:auto;padding:16px 20px;background:#F7F9FC;">
           ${renderAdminChatBubbles(data.messages, threadId)}
         </div>
         <div style="padding:14px 20px;border-top:1px solid var(--line);">
@@ -2579,7 +2901,7 @@ let currentPayrollMonth = new Date().getMonth();
 let currentPayrollYear = 2026;
 
 async function openEmployeeDetails(empId) {
-  const box = document.getElementById("tabHR");
+  const box = document.getElementById("tabEmployeeSearch");
   box.innerHTML = `<div class="state-box"><span class="spin"></span> جاري تحميل بيانات الموظف...</div>`;
 
   try {
@@ -2592,23 +2914,30 @@ async function openEmployeeDetails(empId) {
     currentEditEmployee = data;
     renderEmployeeEditForm(data);
   } catch (e) {
-    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div><button class="back-link" onclick="renderHRPanel()">← رجوع للبحث</button>`;
+    box.innerHTML = `<div class="conn-error">⚠ ${e.message}</div><button class="back-link" onclick="renderEmployeeSearchPanel()">← رجوع للبحث</button>`;
   }
 }
 
 function renderEmployeeEditForm(emp) {
-  const box = document.getElementById("tabHR");
+  const box = document.getElementById("tabEmployeeSearch");
   box.innerHTML = `
-    <button class="back-link" onclick="renderHRPanel()">← رجوع للبحث</button>
+    <button class="back-link" onclick="renderEmployeeSearchPanel()">← رجوع للبحث</button>
 
-    <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <button class="btn-save" onclick="document.getElementById('employeeAdminData').scrollIntoView({behavior:'smooth'})">👤 البيانات الإدارية</button>
+      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📄 شريط المرتب</button>
+      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📋 سجل الأجور</button>
+      <button class="btn-save" style="background:var(--red)" onclick="document.getElementById('employeePasswordSection').scrollIntoView({behavior:'smooth'})">🔑 إعادة كلمة المرور</button>
+    </div>
+
+    <div class="card" id="employeeAdminData">
       <div class="card-header">تعديل بيانات: ${emp.full_name} (كود ${emp.employee_code})</div>
       <div class="edit-grid">
         <div class="edit-field"><label>الاسم بالكامل</label><input id="edit_full_name" value="${emp.full_name || ""}"></div>
         <div class="edit-field"><label>الوظيفة</label><input id="edit_job_title" value="${emp.job_title || ""}"></div>
         <div class="edit-field"><label>رقم الهاتف والواتساب</label><input id="edit_phone" value="${emp.phone || ""}"></div>
         <div class="edit-field"><label>الرقم القومي</label><input id="edit_national_id" value="${emp.national_id || ""}"></div>
-        <div class="edit-field"><label>البريد الإلكتروني</label><input value="${emp.email || "غير مسجل"}" disabled style="background:#F0EEE6;color:var(--gray);"></div>
+        <div class="edit-field"><label>البريد الإلكتروني</label><input value="${emp.email || "غير مسجل"}" disabled style="background:#EDF3F8;color:var(--gray);"></div>
         <div class="edit-field">
           <label>الحالة الوظيفية</label>
           <select id="edit_status">
@@ -2624,12 +2953,17 @@ function renderEmployeeEditForm(emp) {
       <div id="editSaveMsg" class="save-msg hidden"></div>
     </div>
 
-    <div class="card" style="margin-top:18px;">
+    <div class="card" id="employeePasswordSection" style="margin-top:18px;">
       <div class="card-header" style="background:var(--navy-light);">🔑 كلمة المرور</div>
       <div class="edit-grid">
         <div class="edit-field">
-          <label>كلمة مرور جديدة (اتركها فارغة لتوليد كلمة مرور مؤقتة قوية)</label>
-          <input id="edit_new_password" type="text" placeholder="توليد تلقائي">
+          <label>طريقة إنشاء كلمة المرور المؤقتة</label>
+          <select id="edit_password_source" onchange="document.getElementById('edit_new_password').disabled=this.value!=='generated'">
+            <option value="birth_date">من تاريخ الميلاد (يوم/شهر/سنة)</option>
+            <option value="national_id">من الرقم القومي</option>
+            <option value="generated">توليد تلقائي أو إدخال يدوي</option>
+          </select>
+          <input id="edit_new_password" type="text" placeholder="يُستخدم مع الاختيار الثالث فقط" disabled style="margin-top:8px;">
         </div>
       </div>
       <div class="form-actions">
@@ -2638,7 +2972,7 @@ function renderEmployeeEditForm(emp) {
       <div id="resetPassMsg" class="save-msg hidden"></div>
     </div>
 
-    <div class="section-divider">مرتب شهري</div>
+    <div class="section-divider" id="employeePayrollSection">شريط المرتب وسجل الأجور</div>
     <div class="selectors">
       <div><label>الشهر</label>
         <select id="hrMonthSelect" onchange="onHRPayrollFilterChange(${emp.id})">
@@ -2661,12 +2995,13 @@ async function resetEmployeePassword(empId) {
   const msg = document.getElementById("resetPassMsg");
   msg.className = "save-msg hidden";
   const newPass = document.getElementById("edit_new_password").value.trim();
+  const passwordSource = document.getElementById("edit_password_source").value;
 
   try {
     const res = await apiFetch(`${API_BASE}/api/admin/employees/${empId}/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(newPass ? { new_password: newPass } : {}),
+      body: JSON.stringify({ password_source: passwordSource, ...(newPass ? { new_password: newPass } : {}) }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "حصل خطأ");
@@ -2785,25 +3120,16 @@ async function saveHRPayroll(empId) {
 }
 
 /* ============================================================
-   بوابة اللمبة - اسحب الحبل عشان تنور وتظهر شاشة الدخول
+   صفحة البداية وحالة النظام - الإصدار 2.0.0
    ============================================================ */
-(function initLampGate() {
+function enterPortal() {
   const gate = document.getElementById('lampGate');
-  const chainWrap = document.getElementById('chainWrap');
-  let fired = false;
-
-  function pullChain() {
-    if (fired) return;
-    fired = true;
-    gate.classList.add('on');
-    chainWrap.classList.remove('idle');
-    chainWrap.classList.add('pulled');
-    setTimeout(() => { gate.classList.add('hidden'); }, 700);
-  }
-
-  chainWrap.addEventListener('click', pullChain);
-  chainWrap.addEventListener('touchstart', (e) => { e.preventDefault(); pullChain(); }, { passive: false });
-})();
+  gate.classList.add('on');
+  setTimeout(() => {
+    gate.classList.add('hidden');
+    document.getElementById('loginCode').focus();
+  }, 420);
+}
 
 /* ============================================================
    إظهار / إخفاء كلمة المرور في شاشة الدخول
@@ -2846,19 +3172,16 @@ menuToggleEl.addEventListener('click', toggleSidebar);
 sidebarBackdropEl.addEventListener('click', closeSidebar);
 sidebarCloseBtnEl.addEventListener('click', closeSidebar);
 </script>
-  <div id="devCredit" style="position:fixed;bottom:0;left:0;right:0;font-size:12px;font-weight:600;color:#ffffff;font-family:'Cairo',sans-serif;line-height:1.6;z-index:50;background:rgba(22,10,14,0.92);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;text-align:center;border-top:1px solid var(--gold);">
+  <div id="devCredit" style="position:fixed;bottom:0;left:0;right:0;font-size:11px;font-weight:600;color:#ffffff;font-family:'Cairo',sans-serif;line-height:1.6;z-index:50;background:rgba(20,8,12,0.97);padding:6px 14px;display:flex;align-items:center;justify-content:center;gap:11px;flex-wrap:wrap;text-align:center;border-top:1px solid var(--gold);">
     <span>تم تصميم وتطوير وبرمجة هذا النظام بالكامل بواسطة <b style="color:var(--gold-soft);">خالد يوسف المنسي</b> — واتساب: 01201413051</span>
-    <span style="opacity:0.7;">|</span>
-    <span id="footerVersion" style="opacity:0.85;"></span>
     <span style="opacity:0.7;">|</span>
     <span style="opacity:0.85;">© 2026 جميع الحقوق محفوظة</span>
     <span style="opacity:0.7;">|</span>
-    <button onclick="showAboutPage()" style="background:none;border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;cursor:pointer;">ℹ️ حول النظام</button>
     <a href="https://www.facebook.com/EgyptEETC/" target="_blank" rel="noopener" title="صفحة الشركة المصرية لنقل الكهرباء - الفيسبوك الرسمي" style="display:flex;align-items:center;justify-content:center;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
     </a>
     <a href="https://www.facebook.com/share/g/1EVn6FzQuq/" target="_blank" rel="noopener" title="صفحة المنظومة الإلكترونية الموحدة - منطقة الدلتا" style="display:flex;align-items:center;justify-content:center;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#C9A24B"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#1D5FA7"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
     </a>
   </div>
 
@@ -2889,10 +3212,19 @@ sidebarCloseBtnEl.addEventListener('click', closeSidebar);
   </div>
 
   <!-- شاشة البداية (Splash) -->
-  <div id="splashScreen" style="position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:'Cairo',sans-serif;">
-    <div style="font-family:'Tajawal',sans-serif;font-weight:800;font-size:22px;letter-spacing:1px;">Payroll Portal</div>
-    <div style="color:var(--gold-soft);font-size:13px;margin-top:10px;">Designed &amp; Developed by</div>
-    <div style="color:var(--gold);font-weight:800;font-size:16px;margin-top:2px;">Khaled Youssif Elmansy</div>
+  <div id="splashScreen" class="hidden">
+  </div>
+
+  <div id="birthdayOverlay" class="birthday-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="birthdayTitle">
+    <div id="birthdayConfetti" aria-hidden="true"></div>
+    <div class="birthday-card">
+      <img class="birthday-logo" src="assets/logo.jpg?v=delta-original" alt="شعار الشركة">
+      <div style="font-size:42px;line-height:1.2;margin-top:8px;">🎂🎉</div>
+      <h2 class="birthday-title" id="birthdayTitle">كل سنة وأنت طيب</h2>
+      <div id="birthdayMessage" style="font-size:16px;font-weight:700;line-height:1.9;"></div>
+      <div style="font-size:13px;color:var(--gray);margin-top:8px;">مع أطيب تمنيات الشركة المصرية لنقل الكهرباء — منطقة الدلتا</div>
+      <button type="button" class="btn-primary" onclick="closeBirthdayGreeting()" style="max-width:190px;margin:22px auto 0;display:block;">شكرًا ❤️</button>
+    </div>
   </div>
 
 
