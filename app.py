@@ -2226,8 +2226,82 @@ def admin_list_service_ratings():
 
 
 # ------------------------------------------------------------
-# 10) إحصائيات الحوافز وحركة أكواد الصرف (للأدمن فقط)
+# 10) إحصائيات البنود والمعاشات وحركة أكواد الصرف (للأدمن فقط)
 # ------------------------------------------------------------
+@app.route("/api/admin/statistics/items", methods=["GET"])
+@admin_required
+def admin_statistics_items():
+    month = request.args.get("month", type=int)
+    year = request.args.get("year", type=int)
+    if not month or not year or not 1 <= month <= 12:
+        return jsonify({"error": "لازم تحدد شهر وسنة صحيحين"}), 400
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT band_code, MAX(band_name) AS band_name
+        FROM payroll_items
+        WHERE month = ? AND year = ? AND band_code IS NOT NULL
+        GROUP BY band_code
+        ORDER BY TRY_CONVERT(INT, band_code), MAX(band_name)
+    """, month, year)
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([
+        {"band_code": r.band_code, "band_name": r.band_name or "بند غير مسمى"}
+        for r in rows
+    ])
+
+
+@app.route("/api/admin/statistics/item-total", methods=["GET"])
+@admin_required
+def admin_statistics_item_total():
+    month = request.args.get("month", type=int)
+    year = request.args.get("year", type=int)
+    band_code = request.args.get("band_code")
+    if not month or not year or not band_code or not 1 <= month <= 12:
+        return jsonify({"error": "اختيار الشهر والسنة والبند مطلوب"}), 400
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT MAX(band_name) AS band_name,
+               COALESCE(SUM(amount), 0) AS total,
+               COUNT(DISTINCT employee_id) AS employee_count
+        FROM payroll_items
+        WHERE month = ? AND year = ? AND CONVERT(NVARCHAR(50), band_code) = ?
+    """, month, year, str(band_code))
+    item_row = cursor.fetchone()
+
+    _ensure_code_sarf_history(cursor)
+    _sync_code_sarf_history(cursor, datetime.date.today())
+    conn.commit()
+    cursor.execute("""
+        SELECT e.employee_code, e.full_name, h.effective_date
+        FROM employee_code_sarf_history h
+        JOIN employees e ON e.id = h.employee_id
+        WHERE h.new_code_sarf = 908
+          AND YEAR(h.effective_date) = ? AND MONTH(h.effective_date) = ?
+        ORDER BY e.full_name
+    """, year, month)
+    retirement_rows = cursor.fetchall()
+    conn.close()
+
+    retirements = [{
+        "employee_code": r.employee_code,
+        "full_name": r.full_name,
+        "effective_date": r.effective_date.isoformat(),
+    } for r in retirement_rows]
+    return jsonify({
+        "band_code": band_code,
+        "band_name": item_row.band_name or "البند المختار",
+        "total": float(item_row.total or 0),
+        "employee_count": int(item_row.employee_count or 0),
+        "retirement_count": len(retirements),
+        "retirements": retirements,
+    })
+
+
 @app.route("/api/admin/statistics/incentive-bands", methods=["GET"])
 @admin_required
 def admin_incentive_bands():
@@ -2297,8 +2371,7 @@ def admin_employee_movements():
     if month: clause+=" AND MONTH(h.effective_date)=?"; params.append(month)
     cursor.execute(f"""SELECT h.old_code_sarf,h.new_code_sarf,h.effective_date,e.employee_code,e.full_name
         FROM employee_code_sarf_history h JOIN employees e ON e.id=h.employee_id
-        WHERE h.effective_date>='2026-07-01' AND {clause} AND h.new_code_sarf BETWEEN 2 AND 999
-          AND (h.old_code_sarf IS NOT NULL OR h.new_code_sarf IN (901,902,903,904,905,906,908,909))
+        WHERE h.effective_date>='2026-07-01' AND {clause} AND h.new_code_sarf BETWEEN 901 AND 909
         ORDER BY h.effective_date DESC,h.new_code_sarf,e.full_name""",*params)
     rows=cursor.fetchall(); conn.close(); movements=[]
     for r in rows:
