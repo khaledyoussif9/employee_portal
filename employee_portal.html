@@ -2955,8 +2955,8 @@ function renderEmployeeEditForm(emp) {
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
       <button class="btn-save" onclick="document.getElementById('employeeAdminData').scrollIntoView({behavior:'smooth'})">👤 البيانات الإدارية</button>
-      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📄 شريط المرتب</button>
-      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📋 سجل الأجور</button>
+      <button class="btn-save" onclick="document.getElementById('employeePayslipSection').scrollIntoView({behavior:'smooth'})">📄 شريط المرتب</button>
+      <button class="btn-save" onclick="document.getElementById('employeeWageSection').scrollIntoView({behavior:'smooth'})">📋 سجل الأجور</button>
       <button class="btn-save" style="background:var(--red)" onclick="document.getElementById('employeePasswordSection').scrollIntoView({behavior:'smooth'})">🔑 إعادة كلمة المرور</button>
     </div>
 
@@ -3002,7 +3002,7 @@ function renderEmployeeEditForm(emp) {
       <div id="resetPassMsg" class="save-msg hidden"></div>
     </div>
 
-    <div class="section-divider" id="employeePayrollSection">شريط المرتب وسجل الأجور</div>
+    <div class="section-divider" id="employeePayslipSection">📄 شريط المرتب</div>
     <div class="selectors">
       <div><label>الشهر</label>
         <select id="hrMonthSelect" onchange="onHRPayrollFilterChange(${emp.id})">
@@ -3016,7 +3016,9 @@ function renderEmployeeEditForm(emp) {
         </select>
       </div>
     </div>
-    <div id="hrPayrollForm"></div>
+    <div id="hrPayslipView"></div>
+    <div class="section-divider" id="employeeWageSection">📋 سجل الأجور</div>
+    <div id="hrWageView"></div>
   `;
   loadHRPayrollForm(emp.id);
 }
@@ -3081,37 +3083,45 @@ function onHRPayrollFilterChange(empId) {
 }
 
 async function loadHRPayrollForm(empId) {
-  const form = document.getElementById("hrPayrollForm");
-  form.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
+  const payslipBox = document.getElementById("hrPayslipView");
+  const wageBox = document.getElementById("hrWageView");
+  const query = `employee_id=${empId}&month=${currentPayrollMonth + 1}&year=${currentPayrollYear}`;
+  payslipBox.innerHTML = `<div class="state-box"><span class="spin"></span> جاري تحميل شريط المرتب...</div>`;
+  wageBox.innerHTML = `<div class="state-box"><span class="spin"></span> جاري تحميل سجل الأجور...</div>`;
+
+  const money = value => Number(value || 0).toLocaleString("ar-EG", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const itemsTable = items => items?.length ? `
+    <div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;text-align:center;">
+      <thead><tr><th>البند</th><th>النوع</th><th>القيمة</th></tr></thead>
+      <tbody>${items.map(item=>`<tr><td>${escapeHtml(item.name)}</td><td>${item.type === "earning" ? "استحقاق" : item.type === "deduction" ? "استقطاع" : "بيان"}</td><td>${money(item.amount)} جنيه</td></tr>`).join("")}</tbody>
+    </table></div>` : `<div class="state-box dashed">لا توجد بنود</div>`;
 
   try {
-    const res = await apiFetch(`${API_BASE}/api/admin/payroll?employee_id=${empId}&month=${currentPayrollMonth + 1}&year=${currentPayrollYear}`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    });
+    const res = await apiFetch(`${API_BASE}/api/payslip?${query}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "حصل خطأ");
-
-    const v = data || {};
-
-    form.innerHTML = `
-      <div class="card">
-        <div class="edit-grid">
-          <div class="edit-field"><label>المرتب الأساسي</label><input type="number" id="pay_basic" value="${v.basic_salary ?? 0}"></div>
-          <div class="edit-field"><label>بدل انتقال</label><input type="number" id="pay_transport" value="${v.transport_allowance ?? 0}"></div>
-          <div class="edit-field"><label>بدل سكن</label><input type="number" id="pay_housing" value="${v.housing_allowance ?? 0}"></div>
-          <div class="edit-field"><label>حافز / مكافأة</label><input type="number" id="pay_bonus" value="${v.bonus ?? 0}"></div>
-          <div class="edit-field"><label>التأمينات</label><input type="number" id="pay_insurance" value="${v.insurance_deduction ?? 0}"></div>
-          <div class="edit-field"><label>الضريبة</label><input type="number" id="pay_tax" value="${v.tax_deduction ?? 0}"></div>
-          <div class="edit-field"><label>خصم غياب</label><input type="number" id="pay_absence" value="${v.absence_deduction ?? 0}"></div>
-        </div>
-        <div class="form-actions">
-          <button class="btn-save" onclick="saveHRPayroll(${empId})">${data ? "تحديث سجل المرتب" : "إضافة سجل مرتب جديد"}</button>
-        </div>
-        <div id="paySaveMsg" class="save-msg hidden"></div>
-      </div>
-    `;
+    if (!res.ok) throw new Error(data.error || "تعذر تحميل شريط المرتب");
+    payslipBox.innerHTML = `<div class="card">${itemsTable(data.items)}<div class="stats-grid" style="padding:16px;">
+      <div class="stat-card"><div class="stat-title">إجمالي الاستحقاقات</div><div class="stat-value">${money(data.earnings_total)}</div></div>
+      <div class="stat-card"><div class="stat-title">إجمالي الاستقطاعات</div><div class="stat-value">${money(data.deductions_total)}</div></div>
+      <div class="stat-card"><div class="stat-title">صافي المرتب</div><div class="stat-value">${money(data.net_salary)}</div></div>
+    </div></div>`;
   } catch (e) {
-    form.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
+    payslipBox.innerHTML = `<div class="state-box dashed">${escapeHtml(e.message)}</div>`;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/wage-record?${query}`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "تعذر تحميل سجل الأجور");
+    wageBox.innerHTML = data.disbursements.map(d=>`<div class="card" style="margin-bottom:14px;">
+      <div class="card-header">صرفية رقم ${d.sarfia_no}</div>${itemsTable(d.items)}
+      <div class="stats-grid" style="padding:16px;">
+        <div class="stat-card"><div class="stat-title">الاستحقاقات</div><div class="stat-value">${money(d.earnings_total)}</div></div>
+        <div class="stat-card"><div class="stat-title">الاستقطاعات</div><div class="stat-value">${money(d.deductions_total)}</div></div>
+        <div class="stat-card"><div class="stat-title">الصافي</div><div class="stat-value">${money(d.net_salary)}</div></div>
+      </div></div>`).join("");
+  } catch (e) {
+    wageBox.innerHTML = `<div class="state-box dashed">${escapeHtml(e.message)}</div>`;
   }
 }
 
