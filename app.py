@@ -2327,9 +2327,28 @@ def admin_statistics_item_total():
     valid_percentages = [r for r in percentages if r["item_percent"] is not None]
     highest_percent = max((r["item_percent"] for r in valid_percentages), default=None)
     lowest_percent = min((r["item_percent"] for r in valid_percentages), default=None)
+    band_name = item_row.band_name or "البند المختار"
+    standard_percent = None
+    if "حافز" in band_name and "الجهود" in band_name:
+        standard_percent = 100.0
+    elif "حافز" in band_name and "المميز" in band_name:
+        standard_percent = 125.0
+
+    above_standard = []
+    below_standard = []
+    matching_standard = []
+    if standard_percent is not None:
+        for row in valid_percentages:
+            row["difference_percent"] = round(row["item_percent"] - standard_percent, 2)
+            if round(row["item_percent"], 2) > standard_percent:
+                above_standard.append(row)
+            elif round(row["item_percent"], 2) < standard_percent:
+                below_standard.append(row)
+            else:
+                matching_standard.append(row)
     return jsonify({
         "band_code": band_code,
-        "band_name": item_row.band_name or "البند المختار",
+        "band_name": band_name,
         "total": float(item_row.total or 0),
         "employee_count": int(item_row.employee_count or 0),
         "highest_percent": highest_percent,
@@ -2337,6 +2356,10 @@ def admin_statistics_item_total():
         "highest_employees": [r for r in valid_percentages if r["item_percent"] == highest_percent],
         "lowest_employees": [r for r in valid_percentages if r["item_percent"] == lowest_percent],
         "employees_without_june_basic": [r for r in percentages if r["item_percent"] is None],
+        "standard_percent": standard_percent,
+        "above_standard": above_standard,
+        "below_standard": below_standard,
+        "matching_standard_count": len(matching_standard),
         "retirement_count": len(retirements),
         "retirements": retirements,
     })
