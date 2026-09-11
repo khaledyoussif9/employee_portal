@@ -914,9 +914,9 @@
           <strong id="sidebarEmployeeName">الموظف</strong>
         </div>
         <button class="nav-btn active" id="navHome" onclick="switchTab('home')">🏠 الرئيسية</button>
-        <button class="nav-btn" id="navAdmin" onclick="switchTab('admin')">👤 تعديل البيانات</button>
         <button class="nav-btn" id="navPayslip" onclick="switchTab('payslip')">📄 شريط المرتب</button>
         <button class="nav-btn" id="navWage" onclick="switchTab('wage')">📋 سجل الأجور</button>
+        <button class="nav-btn" id="navAdmin" onclick="switchTab('admin')">👤 تعديل البيانات</button>
         <button class="nav-btn" id="navChangePass" onclick="switchTab('changepass')">🔑 تغيير كلمة المرور</button>
         <button class="nav-btn" id="navContact" onclick="switchTab('contact')">✉️ تواصل معنا</button>
         <button class="nav-btn" id="navRating" onclick="switchTab('rating')">⭐ تقييم الخدمة</button>
@@ -929,6 +929,8 @@
         <div class="admin-v2-nav hidden" id="adminV2Nav">
           <button class="nav-btn" id="navEmployeeSearch" onclick="switchTab('employeeSearch')">🔎 البحث الشامل</button>
           <button class="nav-btn" id="navStatistics" onclick="switchTab('statistics')">📊 الإحصائيات</button>
+          <button class="nav-btn" id="navAdminMessages" onclick="switchTab('adminMessages')">💬 رسائل الموظفين</button>
+          <button class="nav-btn" id="navAdminRatings" onclick="switchTab('adminRatings')">⭐ تقييمات الخدمة</button>
         </div>
       </div>
 
@@ -959,6 +961,8 @@
         <div id="tabContact" class="hidden"></div>
         <div id="tabRating" class="hidden"></div>
         <div id="tabHR" class="hidden"></div>
+        <div id="tabAdminMessages" class="hidden"></div>
+        <div id="tabAdminRatings" class="hidden"></div>
         <div id="tabEmployeeSearch" class="hidden"></div>
         <div id="tabStatistics" class="hidden"></div>
       </div>
@@ -1402,6 +1406,8 @@ async function handleLogin() {
 function handleLogout() {
   session = null;
   window._birthdayChecked = false;
+  document.getElementById("navHR").classList.add("hidden");
+  document.getElementById("adminV2Nav").classList.add("hidden");
   document.getElementById("appScreen").classList.add("hidden");
   document.getElementById("loginScreen").classList.remove("hidden");
   document.getElementById("loginPassword").value = "";
@@ -1595,6 +1601,8 @@ function switchTab(tab) {
   document.getElementById("navHR").classList.toggle("active", tab === "hr");
   document.getElementById("navEmployeeSearch").classList.toggle("active", tab === "employeeSearch");
   document.getElementById("navStatistics").classList.toggle("active", tab === "statistics");
+  document.getElementById("navAdminMessages").classList.toggle("active", tab === "adminMessages");
+  document.getElementById("navAdminRatings").classList.toggle("active", tab === "adminRatings");
   document.getElementById("tabHome").classList.toggle("hidden", tab !== "home");
   document.getElementById("tabAdmin").classList.toggle("hidden", tab !== "admin");
   document.getElementById("tabPayslip").classList.toggle("hidden", tab !== "payslip");
@@ -1603,6 +1611,8 @@ function switchTab(tab) {
   document.getElementById("tabContact").classList.toggle("hidden", tab !== "contact");
   document.getElementById("tabRating").classList.toggle("hidden", tab !== "rating");
   document.getElementById("tabHR").classList.toggle("hidden", tab !== "hr");
+  document.getElementById("tabAdminMessages").classList.toggle("hidden", tab !== "adminMessages");
+  document.getElementById("tabAdminRatings").classList.toggle("hidden", tab !== "adminRatings");
   document.getElementById("tabEmployeeSearch").classList.toggle("hidden", tab !== "employeeSearch");
   document.getElementById("tabStatistics").classList.toggle("hidden", tab !== "statistics");
 
@@ -1614,6 +1624,8 @@ function switchTab(tab) {
   else if (tab === "contact") renderContactShell();
   else if (tab === "rating") renderRatingShell();
   else if (tab === "hr") renderHRPanel();
+  else if (tab === "adminMessages") renderAdminMessagesPanel();
+  else if (tab === "adminRatings") renderAdminRatingsPanel();
   else if (tab === "employeeSearch") renderEmployeeSearchPanel();
   else if (tab === "statistics") renderStatisticsPanel();
 
@@ -2596,20 +2608,30 @@ function renderHRPanel() {
       <div id="annListBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
     </div>
 
-    <div class="section-divider">✉️ رسائل الموظفين</div>
-    <div id="messagesInboxBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
-
-    <div class="section-divider">⭐ تقييم الخدمة</div>
-    <div id="ratingsBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
-
     <div class="section-divider">🕵️ سجل التدقيق (آخر 200 عملية)</div>
     <div id="auditLogBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
   `;
   document.getElementById("hrSearchInput")?.focus();
-  loadMessagesInbox();
   loadAnnouncementsList();
-  loadServiceRatings();
   loadAuditLog();
+}
+
+function renderAdminMessagesPanel() {
+  const box = document.getElementById("tabAdminMessages");
+  box.innerHTML = `
+    <div class="section-divider">💬 رسائل الموظفين</div>
+    <div id="messagesInboxBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+  `;
+  loadMessagesInbox();
+}
+
+function renderAdminRatingsPanel() {
+  const box = document.getElementById("tabAdminRatings");
+  box.innerHTML = `
+    <div class="section-divider">⭐ تقييمات الخدمة</div>
+    <div id="ratingsBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+  `;
+  loadServiceRatings();
 }
 
 async function loadAuditLog() {
