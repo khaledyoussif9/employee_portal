@@ -60,6 +60,18 @@ DEMO_EMPLOYEE_CODE = os.getenv("DEMO_EMPLOYEE_CODE", "11092026")
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "11092026")
 DEMO_EMPLOYEE_ID = 0
 
+
+def birth_date_from_national_id(national_id):
+    """يستخرج تاريخ الميلاد من الرقم القومي المصري بعد التحقق من صلاحيته."""
+    value = str(national_id or "").strip()
+    if not (value.isdigit() and len(value) == 14 and value[0] in "23"):
+        return None
+    century = 1900 if value[0] == "2" else 2000
+    try:
+        return datetime.date(century + int(value[1:3]), int(value[3:5]), int(value[5:7]))
+    except ValueError:
+        return None
+
 def _loan_key(name):
     """اسم موحّد لربط بند القسط ببند الرصيد المقابل له."""
     value = re.sub(r"(?:قسط|رصيد|المتبقي|متبقى|متبقي|باقي)", " ", name or "", flags=re.IGNORECASE)
@@ -87,6 +99,27 @@ def attach_installment_balances(items):
     # لو تعذر الربط، نظهر الرصيد كبند معلومات مستقل بدل فقده.
     visible_items.extend({**item, "type": "balance"} for item in unmatched)
     return visible_items
+
+
+def load_sarfia_names(cursor, month, year):
+    """يربط رقم الصرفية باسمها الرسمي المسجل في جداول إنشاء الصرفيات."""
+    cursor.execute(
+        """
+        SELECT
+            s.Sarfia_no,
+            MAX(NULLIF(LTRIM(RTRIM(d.SarfiaDesc_Desc)), '')) AS sarfia_name
+        FROM Payroll_Sarfiat AS s
+        INNER JOIN payroll_SarfiaDesc AS d
+            ON d.SarfiaDesc_ID = s.SarfiaDesc_ID
+        WHERE s.Sarfia_Month = ? AND s.Sarfia_Year = ?
+        GROUP BY s.Sarfia_no
+        """,
+        month, year,
+    )
+    return {
+        int(row.Sarfia_no): (row.sarfia_name or "صرفية إضافية")
+        for row in cursor.fetchall()
+    }
 
 
 def demo_payslip(month, year):
@@ -127,6 +160,7 @@ def demo_wage_record(month, year):
         "year": year,
         "disbursements": [{
             "sarfia_no": 2,
+            "sarfia_name": "مكافأة مجهود غير عادي",
             "items": items,
             "earnings_total": earnings_total,
             "deductions_total": deductions_total,
@@ -197,12 +231,16 @@ def log_action(admin_id, action_type, target_employee_id=None, details=None):
 # ------------------------------------------------------------
 @app.route("/")
 def home():
-    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "employee_portal.html")
+    response = send_from_directory(os.path.dirname(os.path.abspath(__file__)), "employee_portal.html", max_age=0)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 
 @app.route("/assets/<path:filename>")
 def serve_asset(filename):
-    return send_from_directory(ASSET_FOLDER, filename)
+    response = send_from_directory(ASSET_FOLDER, filename, max_age=0)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 
 def token_required(f):
@@ -239,45 +277,6 @@ def admin_required(f):
             return jsonify({"error": "الصفحة دي للموارد البشرية بس"}), 403
         return f(*args, **kwargs)
     return decorated
-
-
-EMPLOYEE_EXIT_CODES = {
-    901: "إجازة بدون مرتب", 902: "حبس أو خدمة عسكرية", 903: "فصل من الخدمة",
-    904: "نقل إلى منطقة أخرى", 905: "استقالة", 906: "نقل إلى شركة أخرى",
-    908: "معاش", 909: "وفاة",
-}
-
-
-def _ensure_code_sarf_history(cursor):
-    cursor.execute("""
-        IF OBJECT_ID(N'dbo.employee_code_sarf_history', N'U') IS NULL
-        BEGIN
-            CREATE TABLE dbo.employee_code_sarf_history (
-                id INT IDENTITY(1,1) PRIMARY KEY,
-                employee_id INT NOT NULL,
-                old_code_sarf INT NULL,
-                new_code_sarf INT NOT NULL,
-                effective_date DATE NOT NULL,
-                detected_at DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-                CONSTRAINT FK_code_sarf_history_employee FOREIGN KEY (employee_id) REFERENCES dbo.employees(id)
-            );
-            CREATE INDEX IX_code_sarf_history_date_code ON dbo.employee_code_sarf_history(effective_date, new_code_sarf);
-        END
-    """)
-
-
-def _sync_code_sarf_history(cursor, effective_date):
-    cursor.execute("""
-        INSERT INTO dbo.employee_code_sarf_history (employee_id, old_code_sarf, new_code_sarf, effective_date)
-        SELECT e.id, last_h.new_code_sarf, TRY_CONVERT(INT, e.code_sarf), ?
-        FROM dbo.employees e
-        OUTER APPLY (
-            SELECT TOP 1 h.new_code_sarf FROM dbo.employee_code_sarf_history h
-            WHERE h.employee_id = e.id ORDER BY h.effective_date DESC, h.id DESC
-        ) last_h
-        WHERE TRY_CONVERT(INT, e.code_sarf) BETWEEN 2 AND 999
-          AND (last_h.new_code_sarf IS NULL OR last_h.new_code_sarf <> TRY_CONVERT(INT, e.code_sarf))
-    """, effective_date)
 
 
 # ------------------------------------------------------------
@@ -568,6 +567,7 @@ def complete_profile():
 @token_required
 def get_my_info():
     if request.is_demo:
+        demo_birth_date = birth_date_from_national_id("30109011234567")
         return jsonify({
             "employee_code": DEMO_EMPLOYEE_CODE,
             "insurance_number": "000000000",
@@ -582,6 +582,8 @@ def get_my_info():
             "photo_url": None,
             "is_demo": True,
             "read_only": True,
+            "birth_day": demo_birth_date.day if demo_birth_date else None,
+            "birth_month": demo_birth_date.month if demo_birth_date else None,
         })
 
     conn = get_connection()
@@ -606,6 +608,7 @@ def get_my_info():
     photo_filename = f"employee_{request.employee_id}.jpg"
     photo_path = os.path.join(PROFILE_PHOTO_FOLDER, photo_filename)
 
+    birth_date = birth_date_from_national_id(row.national_id)
     return jsonify({
         "employee_code": row.employee_code,
         "insurance_number": row.insurance_number,
@@ -618,6 +621,9 @@ def get_my_info():
         "department": row.department_name,
         "email": row.email,
         "photo_url": f"/uploads/profile_photos/{photo_filename}" if os.path.isfile(photo_path) else None,
+        # الواجهة تحتاج اليوم والشهر فقط للاحتفال، ولا نرسل سنة الميلاد أو العمر.
+        "birth_day": birth_date.day if birth_date else None,
+        "birth_month": birth_date.month if birth_date else None,
     })
 
 
@@ -716,7 +722,6 @@ def upload_my_photo():
 def get_payslip():
     month = request.args.get("month", type=int)
     year = request.args.get("year", type=int)
-    requested_employee_id = request.args.get("employee_id", type=int)
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
@@ -724,16 +729,10 @@ def get_payslip():
     if request.is_demo:
         return jsonify(demo_payslip(month, year))
 
-    target_employee_id = request.employee_id
-    if requested_employee_id:
-        if request.role != "hr_admin":
-            return jsonify({"error": "غير مسموح بعرض مرتب موظف آخر"}), 403
-        target_employee_id = requested_employee_id
-
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT code_sarf FROM employees WHERE id = ?", target_employee_id)
+    cursor.execute("SELECT code_sarf FROM employees WHERE id = ?", request.employee_id)
     code_sarf_row = cursor.fetchone()
     code_sarf = code_sarf_row.code_sarf if code_sarf_row else None
 
@@ -761,7 +760,7 @@ def get_payslip():
             band_type
         ORDER BY band_type DESC, amount DESC
         """,
-        target_employee_id,
+        request.employee_id,
         month,
         year,
     )
@@ -801,7 +800,7 @@ def get_payslip():
         FROM payroll_records
         WHERE employee_id = ? AND month = ? AND year = ?
         """,
-        target_employee_id,
+        request.employee_id,
         month,
         year,
     )
@@ -847,19 +846,12 @@ def get_payslip():
 def get_wage_record():
     month = request.args.get("month", type=int)
     year = request.args.get("year", type=int)
-    requested_employee_id = request.args.get("employee_id", type=int)
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
 
     if request.is_demo:
         return jsonify(demo_wage_record(month, year))
-
-    target_employee_id = request.employee_id
-    if requested_employee_id:
-        if request.role != "hr_admin":
-            return jsonify({"error": "غير مسموح بعرض سجل أجور موظف آخر"}), 403
-        target_employee_id = requested_employee_id
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -875,11 +867,12 @@ def get_wage_record():
         GROUP BY sarfia_no, band_name, band_type
         ORDER BY sarfia_no, band_type DESC, amount DESC
         """,
-        target_employee_id,
+        request.employee_id,
         month,
         year,
     )
     rows = cursor.fetchall()
+    sarfia_names = load_sarfia_names(cursor, month, year)
     conn.close()
 
     if not rows:
@@ -903,6 +896,7 @@ def get_wage_record():
         deductions_total = sum(i["amount"] for i in d["items"] if i["type"] == "deduction")
         result.append({
             "sarfia_no": sarfia_no,
+            "sarfia_name": sarfia_names.get(int(sarfia_no), "صرفية إضافية"),
             "items": d["items"],
             "earnings_total": earnings_total,
             "deductions_total": deductions_total,
@@ -934,8 +928,8 @@ def download_payslip_pdf():
 
     if request.is_demo:
         data = demo_payslip(month, year)
-        earnings = [(i["name"], i["amount"]) for i in data["items"] if i["type"] == "earning"]
-        deductions = [(i["name"], i["amount"]) for i in data["items"] if i["type"] == "deduction"]
+        earnings = [i for i in data["items"] if i["type"] == "earning"]
+        deductions = [i for i in data["items"] if i["type"] == "deduction"]
         filename = f"payslip_demo_{year}_{month}_{uuid.uuid4().hex[:8]}.pdf"
         filepath = os.path.join(PDF_TEMP_FOLDER, filename)
         generate_payslip_pdf(
@@ -1005,12 +999,9 @@ def download_payslip_pdf():
         }
         for r in rows
     ])
-    earnings = [(i["name"], i["amount"]) for i in pdf_items if i["type"] == "earning"]
-    deductions = [
-        (f'{i["name"]} (الرصيد المتبقي: {i["balance"]:,.2f})' if "balance" in i else i["name"], i["amount"])
-        for i in pdf_items if i["type"] == "deduction"
-    ]
-    net_salary = sum(a for _, a in earnings) - sum(a for _, a in deductions)
+    earnings = [i for i in pdf_items if i["type"] == "earning"]
+    deductions = [i for i in pdf_items if i["type"] == "deduction"]
+    net_salary = sum(i["amount"] for i in earnings) - sum(i["amount"] for i in deductions)
 
     filename = f"payslip_{emp_row.employee_code}_{year}_{month}_{uuid.uuid4().hex[:8]}.pdf"
     filepath = os.path.join(PDF_TEMP_FOLDER, filename)
@@ -1047,6 +1038,7 @@ def download_wage_record_pdf():
             deductions = [(i["name"], i["amount"]) for i in entry["items"] if i["type"] == "deduction"]
             disbursements.append({
                 "sarfia_no": entry["sarfia_no"],
+                "sarfia_name": entry.get("sarfia_name", "صرفية إضافية"),
                 "earnings": earnings,
                 "deductions": deductions,
                 "net_salary": entry["net_salary"],
@@ -1089,6 +1081,7 @@ def download_wage_record_pdf():
         request.employee_id, month, year,
     )
     rows = cursor.fetchall()
+    sarfia_names = load_sarfia_names(cursor, month, year)
     conn.close()
 
     if not rows:
@@ -1106,6 +1099,7 @@ def download_wage_record_pdf():
         d = grouped[sarfia_no]["deductions"]
         disbursements.append({
             "sarfia_no": sarfia_no,
+            "sarfia_name": sarfia_names.get(int(sarfia_no), "صرفية إضافية"),
             "earnings": e,
             "deductions": d,
             "net_salary": sum(a for _, a in e) - sum(a for _, a in d),
@@ -1405,18 +1399,35 @@ def admin_update_employee(emp_id):
 @admin_required
 def admin_reset_password(emp_id):
     data = request.get_json() or {}
-    new_password = data.get("new_password") or secrets.token_urlsafe(9)
+    password_source = (data.get("password_source") or "generated").strip().lower()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT email, full_name, national_id FROM employees WHERE id = ?", emp_id)
+    emp_row = cursor.fetchone()
+
+    if emp_row is None:
+        conn.close()
+        return jsonify({"error": "الموظف غير موجود"}), 404
+
+    if password_source == "national_id":
+        new_password = (emp_row.national_id or "").strip()
+        if not (new_password.isdigit() and len(new_password) == 14):
+            conn.close()
+            return jsonify({"error": "الرقم القومي غير مسجل أو غير صحيح"}), 400
+    elif password_source == "birth_date":
+        birth_date = birth_date_from_national_id(emp_row.national_id)
+        if birth_date is None:
+            conn.close()
+            return jsonify({"error": "تعذر استخراج تاريخ الميلاد من الرقم القومي"}), 400
+        new_password = birth_date.strftime("%d%m%Y")
+    else:
+        new_password = data.get("new_password") or secrets.token_urlsafe(9)
 
     if len(new_password) < 8:
         return jsonify({"error": "كلمة المرور يجب ألا تقل عن 8 أحرف"}), 400
 
     new_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT email, full_name FROM employees WHERE id = ?", emp_id)
-    emp_row = cursor.fetchone()
 
     cursor.execute(
         "UPDATE users SET password_hash = ?, must_change_password = 1 WHERE employee_id = ?",
@@ -1459,6 +1470,154 @@ def admin_reset_password(emp_id):
         "message": "تم تغيير كلمة المرور بنجاح" + (" وتم إرسالها على إيميل الموظف" if email_sent else " (الموظف معندوش إيميل مسجل، لازم تبلّغه يدويًا)"),
         "new_password": new_password,
         "email_sent": email_sent,
+        "password_source": password_source,
+    })
+
+
+# ------------------------------------------------------------
+# 5.6) [إداري] إحصائيات الرواتب والمعاشات والبنود - الإصدار 2.0.0
+# ------------------------------------------------------------
+@app.route("/api/admin/statistics/summary", methods=["GET"])
+@admin_required
+def admin_statistics_summary():
+    month = request.args.get("month", type=int)
+    year = request.args.get("year", type=int)
+    if not month or not year or month not in range(1, 13):
+        return jsonify({"error": "لازم تحدد شهر وسنة صحيحين"}), 400
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        WITH salary AS (
+            SELECT p.employee_id,
+                   SUM(CASE WHEN p.band_type = 'earning' THEN p.amount ELSE 0 END) AS gross_salary,
+                   SUM(CASE WHEN p.band_type = 'deduction' THEN p.amount ELSE 0 END) AS deductions,
+                   SUM(CASE WHEN p.band_type = 'earning' THEN p.amount ELSE -p.amount END) AS net_salary,
+                   SUM(CASE WHEN p.band_type = 'earning' AND p.band_name LIKE N'%حافز%' THEN p.amount ELSE 0 END) AS incentive
+            FROM payroll_items p
+            WHERE p.month = ? AND p.year = ? AND p.sarfia_no = 1
+            GROUP BY p.employee_id
+        ), ranked AS (
+            SELECT s.*, e.employee_code, e.full_name,
+                   CASE WHEN s.gross_salary > 0 THEN (s.incentive * 100.0 / s.gross_salary) ELSE 0 END AS incentive_percentage
+            FROM salary s
+            JOIN employees e ON e.id = s.employee_id
+        )
+        SELECT
+          (SELECT TOP 1 employee_code FROM ranked ORDER BY gross_salary DESC) AS highest_gross_code,
+          (SELECT TOP 1 full_name FROM ranked ORDER BY gross_salary DESC) AS highest_gross_name,
+          (SELECT TOP 1 gross_salary FROM ranked ORDER BY gross_salary DESC) AS highest_gross_value,
+          (SELECT TOP 1 employee_code FROM ranked ORDER BY net_salary DESC) AS highest_net_code,
+          (SELECT TOP 1 full_name FROM ranked ORDER BY net_salary DESC) AS highest_net_name,
+          (SELECT TOP 1 net_salary FROM ranked ORDER BY net_salary DESC) AS highest_net_value,
+          (SELECT TOP 1 employee_code FROM ranked WHERE net_salary > 0 ORDER BY net_salary ASC) AS lowest_net_code,
+          (SELECT TOP 1 full_name FROM ranked WHERE net_salary > 0 ORDER BY net_salary ASC) AS lowest_net_name,
+          (SELECT TOP 1 net_salary FROM ranked WHERE net_salary > 0 ORDER BY net_salary ASC) AS lowest_net_value,
+          (SELECT TOP 1 employee_code FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage DESC) AS highest_incentive_code,
+          (SELECT TOP 1 full_name FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage DESC) AS highest_incentive_name,
+          (SELECT TOP 1 incentive_percentage FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage DESC) AS highest_incentive_value,
+          (SELECT TOP 1 employee_code FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage ASC) AS lowest_incentive_code,
+          (SELECT TOP 1 full_name FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage ASC) AS lowest_incentive_name,
+          (SELECT TOP 1 incentive_percentage FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage ASC) AS lowest_incentive_value,
+          (SELECT COUNT(*) FROM ranked) AS employee_count
+        """,
+        month, year,
+    )
+    row = cursor.fetchone()
+
+    cursor.execute(
+        """
+        WITH births AS (
+          SELECT TRY_CONVERT(date,
+            (CASE LEFT(national_id, 1) WHEN '2' THEN '19' WHEN '3' THEN '20' END) +
+            SUBSTRING(national_id, 2, 2) + '-' + SUBSTRING(national_id, 4, 2) + '-' + SUBSTRING(national_id, 6, 2)
+          ) AS birth_date
+          FROM employees
+          WHERE LEN(national_id) = 14
+        ), retirements AS (
+          SELECT DATEADD(year, 60, birth_date) AS retirement_date
+          FROM births WHERE birth_date IS NOT NULL
+        )
+        SELECT
+          SUM(CASE WHEN MONTH(retirement_date) = ? AND YEAR(retirement_date) = ? THEN 1 ELSE 0 END) AS month_count,
+          SUM(CASE WHEN YEAR(retirement_date) = ? THEN 1 ELSE 0 END) AS year_count
+        FROM retirements
+        """,
+        month, year, year,
+    )
+    retirement = cursor.fetchone()
+    conn.close()
+
+    def metric(prefix, suffix="value"):
+        value = getattr(row, f"{prefix}_{suffix}", None) if row else None
+        return {
+            "employee_code": getattr(row, f"{prefix}_code", None) if row else None,
+            "full_name": getattr(row, f"{prefix}_name", None) if row else None,
+            "value": float(value) if value is not None else None,
+        }
+
+    return jsonify({
+        "month": month,
+        "year": year,
+        "employee_count": int(row.employee_count or 0) if row else 0,
+        "highest_gross": metric("highest_gross"),
+        "highest_net": metric("highest_net"),
+        "lowest_net": metric("lowest_net"),
+        "highest_incentive_percentage": metric("highest_incentive"),
+        "lowest_incentive_percentage": metric("lowest_incentive"),
+        "retirements": {
+            "month": int(retirement.month_count or 0) if retirement else 0,
+            "year": int(retirement.year_count or 0) if retirement else 0,
+        },
+    })
+
+
+@app.route("/api/admin/statistics/items", methods=["GET"])
+@admin_required
+def admin_statistics_items():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT band_code, MAX(band_name) AS band_name
+        FROM payroll_items
+        GROUP BY band_code
+        ORDER BY MAX(band_name)
+        """
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"band_code": int(r.band_code), "band_name": r.band_name or f"بند {r.band_code}"} for r in rows])
+
+
+@app.route("/api/admin/statistics/item-total", methods=["GET"])
+@admin_required
+def admin_statistics_item_total():
+    month = request.args.get("month", type=int)
+    year = request.args.get("year", type=int)
+    band_code = request.args.get("band_code", type=int)
+    if not month or not year or band_code is None:
+        return jsonify({"error": "حدد الشهر والسنة والبند"}), 400
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT MAX(band_name) AS band_name, COALESCE(SUM(amount), 0) AS total,
+               COUNT(DISTINCT employee_id) AS employee_count
+        FROM payroll_items
+        WHERE month = ? AND year = ? AND band_code = ?
+        """,
+        month, year, band_code,
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return jsonify({
+        "band_code": band_code,
+        "band_name": row.band_name if row and row.band_name else f"بند {band_code}",
+        "total": float(row.total or 0) if row else 0,
+        "employee_count": int(row.employee_count or 0) if row else 0,
     })
 
 
@@ -2240,228 +2399,7 @@ def admin_list_service_ratings():
 
 
 # ------------------------------------------------------------
-# 10) إحصائيات البنود والمعاشات وحركة أكواد الصرف (للأدمن فقط)
-# ------------------------------------------------------------
-@app.route("/api/admin/statistics/items", methods=["GET"])
-@admin_required
-def admin_statistics_items():
-    month = request.args.get("month", type=int)
-    year = request.args.get("year", type=int)
-    if not month or not year or not 1 <= month <= 12:
-        return jsonify({"error": "لازم تحدد شهر وسنة صحيحين"}), 400
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT band_code, MAX(band_name) AS band_name
-        FROM payroll_items
-        WHERE month = ? AND year = ? AND band_code IS NOT NULL
-        GROUP BY band_code
-        ORDER BY TRY_CONVERT(INT, band_code), MAX(band_name)
-    """, month, year)
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([
-        {"band_code": r.band_code, "band_name": r.band_name or "بند غير مسمى"}
-        for r in rows
-    ])
-
-
-@app.route("/api/admin/statistics/item-total", methods=["GET"])
-@admin_required
-def admin_statistics_item_total():
-    month = request.args.get("month", type=int)
-    year = request.args.get("year", type=int)
-    band_code = request.args.get("band_code")
-    if not month or not year or not band_code or not 1 <= month <= 12:
-        return jsonify({"error": "اختيار الشهر والسنة والبند مطلوب"}), 400
-
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT MAX(band_name) AS band_name,
-               COALESCE(SUM(amount), 0) AS total,
-               COUNT(DISTINCT employee_id) AS employee_count
-        FROM payroll_items
-        WHERE month = ? AND year = ? AND CONVERT(NVARCHAR(50), band_code) = ?
-    """, month, year, str(band_code))
-    item_row = cursor.fetchone()
-
-    cursor.execute("""
-        WITH june_basic AS (
-            SELECT employee_id, SUM(amount) AS june_basic
-            FROM payroll_items
-            WHERE month = 6 AND year = 2026 AND sarfia_no = 1
-              AND band_code = 1 AND band_type = 'earning'
-            GROUP BY employee_id
-        ), selected_item AS (
-            SELECT employee_id, SUM(amount) AS item_value
-            FROM payroll_items
-            WHERE month = ? AND year = ? AND sarfia_no = 1
-              AND CONVERT(NVARCHAR(50), band_code) = ?
-            GROUP BY employee_id
-        )
-        SELECT e.employee_code, e.full_name,
-               CAST(s.item_value AS FLOAT) AS item_value,
-               CAST(j.june_basic AS FLOAT) AS june_basic,
-               CAST(s.item_value * 100.0 / NULLIF(j.june_basic, 0) AS FLOAT) AS item_percent
-        FROM selected_item s
-        JOIN employees e ON e.id = s.employee_id
-        LEFT JOIN june_basic j ON j.employee_id = s.employee_id
-        ORDER BY item_percent DESC, e.full_name
-    """, month, year, str(band_code))
-    percentage_rows = cursor.fetchall()
-
-    _ensure_code_sarf_history(cursor)
-    _sync_code_sarf_history(cursor, datetime.date.today())
-    conn.commit()
-    cursor.execute("""
-        SELECT e.employee_code, e.full_name, h.effective_date
-        FROM employee_code_sarf_history h
-        JOIN employees e ON e.id = h.employee_id
-        WHERE h.new_code_sarf = 908
-          AND YEAR(h.effective_date) = ? AND MONTH(h.effective_date) = ?
-        ORDER BY e.full_name
-    """, year, month)
-    retirement_rows = cursor.fetchall()
-    conn.close()
-
-    retirements = [{
-        "employee_code": r.employee_code,
-        "full_name": r.full_name,
-        "effective_date": r.effective_date.isoformat(),
-    } for r in retirement_rows]
-    percentages = [{
-        "employee_code": r.employee_code,
-        "full_name": r.full_name,
-        "item_value": float(r.item_value or 0),
-        "june_2026_basic": float(r.june_basic) if r.june_basic is not None else None,
-        "item_percent": round(float(r.item_percent), 2) if r.item_percent is not None else None,
-    } for r in percentage_rows]
-    valid_percentages = [r for r in percentages if r["item_percent"] is not None]
-    highest_percent = max((r["item_percent"] for r in valid_percentages), default=None)
-    lowest_percent = min((r["item_percent"] for r in valid_percentages), default=None)
-    band_name = item_row.band_name or "البند المختار"
-    standard_percent = None
-    if "حافز" in band_name and "الجهود" in band_name:
-        standard_percent = 100.0
-    elif "حافز" in band_name and "المميز" in band_name:
-        standard_percent = 125.0
-
-    above_standard = []
-    below_standard = []
-    matching_standard = []
-    if standard_percent is not None:
-        for row in valid_percentages:
-            row["difference_percent"] = round(row["item_percent"] - standard_percent, 2)
-            if round(row["item_percent"], 2) > standard_percent:
-                above_standard.append(row)
-            elif round(row["item_percent"], 2) < standard_percent:
-                below_standard.append(row)
-            else:
-                matching_standard.append(row)
-    return jsonify({
-        "band_code": band_code,
-        "band_name": band_name,
-        "total": float(item_row.total or 0),
-        "employee_count": int(item_row.employee_count or 0),
-        "highest_percent": highest_percent,
-        "lowest_percent": lowest_percent,
-        "highest_employees": [r for r in valid_percentages if r["item_percent"] == highest_percent],
-        "lowest_employees": [r for r in valid_percentages if r["item_percent"] == lowest_percent],
-        "employees_without_june_basic": [r for r in percentages if r["item_percent"] is None],
-        "standard_percent": standard_percent,
-        "above_standard": above_standard,
-        "below_standard": below_standard,
-        "matching_standard_count": len(matching_standard),
-        "retirement_count": len(retirements),
-        "retirements": retirements,
-    })
-
-
-@app.route("/api/admin/statistics/incentive-bands", methods=["GET"])
-@admin_required
-def admin_incentive_bands():
-    month, year = request.args.get("month", type=int), request.args.get("year", type=int)
-    if not month or not year or not 1 <= month <= 12:
-        return jsonify({"error": "لازم تحدد شهر وسنة صحيحين"}), 400
-    conn = get_connection(); cursor = conn.cursor()
-    cursor.execute("""
-        SELECT band_code, MAX(band_name) AS band_name FROM payroll_items
-        WHERE month=? AND year=? AND sarfia_no=1 AND band_type='earning'
-          AND band_code<>1 AND band_name LIKE N'%حافز%'
-        GROUP BY band_code ORDER BY MAX(band_name)
-    """, month, year)
-    rows = cursor.fetchall(); conn.close()
-    return jsonify([{"band_code": r.band_code, "band_name": r.band_name} for r in rows])
-
-
-@app.route("/api/admin/statistics/incentives", methods=["GET"])
-@admin_required
-def admin_incentive_statistics():
-    month, year = request.args.get("month", type=int), request.args.get("year", type=int)
-    band_code = request.args.get("band_code", type=int)
-    if not month or not year or not band_code or not 1 <= month <= 12:
-        return jsonify({"error": "اختيار الشهر والسنة وبند الحافز مطلوب"}), 400
-    conn = get_connection(); cursor = conn.cursor()
-    cursor.execute("""
-        WITH june_basic AS (
-            SELECT employee_id, SUM(amount) AS june_basic FROM payroll_items
-            WHERE month=6 AND year=2026 AND sarfia_no=1 AND band_code=1 AND band_type='earning'
-            GROUP BY employee_id
-        ), incentive AS (
-            SELECT employee_id, MAX(band_name) AS band_name, SUM(amount) AS incentive_value
-            FROM payroll_items WHERE month=? AND year=? AND sarfia_no=1
-              AND band_code=? AND band_type='earning' GROUP BY employee_id
-        )
-        SELECT e.employee_code,e.full_name,i.band_name,CAST(june_basic.june_basic AS FLOAT) june_basic,
-               CAST(i.incentive_value AS FLOAT) incentive_value,
-               CAST(i.incentive_value*100.0/NULLIF(june_basic.june_basic,0) AS FLOAT) incentive_percent
-        FROM incentive i JOIN employees e ON e.id=i.employee_id
-        LEFT JOIN june_basic ON june_basic.employee_id=i.employee_id
-        ORDER BY incentive_percent DESC,e.full_name
-    """, month, year, band_code)
-    rows = cursor.fetchall(); conn.close()
-    def item(r):
-        return {"employee_code":r.employee_code,"full_name":r.full_name,"band_name":r.band_name,
-                "june_2026_basic":float(r.june_basic) if r.june_basic is not None else None,
-                "incentive_value":float(r.incentive_value),
-                "incentive_percent":round(float(r.incentive_percent),2) if r.incentive_percent is not None else None}
-    valid=[item(r) for r in rows if r.incentive_percent is not None]
-    high=max((r["incentive_percent"] for r in valid),default=None)
-    low=min((r["incentive_percent"] for r in valid),default=None)
-    return jsonify({"highest_percent":high,"lowest_percent":low,
-        "highest_employees":[r for r in valid if r["incentive_percent"]==high],
-        "lowest_employees":[r for r in valid if r["incentive_percent"]==low],
-        "employees_without_june_basic":[item(r) for r in rows if r.incentive_percent is None]})
-
-
-@app.route("/api/admin/statistics/employee-movements", methods=["GET"])
-@admin_required
-def admin_employee_movements():
-    month, year = request.args.get("month",type=int), request.args.get("year",type=int,default=2026)
-    if year<2026 or (year==2026 and month is not None and month<7):
-        return jsonify({"error":"متابعة الحركة تبدأ من يوليو 2026"}),400
-    conn=get_connection(); cursor=conn.cursor(); _ensure_code_sarf_history(cursor)
-    _sync_code_sarf_history(cursor,datetime.date.today()); conn.commit()
-    clause="YEAR(h.effective_date)=?"; params=[year]
-    if month: clause+=" AND MONTH(h.effective_date)=?"; params.append(month)
-    cursor.execute(f"""SELECT h.old_code_sarf,h.new_code_sarf,h.effective_date,e.employee_code,e.full_name
-        FROM employee_code_sarf_history h JOIN employees e ON e.id=h.employee_id
-        WHERE h.effective_date>='2026-07-01' AND {clause} AND h.new_code_sarf BETWEEN 901 AND 909
-        ORDER BY h.effective_date DESC,h.new_code_sarf,e.full_name""",*params)
-    rows=cursor.fetchall(); conn.close(); movements=[]
-    for r in rows:
-        code=int(r.new_code_sarf); movements.append({"employee_code":r.employee_code,"full_name":r.full_name,
-            "old_code_sarf":r.old_code_sarf,"new_code_sarf":code,"reason":EMPLOYEE_EXIT_CODES.get(code,"تحويل إلى كود صرف آخر"),
-            "effective_date":r.effective_date.isoformat()})
-    return jsonify({"total":len(movements),"retirements":[m for m in movements if m["new_code_sarf"]==908],
-        "deaths":[m for m in movements if m["new_code_sarf"]==909],
-        "transfers":[m for m in movements if m["new_code_sarf"] in (904,906)],"movements":movements})
-
-
-# ------------------------------------------------------------
-# 11) سجل التدقيق (Audit Log)
+# 10) سجل التدقيق (Audit Log)
 # ------------------------------------------------------------
 @app.route("/api/admin/audit-log", methods=["GET"])
 @admin_required
