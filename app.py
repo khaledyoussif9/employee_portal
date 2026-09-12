@@ -19,6 +19,7 @@ import secrets
 import smtplib
 import uuid
 import threading
+import time
 from email.mime.text import MIMEText
 from functools import wraps
 from flask import Flask, request, jsonify, send_from_directory, send_file
@@ -34,6 +35,7 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # يسمح لصفحة الويب (Frontend) إنها تكلم السيرفر ده من دومين مختلف
+APP_STARTED_AT = time.time()
 
 SARFIA_DATABASE = os.getenv("SARFIA_DATABASE", "human_r_ash")
 if not re.fullmatch(r"[A-Za-z0-9_]+", SARFIA_DATABASE):
@@ -340,6 +342,30 @@ def serve_asset(filename):
     response = send_from_directory(ASSET_FOLDER, filename, max_age=0)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return response
+
+
+@app.route("/api/system-status", methods=["GET"])
+def system_status():
+    """حالة تشغيل عامة تستخدمها شاشة الدخول بدون الحاجة إلى تسجيل الدخول."""
+    forced_status = os.getenv("SYSTEM_STATUS", "auto").strip().lower()
+    if forced_status in {"maintenance", "improvements"}:
+        return jsonify({"status": "maintenance", "message": "تحسينات جارية"})
+    if forced_status in {"stopped", "offline"}:
+        return jsonify({"status": "stopped", "message": "النظام متوقف مؤقتًا"}), 503
+
+    monitored_files = (
+        os.path.abspath(__file__),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "employee_portal.html"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "pdf_generator.py"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "db.py"),
+    )
+    has_pending_changes = any(
+        os.path.isfile(path) and os.path.getmtime(path) > APP_STARTED_AT + 1
+        for path in monitored_files
+    )
+    if has_pending_changes:
+        return jsonify({"status": "maintenance", "message": "تحسينات جارية - أعد تشغيل السيرفر بعد الانتهاء"})
+    return jsonify({"status": "operational", "message": "النظام يعمل بصورة طبيعية"})
 
 
 def token_required(f):
