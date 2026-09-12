@@ -424,10 +424,7 @@
   @media(max-width:760px){.home-v2{padding:14px}.home-hero{grid-template-columns:1fr;padding:20px}.home-power-mark{display:none}.service-grid-v2{grid-template-columns:repeat(2,1fr);gap:11px}.service-card-v2{min-height:145px;padding:16px 8px}}
   @media(max-width:420px){.service-grid-v2{grid-template-columns:1fr 1fr}.home-hero h1{font-size:21px}}
 
-  @page {
-    size: A4;
-    margin: 8mm;
-  }
+  @page { size: A4; margin: 5mm; }
   @media print {
     .topbar, .sidebar, .selectors, #devCredit, #aboutOverlay, #splashScreen { display: none !important; }
     .print-watermark, .print-footer-note { display: block !important; }
@@ -456,6 +453,15 @@
     .print-watermark { font-size: 32px !important; }
     .print-dev-signature, .print-watermark-author { display: block !important; }
     .print-dev-signature { font-size: 8.5px !important; margin-top: 4px !important; }
+    #payslipBody .card { min-height: 245mm !important; display:flex !important; flex-direction:column !important; }
+    #payslipBody .payslip-columns { flex:1 !important; }
+    #payslipBody .net-box { margin-top:auto !important; }
+    .print-watermark {
+      display:flex !important;position:fixed !important;inset:0 !important;
+      align-items:center !important;justify-content:center !important;
+      transform:rotate(55deg) scale(1.15) !important;
+      font-size:48px !important;color:rgba(29,95,167,.075) !important;
+    }
   }
   .print-watermark {
     display: none;
@@ -914,9 +920,9 @@
           <strong id="sidebarEmployeeName">الموظف</strong>
         </div>
         <button class="nav-btn active" id="navHome" onclick="switchTab('home')">🏠 الرئيسية</button>
+        <button class="nav-btn" id="navAdmin" onclick="switchTab('admin')">👤 تعديل البيانات</button>
         <button class="nav-btn" id="navPayslip" onclick="switchTab('payslip')">📄 شريط المرتب</button>
         <button class="nav-btn" id="navWage" onclick="switchTab('wage')">📋 سجل الأجور</button>
-        <button class="nav-btn" id="navAdmin" onclick="switchTab('admin')">👤 تعديل البيانات</button>
         <button class="nav-btn" id="navChangePass" onclick="switchTab('changepass')">🔑 تغيير كلمة المرور</button>
         <button class="nav-btn" id="navContact" onclick="switchTab('contact')">✉️ تواصل معنا</button>
         <button class="nav-btn" id="navRating" onclick="switchTab('rating')">⭐ تقييم الخدمة</button>
@@ -929,8 +935,6 @@
         <div class="admin-v2-nav hidden" id="adminV2Nav">
           <button class="nav-btn" id="navEmployeeSearch" onclick="switchTab('employeeSearch')">🔎 البحث الشامل</button>
           <button class="nav-btn" id="navStatistics" onclick="switchTab('statistics')">📊 الإحصائيات</button>
-          <button class="nav-btn" id="navAdminMessages" onclick="switchTab('adminMessages')">💬 رسائل الموظفين</button>
-          <button class="nav-btn" id="navAdminRatings" onclick="switchTab('adminRatings')">⭐ تقييمات الخدمة</button>
         </div>
       </div>
 
@@ -961,8 +965,6 @@
         <div id="tabContact" class="hidden"></div>
         <div id="tabRating" class="hidden"></div>
         <div id="tabHR" class="hidden"></div>
-        <div id="tabAdminMessages" class="hidden"></div>
-        <div id="tabAdminRatings" class="hidden"></div>
         <div id="tabEmployeeSearch" class="hidden"></div>
         <div id="tabStatistics" class="hidden"></div>
       </div>
@@ -1087,9 +1089,17 @@ const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","
 const REMEMBER_KEY = "eetc_remembered_employee_code";
 
 let session = null;
-let selectedMonth = 5;
-let selectedYear = 2026;
+const CURRENT_PERIOD = new Date();
+let selectedMonth = CURRENT_PERIOD.getMonth();
+let selectedYear = CURRENT_PERIOD.getFullYear();
 let _selectedRating = 0;
+
+function yearOptions(selected) {
+  const currentYear = CURRENT_PERIOD.getFullYear();
+  return [currentYear - 1, currentYear, currentYear + 1]
+    .map(y => `<option value="${y}" ${selected === y ? "selected" : ""}>${y}</option>`)
+    .join("");
+}
 
 function fmt(n) {
   return Number(n).toLocaleString("en-US");
@@ -1406,8 +1416,6 @@ async function handleLogin() {
 function handleLogout() {
   session = null;
   window._birthdayChecked = false;
-  document.getElementById("navHR").classList.add("hidden");
-  document.getElementById("adminV2Nav").classList.add("hidden");
   document.getElementById("appScreen").classList.add("hidden");
   document.getElementById("loginScreen").classList.remove("hidden");
   document.getElementById("loginPassword").value = "";
@@ -1601,8 +1609,6 @@ function switchTab(tab) {
   document.getElementById("navHR").classList.toggle("active", tab === "hr");
   document.getElementById("navEmployeeSearch").classList.toggle("active", tab === "employeeSearch");
   document.getElementById("navStatistics").classList.toggle("active", tab === "statistics");
-  document.getElementById("navAdminMessages").classList.toggle("active", tab === "adminMessages");
-  document.getElementById("navAdminRatings").classList.toggle("active", tab === "adminRatings");
   document.getElementById("tabHome").classList.toggle("hidden", tab !== "home");
   document.getElementById("tabAdmin").classList.toggle("hidden", tab !== "admin");
   document.getElementById("tabPayslip").classList.toggle("hidden", tab !== "payslip");
@@ -1611,8 +1617,6 @@ function switchTab(tab) {
   document.getElementById("tabContact").classList.toggle("hidden", tab !== "contact");
   document.getElementById("tabRating").classList.toggle("hidden", tab !== "rating");
   document.getElementById("tabHR").classList.toggle("hidden", tab !== "hr");
-  document.getElementById("tabAdminMessages").classList.toggle("hidden", tab !== "adminMessages");
-  document.getElementById("tabAdminRatings").classList.toggle("hidden", tab !== "adminRatings");
   document.getElementById("tabEmployeeSearch").classList.toggle("hidden", tab !== "employeeSearch");
   document.getElementById("tabStatistics").classList.toggle("hidden", tab !== "statistics");
 
@@ -1624,8 +1628,6 @@ function switchTab(tab) {
   else if (tab === "contact") renderContactShell();
   else if (tab === "rating") renderRatingShell();
   else if (tab === "hr") renderHRPanel();
-  else if (tab === "adminMessages") renderAdminMessagesPanel();
-  else if (tab === "adminRatings") renderAdminRatingsPanel();
   else if (tab === "employeeSearch") renderEmployeeSearchPanel();
   else if (tab === "statistics") renderStatisticsPanel();
 
@@ -1851,8 +1853,7 @@ function renderPayslipShell() {
       </div>
       <div><label>السنة</label>
         <select id="yearSelect" onchange="onPayslipFilterChange()">
-          <option value="2025" ${selectedYear === 2025 ? "selected" : ""}>2025</option>
-          <option value="2026" ${selectedYear === 2026 ? "selected" : ""}>2026</option>
+          ${yearOptions(selectedYear)}
         </select>
       </div>
       <button class="btn-print hidden" id="printBtn" onclick="window.print()">🖨 طباعة</button>
@@ -1863,8 +1864,8 @@ function renderPayslipShell() {
   loadPayslip();
 }
 
-let wageMonth = new Date().getMonth();
-let wageYear = 2026;
+let wageMonth = CURRENT_PERIOD.getMonth();
+let wageYear = CURRENT_PERIOD.getFullYear();
 
 function renderWageShell() {
   const box = document.getElementById("tabWage");
@@ -1877,8 +1878,7 @@ function renderWageShell() {
       </div>
       <div><label>السنة</label>
         <select id="wageYearSelect" onchange="onWageFilterChange()">
-          <option value="2025" ${wageYear === 2025 ? "selected" : ""}>2025</option>
-          <option value="2026" ${wageYear === 2026 ? "selected" : ""}>2026</option>
+          ${yearOptions(wageYear)}
         </select>
       </div>
       <button class="btn-print hidden" id="wagePrintBtn" onclick="window.print()">🖨 طباعة</button>
@@ -1919,14 +1919,14 @@ async function loadWageRecord() {
     printBtn.classList.remove("hidden");
     pdfBtn.classList.remove("hidden");
 
-    body.innerHTML = `<div class="print-watermark">سري للاستعلام فقط</div><div class="print-watermark-author">Created by Khaled Youssif Elmansy</div>` + data.disbursements.map(d => {
+    body.innerHTML = `<div class="print-watermark">سري للغاية - للاستعلام فقط</div><div class="print-watermark-author">Created by Khaled Youssif Elmansy</div>` + data.disbursements.map(d => {
       const earnings = d.items.filter(i => i.type === "earning");
       const deductions = d.items.filter(i => i.type === "deduction");
       return `
         <div class="card" style="margin-bottom:18px;">
           <div class="payslip-header">
             <div>
-              <div class="payslip-title">صرفية رقم ${d.sarfia_no}</div>
+              <div class="payslip-title">صرفية رقم ${d.sarfia_no}${d.sarfia_name ? ` — ${d.sarfia_name}` : ""}</div>
               <div class="payslip-sub">${MONTHS[wageMonth]} ${wageYear} — ${session.fullName} (كود ${session.employeeCode})</div>
             </div>
           </div>
@@ -2062,7 +2062,7 @@ async function loadPayslip() {
     const installments = deductions.filter(i => i.balance != null);
 
     body.innerHTML = `
-      <div class="print-watermark">سري للاستعلام فقط</div>
+      <div class="print-watermark">سري للغاية - للاستعلام فقط</div>
       <div class="print-watermark-author">Created by Khaled Youssif Elmansy</div>
       <div class="card">
         <div class="payslip-header">
@@ -2476,22 +2476,21 @@ function renderStatisticsPanel() {
   const now = new Date();
   box.innerHTML = `
     <div class="card" style="margin-bottom:14px;">
-      <div class="card-header">📊 إحصائيات البنود والمعاشات</div>
+      <div class="card-header">📊 إحصائيات المرتبات والمعاشات</div>
       <div class="selectors" style="padding:18px;margin:0;">
-        <div><label>الشهر</label><select id="statsMonth" onchange="loadStatisticItems()">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
-        <div><label>السنة</label><input id="statsYear" onchange="loadStatisticItems()" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
-        <div><label>البند</label><select id="statsItem" style="min-width:240px;"><option value="">جاري تحميل البنود...</option></select></div>
-        <button class="btn-save" onclick="loadSelectedItemTotal()">عرض الإحصائيات</button>
+        <div><label>الشهر</label><select id="statsMonth">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
+        <div><label>السنة</label><input id="statsYear" type="number" min="2020" max="2100" value="${now.getFullYear()}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
+        <button class="btn-save" onclick="loadStatistics()">عرض الإحصائيات</button>
       </div>
     </div>
-    <div id="itemTotalResult"><div class="state-box">اختر الشهر والبند ثم اضغط عرض الإحصائيات</div></div>
+    <div id="statisticsResults"><div class="state-box">اختر الفترة ثم اضغط عرض الإحصائيات</div></div>
     <div class="card" style="margin-top:14px;">
-      <div class="card-header">الحركة الشهرية لأكواد الصرف من كود 901 حتى 909</div>
+      <div class="card-header">إجمالي بند محدد</div>
       <div class="selectors" style="padding:18px;margin:0;">
-        <select id="movementMonth">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select>
-        <input id="movementYear" type="number" min="2026" max="2100" value="${Math.max(2026,now.getFullYear())}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;">
-        <button class="btn-save" onclick="loadEmployeeMovements()">عرض الحركة</button>
-      </div><div id="movementResults"></div>
+        <select id="statsItem" style="min-width:240px;"><option value="">جاري تحميل البنود...</option></select>
+        <button class="btn-save" onclick="loadSelectedItemTotal()">حساب الإجمالي</button>
+      </div>
+      <div id="itemTotalResult"></div>
     </div>`;
   loadStatisticItems();
 }
@@ -2502,40 +2501,26 @@ async function loadStatistics() {
   const box = document.getElementById("statisticsResults");
   box.innerHTML = `<div class="state-box"><span class="spin"></span> جاري الحساب...</div>`;
   try {
-    const bandCode = document.getElementById("statsIncentiveBand").value;
-    if (!bandCode) throw new Error("اختر بند الحافز أولًا");
-    const res = await apiFetch(`${API_BASE}/api/admin/statistics/incentives?month=${month}&year=${year}&band_code=${bandCode}`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const res = await apiFetch(`${API_BASE}/api/admin/statistics/summary?month=${month}&year=${year}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر تحميل الإحصائيات");
-    const names = rows => rows?.length ? rows.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("") : `<div class="stat-person">لا توجد بيانات</div>`;
     box.innerHTML = `<div class="stats-grid">
-      <div class="stat-card"><div class="stat-title">أعلى نسبة حافز</div><div class="stat-value">${data.highest_percent ?? "—"}%</div>${names(data.highest_employees)}</div>
-      <div class="stat-card"><div class="stat-title">أقل نسبة حافز</div><div class="stat-value">${data.lowest_percent ?? "—"}%</div>${names(data.lowest_employees)}</div>
-    </div>${data.employees_without_june_basic?.length ? `<div class="state-box dashed">${data.employees_without_june_basic.length} موظف بدون أساسي مرجعي في يونيو 2026</div>` : ""}`;
+      ${statisticCard("أعلى إجمالي", data.highest_gross)}
+      ${statisticCard("أعلى صافي", data.highest_net)}
+      ${statisticCard("أقل صافي", data.lowest_net)}
+      ${statisticCard("أعلى نسبة حافز", data.highest_incentive_percentage, "%")}
+      ${statisticCard("أقل نسبة حافز", data.lowest_incentive_percentage, "%")}
+      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال الشهر</div><div class="stat-value">${data.retirements.month}</div></div>
+      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال السنة</div><div class="stat-value">${data.retirements.year}</div></div>
+      <div class="stat-card"><div class="stat-title">عدد الموظفين في كشف الفترة</div><div class="stat-value">${data.employee_count}</div></div>
+    </div>`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
-}
-
-async function loadIncentiveBands() {
-  const select=document.getElementById("statsIncentiveBand"), month=document.getElementById("statsMonth").value, year=document.getElementById("statsYear").value;
-  try { const res=await apiFetch(`${API_BASE}/api/admin/statistics/incentive-bands?month=${month}&year=${year}`,{headers:{Authorization:`Bearer ${session.token}`}}); const data=await res.json(); if(!res.ok)throw new Error(data.error); select.innerHTML=data.length?data.map(b=>`<option value="${b.band_code}">${escapeHtml(b.band_name)}</option>`).join(""):`<option value="">لا توجد بنود حوافز</option>`; }
-  catch(e){select.innerHTML=`<option value="">تعذر تحميل البنود</option>`;}
-}
-
-async function loadEmployeeMovements() {
-  const box=document.getElementById("movementResults"), month=document.getElementById("movementMonth").value, year=document.getElementById("movementYear").value;
-  try { const res=await apiFetch(`${API_BASE}/api/admin/statistics/employee-movements?year=${year}${month?"&month="+month:""}`,{headers:{Authorization:`Bearer ${session.token}`}}); const data=await res.json(); if(!res.ok)throw new Error(data.error);
-    const table=data.movements.length?`<div style="overflow:auto;padding:0 18px 18px"><table style="width:100%;border-collapse:collapse;text-align:center"><thead><tr><th>الكود</th><th>الاسم</th><th>من</th><th>إلى</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>${data.movements.map(r=>`<tr><td>${escapeHtml(r.employee_code)}</td><td>${escapeHtml(r.full_name)}</td><td>${r.old_code_sarf??"—"}</td><td>${r.new_code_sarf}</td><td>${escapeHtml(r.reason)}</td><td>${r.effective_date}</td></tr>`).join("")}</tbody></table></div>`:`<div class="state-box dashed">لا توجد حركة في الفترة المختارة</div>`;
-    box.innerHTML=`<div class="stats-grid" style="padding:0 18px 18px">${[["إجمالي الحركة من 901 إلى 909",data.total],["المعاشات (908)",data.retirements.length],["الوفيات (909)",data.deaths.length],["النقل (904/906)",data.transfers.length]].map(x=>`<div class="stat-card"><div class="stat-title">${x[0]}</div><div class="stat-value">${x[1]}</div></div>`).join("")}</div>${table}`;
-  } catch(e){box.innerHTML=`<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`;}
 }
 
 async function loadStatisticItems() {
   const select = document.getElementById("statsItem");
-  const month = document.getElementById("statsMonth").value;
-  const year = document.getElementById("statsYear").value;
-  select.innerHTML = `<option value="">جاري تحميل البنود...</option>`;
   try {
-    const res = await apiFetch(`${API_BASE}/api/admin/statistics/items?month=${month}&year=${year}`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const res = await apiFetch(`${API_BASE}/api/admin/statistics/items`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر تحميل البنود");
     select.innerHTML = `<option value="">اختر البند</option>` + data.map(i=>`<option value="${i.band_code}">${escapeHtml(i.band_name)} (${i.band_code})</option>`).join("");
@@ -2552,22 +2537,7 @@ async function loadSelectedItemTotal() {
     const res = await apiFetch(`${API_BASE}/api/admin/statistics/item-total?month=${month}&year=${year}&band_code=${bandCode}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر حساب البند");
-    const retirementNames = data.retirements?.length
-      ? data.retirements.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)}</div>`).join("")
-      : `<div class="stat-person">لا يوجد محالون على المعاش في هذا الشهر</div>`;
-    const varianceNames = rows => rows?.length
-      ? rows.map(r=>`<div class="stat-person">${escapeHtml(r.full_name)} — كود ${escapeHtml(r.employee_code)} — النسبة ${r.item_percent}% — الفرق ${r.difference_percent > 0 ? "+" : ""}${r.difference_percent}%</div>`).join("")
-      : `<div class="stat-person">لا يوجد موظفون</div>`;
-    const standardCards = data.standard_percent == null ? "" : `
-      <div class="stat-card"><div class="stat-title">النسبة المقررة</div><div class="stat-value">${data.standard_percent}%</div><div class="stat-person">المطابقون: ${data.matching_standard_count} موظف</div></div>
-      <div class="stat-card"><div class="stat-title">أعلى من النسبة المقررة</div><div class="stat-value">${data.above_standard.length}</div>${varianceNames(data.above_standard)}</div>
-      <div class="stat-card"><div class="stat-title">أقل من النسبة المقررة</div><div class="stat-value">${data.below_standard.length}</div>${varianceNames(data.below_standard)}</div>`;
-    box.innerHTML = `<div class="stats-grid">
-      <div class="stat-card"><div class="stat-title">إجمالي ${escapeHtml(data.band_name)}</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>
-      <div class="stat-card"><div class="stat-title">عدد الموظفين</div><div class="stat-value">${data.employee_count}</div></div>
-      ${standardCards}
-      <div class="stat-card"><div class="stat-title">المحالون على المعاش</div><div class="stat-value">${data.retirement_count}</div>${retirementNames}</div>
-    </div>${data.employees_without_june_basic?.length ? `<div class="state-box dashed">${data.employees_without_june_basic.length} موظف بدون أساسي مرجعي في يونيو 2026</div>` : ""}`;
+    box.innerHTML = `<div class="stat-card" style="margin:0 18px 18px;"><div class="stat-title">${escapeHtml(data.band_name)} — ${data.employee_count} موظف</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
 }
 
@@ -2608,30 +2578,20 @@ function renderHRPanel() {
       <div id="annListBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
     </div>
 
+    <div class="section-divider">✉️ رسائل الموظفين</div>
+    <div id="messagesInboxBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+
+    <div class="section-divider">⭐ تقييم الخدمة</div>
+    <div id="ratingsBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
+
     <div class="section-divider">🕵️ سجل التدقيق (آخر 200 عملية)</div>
     <div id="auditLogBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
   `;
-  document.getElementById("hrSearchInput")?.focus();
-  loadAnnouncementsList();
-  loadAuditLog();
-}
-
-function renderAdminMessagesPanel() {
-  const box = document.getElementById("tabAdminMessages");
-  box.innerHTML = `
-    <div class="section-divider">💬 رسائل الموظفين</div>
-    <div id="messagesInboxBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
-  `;
+  document.getElementById("hrSearchInput").focus();
   loadMessagesInbox();
-}
-
-function renderAdminRatingsPanel() {
-  const box = document.getElementById("tabAdminRatings");
-  box.innerHTML = `
-    <div class="section-divider">⭐ تقييمات الخدمة</div>
-    <div id="ratingsBox"><div class="state-box"><span class="spin"></span> جاري التحميل...</div></div>
-  `;
+  loadAnnouncementsList();
   loadServiceRatings();
+  loadAuditLog();
 }
 
 async function loadAuditLog() {
@@ -2977,8 +2937,8 @@ function renderEmployeeEditForm(emp) {
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
       <button class="btn-save" onclick="document.getElementById('employeeAdminData').scrollIntoView({behavior:'smooth'})">👤 البيانات الإدارية</button>
-      <button class="btn-save" onclick="document.getElementById('employeePayslipSection').scrollIntoView({behavior:'smooth'})">📄 شريط المرتب</button>
-      <button class="btn-save" onclick="document.getElementById('employeeWageSection').scrollIntoView({behavior:'smooth'})">📋 سجل الأجور</button>
+      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📄 شريط المرتب</button>
+      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📋 سجل الأجور</button>
       <button class="btn-save" style="background:var(--red)" onclick="document.getElementById('employeePasswordSection').scrollIntoView({behavior:'smooth'})">🔑 إعادة كلمة المرور</button>
     </div>
 
@@ -3024,7 +2984,7 @@ function renderEmployeeEditForm(emp) {
       <div id="resetPassMsg" class="save-msg hidden"></div>
     </div>
 
-    <div class="section-divider" id="employeePayslipSection">📄 شريط المرتب</div>
+    <div class="section-divider" id="employeePayrollSection">شريط المرتب وسجل الأجور</div>
     <div class="selectors">
       <div><label>الشهر</label>
         <select id="hrMonthSelect" onchange="onHRPayrollFilterChange(${emp.id})">
@@ -3038,9 +2998,7 @@ function renderEmployeeEditForm(emp) {
         </select>
       </div>
     </div>
-    <div id="hrPayslipView"></div>
-    <div class="section-divider" id="employeeWageSection">📋 سجل الأجور</div>
-    <div id="hrWageView"></div>
+    <div id="hrPayrollForm"></div>
   `;
   loadHRPayrollForm(emp.id);
 }
@@ -3105,45 +3063,37 @@ function onHRPayrollFilterChange(empId) {
 }
 
 async function loadHRPayrollForm(empId) {
-  const payslipBox = document.getElementById("hrPayslipView");
-  const wageBox = document.getElementById("hrWageView");
-  const query = `employee_id=${empId}&month=${currentPayrollMonth + 1}&year=${currentPayrollYear}`;
-  payslipBox.innerHTML = `<div class="state-box"><span class="spin"></span> جاري تحميل شريط المرتب...</div>`;
-  wageBox.innerHTML = `<div class="state-box"><span class="spin"></span> جاري تحميل سجل الأجور...</div>`;
-
-  const money = value => Number(value || 0).toLocaleString("ar-EG", {minimumFractionDigits:2, maximumFractionDigits:2});
-  const itemsTable = items => items?.length ? `
-    <div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;text-align:center;">
-      <thead><tr><th>البند</th><th>النوع</th><th>القيمة</th></tr></thead>
-      <tbody>${items.map(item=>`<tr><td>${escapeHtml(item.name)}</td><td>${item.type === "earning" ? "استحقاق" : item.type === "deduction" ? "استقطاع" : "بيان"}</td><td>${money(item.amount)} جنيه</td></tr>`).join("")}</tbody>
-    </table></div>` : `<div class="state-box dashed">لا توجد بنود</div>`;
+  const form = document.getElementById("hrPayrollForm");
+  form.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
 
   try {
-    const res = await apiFetch(`${API_BASE}/api/payslip?${query}`, {headers:{Authorization:`Bearer ${session.token}`}});
+    const res = await apiFetch(`${API_BASE}/api/admin/payroll?employee_id=${empId}&month=${currentPayrollMonth + 1}&year=${currentPayrollYear}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "تعذر تحميل شريط المرتب");
-    payslipBox.innerHTML = `<div class="card">${itemsTable(data.items)}<div class="stats-grid" style="padding:16px;">
-      <div class="stat-card"><div class="stat-title">إجمالي الاستحقاقات</div><div class="stat-value">${money(data.earnings_total)}</div></div>
-      <div class="stat-card"><div class="stat-title">إجمالي الاستقطاعات</div><div class="stat-value">${money(data.deductions_total)}</div></div>
-      <div class="stat-card"><div class="stat-title">صافي المرتب</div><div class="stat-value">${money(data.net_salary)}</div></div>
-    </div></div>`;
-  } catch (e) {
-    payslipBox.innerHTML = `<div class="state-box dashed">${escapeHtml(e.message)}</div>`;
-  }
+    if (!res.ok) throw new Error(data.error || "حصل خطأ");
 
-  try {
-    const res = await apiFetch(`${API_BASE}/api/wage-record?${query}`, {headers:{Authorization:`Bearer ${session.token}`}});
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "تعذر تحميل سجل الأجور");
-    wageBox.innerHTML = data.disbursements.map(d=>`<div class="card" style="margin-bottom:14px;">
-      <div class="card-header">صرفية رقم ${d.sarfia_no}</div>${itemsTable(d.items)}
-      <div class="stats-grid" style="padding:16px;">
-        <div class="stat-card"><div class="stat-title">الاستحقاقات</div><div class="stat-value">${money(d.earnings_total)}</div></div>
-        <div class="stat-card"><div class="stat-title">الاستقطاعات</div><div class="stat-value">${money(d.deductions_total)}</div></div>
-        <div class="stat-card"><div class="stat-title">الصافي</div><div class="stat-value">${money(d.net_salary)}</div></div>
-      </div></div>`).join("");
+    const v = data || {};
+
+    form.innerHTML = `
+      <div class="card">
+        <div class="edit-grid">
+          <div class="edit-field"><label>المرتب الأساسي</label><input type="number" id="pay_basic" value="${v.basic_salary ?? 0}"></div>
+          <div class="edit-field"><label>بدل انتقال</label><input type="number" id="pay_transport" value="${v.transport_allowance ?? 0}"></div>
+          <div class="edit-field"><label>بدل سكن</label><input type="number" id="pay_housing" value="${v.housing_allowance ?? 0}"></div>
+          <div class="edit-field"><label>حافز / مكافأة</label><input type="number" id="pay_bonus" value="${v.bonus ?? 0}"></div>
+          <div class="edit-field"><label>التأمينات</label><input type="number" id="pay_insurance" value="${v.insurance_deduction ?? 0}"></div>
+          <div class="edit-field"><label>الضريبة</label><input type="number" id="pay_tax" value="${v.tax_deduction ?? 0}"></div>
+          <div class="edit-field"><label>خصم غياب</label><input type="number" id="pay_absence" value="${v.absence_deduction ?? 0}"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-save" onclick="saveHRPayroll(${empId})">${data ? "تحديث سجل المرتب" : "إضافة سجل مرتب جديد"}</button>
+        </div>
+        <div id="paySaveMsg" class="save-msg hidden"></div>
+      </div>
+    `;
   } catch (e) {
-    wageBox.innerHTML = `<div class="state-box dashed">${escapeHtml(e.message)}</div>`;
+    form.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
   }
 }
 
