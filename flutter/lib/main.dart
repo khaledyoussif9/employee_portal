@@ -583,7 +583,7 @@ class _LoginPageState extends State<LoginPage> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset('assets/login_bg_reference_v2.png', fit: BoxFit.cover),
+            Image.asset('assets/login_bg_reference_v2.jpg', fit: BoxFit.cover),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -3133,7 +3133,7 @@ class _DashboardPageState extends State<DashboardPage> {
         return Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: const AssetImage('assets/login_bg_reference_v2.png'),
+              image: const AssetImage('assets/login_bg_reference_v2.jpg'),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(dark ? const Color(0xD9071728) : const Color(0xBDF7F9FC), BlendMode.srcOver),
             ),
