@@ -108,7 +108,7 @@ def attach_installment_balances(items):
 def load_sarfia_names(cursor, month, year):
     """يربط رقم الصرفية باسمها الرسمي المسجل في جداول إنشاء الصرفيات."""
     cursor.execute(
-        """
+        f"""
         SELECT
             s.Sarfia_no,
             MAX(NULLIF(LTRIM(RTRIM(d.SarfiaDesc_Desc)), '')) AS sarfia_name
