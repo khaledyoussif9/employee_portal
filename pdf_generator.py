@@ -95,13 +95,12 @@ def _draw_header(c, width, height, title, subtitle, code_sarf=None):
     c.rect(0, 0, width, height, fill=1, stroke=0)
     y = height - 54
 
+    header_left = 24
+    header_width = width - 48
     c.setFillColor(NAVY)
-    c.rect(0, height - 100, width, 100, fill=1, stroke=0)
+    c.roundRect(header_left, height - 103, header_width, 79, 7, fill=1, stroke=0)
     c.setFillColor(ROYAL)
-    c.rect(0, height - 103, width, 3, fill=1, stroke=0)
-
-    if os.path.isfile(LOGO_PATH):
-        c.drawImage(LOGO_PATH, 30, height - 86, 58, 58, preserveAspectRatio=True, mask="auto")
+    c.rect(header_left, height - 106, header_width, 3, fill=1, stroke=0)
 
     c.setFillColor(HexColor("#FFFFFF"))
     c.setFont("Amiri-Bold", 16)
@@ -113,6 +112,11 @@ def _draw_header(c, width, height, title, subtitle, code_sarf=None):
     if code_sarf:
         sub_text += f" — كود الصرف: {code_sarf}"
     c.drawRightString(width - 40, y - 22, ar(sub_text))
+
+    if os.path.isfile(LOGO_PATH):
+        c.setFillColor(HexColor("#FFFFFF"))
+        c.roundRect(31, height - 94, 66, 66, 5, fill=1, stroke=0)
+        c.drawImage(LOGO_PATH, 35, height - 90, 58, 58, preserveAspectRatio=True, mask="auto")
 
     return height - 128
 
@@ -147,9 +151,15 @@ def _draw_installment_card(c, x_left, x_right, y, name, amount, balance):
 
 def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
     """بترسم عمودين (استحقاقات | استقطاعات) وترجع نقطة النهاية Y."""
-    col_width = (width - 80) / 2
-    right_col_x = width - 40
-    left_col_x = width - 40 - col_width - 20
+    content_left = 40
+    content_right = width - 40
+    divider_x = width / 2
+    column_gap = 18
+    right_value_x = divider_x + column_gap / 2
+    right_col_x = content_right
+    left_value_x = content_left
+    left_col_x = divider_x - column_gap / 2
+    col_width = left_col_x - content_left
 
     y = y_start
 
@@ -161,8 +171,8 @@ def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
     c.drawRightString(right_col_x, y, ar("الاستحقاقات"))
     c.drawRightString(left_col_x, y, ar("الاستقطاعات"))
     c.setStrokeColor(ROYAL)
-    c.line(right_col_x - col_width, y - 4, right_col_x, y - 4)
-    c.line(left_col_x - col_width, y - 4, left_col_x, y - 4)
+    c.line(right_value_x, y - 4, right_col_x, y - 4)
+    c.line(left_value_x, y - 4, left_col_x, y - 4)
 
     y -= 24
     c.setFont("Amiri", 10.5)
@@ -184,7 +194,9 @@ def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
         if row_y > 170:
             c.setFillColor(INK)
             c.drawRightString(right_col_x, row_y, ar(name))
-            c.drawString(right_col_x - col_width, row_y, fmt_num(amount))
+            c.drawString(right_value_x, row_y, fmt_num(amount))
+            c.setStrokeColor(HexColor("#E4E9EF"))
+            c.line(right_value_x, row_y - 5, right_col_x, row_y - 5)
 
     deduction_y = y
     for item in regular_deductions:
@@ -192,14 +204,16 @@ def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
         if deduction_y > 170:
             c.setFillColor(RED)
             c.drawRightString(left_col_x, deduction_y, ar(name))
-            c.drawString(left_col_x - col_width, deduction_y, fmt_num(amount))
+            c.drawString(left_value_x, deduction_y, fmt_num(amount))
+            c.setStrokeColor(HexColor("#E4E9EF"))
+            c.line(left_value_x, deduction_y - 5, left_col_x, deduction_y - 5)
         deduction_y -= row_step
 
     for item in installments:
         name, amount, balance = _item_parts(item)
         deduction_y -= 3
         deduction_y -= _draw_installment_card(
-            c, left_col_x - col_width, left_col_x, deduction_y, name, amount, balance
+            c, left_value_x, left_col_x, deduction_y, name, amount, balance
         )
 
     earnings_bottom = y - (len(earnings) * row_step)
@@ -208,15 +222,14 @@ def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
     c.saveState()
     c.setStrokeColor(SILVER)
     c.setLineWidth(0.8)
-    c.roundRect(35, content_bottom - 27, width - 70, section_top - content_bottom + 27, 6, fill=0, stroke=1)
-    divider_x = width / 2
+    c.roundRect(content_left, content_bottom - 27, content_right - content_left, section_top - content_bottom + 27, 6, fill=0, stroke=1)
     c.line(divider_x, section_top, divider_x, content_bottom - 27)
     c.restoreState()
 
     # مجموع كل عمود
     c.setStrokeColor(LINE)
-    c.line(right_col_x - col_width, content_bottom, right_col_x, content_bottom)
-    c.line(left_col_x - col_width, content_bottom, left_col_x, content_bottom)
+    c.line(right_value_x, content_bottom, right_col_x, content_bottom)
+    c.line(left_value_x, content_bottom, left_col_x, content_bottom)
 
     c.setFont("Amiri-Bold", 11)
     c.setFillColor(GREEN)
