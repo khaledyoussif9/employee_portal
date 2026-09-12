@@ -38,6 +38,9 @@ CORS(app)  # يسمح لصفحة الويب (Frontend) إنها تكلم الس�
 SARFIA_DATABASE = os.getenv("SARFIA_DATABASE", "human_r_ash")
 if not re.fullmatch(r"[A-Za-z0-9_]+", SARFIA_DATABASE):
     raise RuntimeError("SARFIA_DATABASE يحتوي اسم قاعدة بيانات غير صالح")
+HR_DATABASE = os.getenv("HR_DATABASE", SARFIA_DATABASE)
+if not re.fullmatch(r"[A-Za-z0-9_]+", HR_DATABASE):
+    raise RuntimeError("HR_DATABASE يحتوي اسم قاعدة بيانات غير صالح")
 
 # مجلد حفظ الملفات المرفقة مع الإشعارات (بيتعمل تلقائيًا لو مش موجود)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
@@ -75,6 +78,44 @@ def birth_date_from_national_id(national_id):
         return datetime.date(century + int(value[1:3]), int(value[3:5]), int(value[5:7]))
     except ValueError:
         return None
+
+
+def load_employee_birth_date(cursor, employee_code, national_id=None):
+    """يقرأ تاريخ الميلاد الإداري، ويستخدم الرقم القومي فقط عند غيابه."""
+    try:
+        cursor.execute(
+            f"""
+            SELECT c.name AS column_name
+            FROM [{HR_DATABASE}].sys.columns AS c
+            INNER JOIN [{HR_DATABASE}].sys.tables AS t ON t.object_id = c.object_id
+            INNER JOIN [{HR_DATABASE}].sys.schemas AS s ON s.schema_id = t.schema_id
+            WHERE s.name = N'dbo'
+              AND t.name = N'emply_details_old'
+              AND LOWER(c.name) IN ('emp_no', 'emptid', 'employee_code', 'emp_code')
+            """
+        )
+        available = {str(row.column_name).lower(): str(row.column_name) for row in cursor.fetchall()}
+        for candidate in ("emp_no", "emptid", "employee_code", "emp_code"):
+            column_name = available.get(candidate)
+            if not column_name:
+                continue
+            cursor.execute(
+                f"""
+                SELECT TOP (1) BIRTHDATE
+                FROM [{HR_DATABASE}].[dbo].[emply_details_old]
+                WHERE TRY_CONVERT(NVARCHAR(50), [{column_name}]) = ?
+                  AND BIRTHDATE IS NOT NULL
+                """,
+                str(employee_code),
+            )
+            row = cursor.fetchone()
+            if row and row.BIRTHDATE:
+                value = row.BIRTHDATE
+                return value.date() if isinstance(value, datetime.datetime) else value
+    except Exception:
+        # لا نوقف البيانات الإدارية أو تسجيل الدخول إذا تعذر المصدر القديم.
+        pass
+    return birth_date_from_national_id(national_id)
 
 def _loan_key(name):
     """اسم موحّد لربط بند القسط ببند الرصيد المقابل له."""
@@ -658,15 +699,16 @@ def get_my_info():
         request.employee_id,
     )
     row = cursor.fetchone()
-    conn.close()
 
     if row is None:
+        conn.close()
         return jsonify({"error": "الموظف غير موجود"}), 404
 
     photo_filename = f"employee_{request.employee_id}.jpg"
     photo_path = os.path.join(PROFILE_PHOTO_FOLDER, photo_filename)
 
-    birth_date = birth_date_from_national_id(row.national_id)
+    birth_date = load_employee_birth_date(cursor, row.employee_code, row.national_id)
+    conn.close()
     return jsonify({
         "employee_code": row.employee_code,
         "insurance_number": row.insurance_number,
@@ -679,7 +721,6 @@ def get_my_info():
         "department": row.department_name,
         "email": row.email,
         "photo_url": f"/uploads/profile_photos/{photo_filename}" if os.path.isfile(photo_path) else None,
-        # الواجهة تحتاج اليوم والشهر فقط للاحتفال، ولا نرسل سنة الميلاد أو العمر.
         "birth_day": birth_date.day if birth_date else None,
         "birth_month": birth_date.month if birth_date else None,
     })
