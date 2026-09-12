@@ -35,6 +35,10 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)  # يسمح لصفحة الويب (Frontend) إنها تكلم السيرفر ده من دومين مختلف
 
+SARFIA_DATABASE = os.getenv("SARFIA_DATABASE", "human_r_ash")
+if not re.fullmatch(r"[A-Za-z0-9_]+", SARFIA_DATABASE):
+    raise RuntimeError("SARFIA_DATABASE يحتوي اسم قاعدة بيانات غير صالح")
+
 # مجلد حفظ الملفات المرفقة مع الإشعارات (بيتعمل تلقائيًا لو مش موجود)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -108,8 +112,8 @@ def load_sarfia_names(cursor, month, year):
         SELECT
             s.Sarfia_no,
             MAX(NULLIF(LTRIM(RTRIM(d.SarfiaDesc_Desc)), '')) AS sarfia_name
-        FROM Payroll_Sarfiat AS s
-        INNER JOIN payroll_SarfiaDesc AS d
+        FROM [{SARFIA_DATABASE}].[dbo].[Payroll_Sarfiat] AS s
+        INNER JOIN [{SARFIA_DATABASE}].[dbo].[payroll_SarfiaDesc] AS d
             ON d.SarfiaDesc_ID = s.SarfiaDesc_ID
         WHERE s.Sarfia_Month = ? AND s.Sarfia_Year = ?
         GROUP BY s.Sarfia_no
