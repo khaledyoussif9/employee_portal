@@ -8,30 +8,41 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 
 const String apiBaseUrl = 'https://awaken-vice-running.ngrok-free.dev';
+final ValueNotifier<ThemeMode> portalThemeMode = ValueNotifier(ThemeMode.system);
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString('portal_theme_v2');
+  portalThemeMode.value = savedTheme == 'dark'
+      ? ThemeMode.dark
+      : savedTheme == 'light'
+          ? ThemeMode.light
+          : ThemeMode.system;
   runApp(const EmployeePortalApp());
 }
 
 class EmployeePortalApp extends StatelessWidget {
   const EmployeePortalApp({super.key});
 
-  static const navy = Color(0xFF5C1524);
-  static const navyLight = Color(0xFF7A1F32);
-  static const gold = Color(0xFFC9A24B);
-  static const goldSoft = Color(0xFFE9D9AE);
-  static const paper = Color(0xFFF7F4EC);
-  static const green = Color(0xFF2F7A4F);
-  static const red = Color(0xFFB14A3D);
+  static const navy = Color(0xFF092A4A);
+  static const navyLight = Color(0xFF123B6D);
+  static const gold = Color(0xFF1D5FA7);
+  static const goldSoft = Color(0xFFC4CBD3);
+  static const paper = Color(0xFFF7F9FC);
+  static const green = Color(0xFF22A06B);
+  static const red = Color(0xFFD92D20);
   static const gray = Color(0xFF6B7280);
-  static const line = Color(0xFFDFD9C8);
+  static const line = Color(0xFFC4CBD3);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: portalThemeMode,
+      builder: (context, themeMode, _) => MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'بوابة الموظفين',
+      themeMode: themeMode,
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Cairo',
@@ -40,27 +51,27 @@ class EmployeePortalApp extends StatelessWidget {
           brightness: Brightness.light,
           primary: navy,
           secondary: gold,
-          surface: const Color(0xFFFFFDF8),
+          surface: const Color(0xFFF7F9FC),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF7F2E8),
+        scaffoldBackgroundColor: paper,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF4A0D19),
+          backgroundColor: navy,
           foregroundColor: Colors.white,
           centerTitle: true,
           elevation: 0,
         ),
         cardTheme: CardThemeData(
-          color: const Color(0xFFFFFDF8),
+          color: const Color(0xFFF7F9FC),
           elevation: 3,
           shadowColor: const Color(0x33000000),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: Color(0x33C9A24B)),
+            side: const BorderSide(color: Color(0x55C4CBD3)),
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: Color(0xFF6B1023),
-          indicatorColor: const Color(0x33C9A24B),
+          backgroundColor: Color(0xFF092A4A),
+          indicatorColor: const Color(0x551D5FA7),
           labelTextStyle: WidgetStateProperty.resolveWith(
             (states) => TextStyle(
               color: states.contains(WidgetState.selected) ? gold : Colors.white70,
@@ -78,7 +89,7 @@ class EmployeePortalApp extends StatelessWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFFFFDF8),
+          fillColor: const Color(0xFFF7F9FC),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: line),
@@ -93,8 +104,35 @@ class EmployeePortalApp extends StatelessWidget {
           ),
         ),
       ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        fontFamily: 'Cairo',
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: gold,
+          brightness: Brightness.dark,
+          primary: const Color(0xFF5A9CE0),
+          secondary: goldSoft,
+          surface: const Color(0xFF0D2741),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF071728),
+        appBarTheme: const AppBarTheme(backgroundColor: navy, foregroundColor: Colors.white, centerTitle: true),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF12324F),
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFF66788A))),
+        ),
+        navigationBarTheme: const NavigationBarThemeData(backgroundColor: navy, indicatorColor: Color(0xFF1D5FA7)),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF0D2741),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF66788A))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF66788A))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF5A9CE0), width: 1.6)),
+        ),
+      ),
       home: const LoginPage(),
-    );
+    ));
   }
 }
 
@@ -545,7 +583,7 @@ class _LoginPageState extends State<LoginPage> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset('assets/industrial/login_bg_sunset_final.png', fit: BoxFit.cover),
+            Image.asset('assets/login_bg_reference_v2.png', fit: BoxFit.cover),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -683,7 +721,7 @@ class _IndustrialLoginBackgroundPainter extends CustomPainter {
         radius: .8,
         colors: [
           const Color(0xFFB76A2A).withValues(alpha: .42),
-          const Color(0xFF5C1524).withValues(alpha: .16),
+          const Color(0xFF092A4A).withValues(alpha: .16),
           Colors.transparent,
         ],
       ).createShader(Offset.zero & size);
@@ -2562,9 +2600,18 @@ class _HomePageState extends State<HomePage> {
 
   bool get isAdmin => widget.role == 'hr_admin';
 
+  Future<void> toggleTheme() async {
+    final darkNow = Theme.of(context).brightness == Brightness.dark;
+    portalThemeMode.value = darkNow ? ThemeMode.light : ThemeMode.dark;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('portal_theme_v2', darkNow ? 'light' : 'dark');
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedTheme = prefs.getString('portal_theme_v2');
     await prefs.clear();
+    if (savedTheme != null) await prefs.setString('portal_theme_v2', savedTheme);
     api.token = null;
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -2620,7 +2667,7 @@ class _HomePageState extends State<HomePage> {
             return _mobileShell(titles, pages);
           }
           return Scaffold(
-            backgroundColor: const Color(0xFFF8F2E9),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             body: Column(
               children: [
                 _DesktopTopBar(
@@ -2637,18 +2684,18 @@ class _HomePageState extends State<HomePage> {
                         isAdmin: isAdmin,
                         onSelect: (i) => setState(() => index = i),
                         onLogout: logout,
+                        onToggleTheme: toggleTheme,
+                        darkMode: Theme.of(context).brightness == Brightness.dark,
                       ),
                       Expanded(
                         child: Container(
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [
-                                Color(0xFFFFFDF8),
-                                Color(0xFFF8F2E9),
-                                Color(0xFFF4EBDD),
-                              ],
+                              colors: Theme.of(context).brightness == Brightness.dark
+                                  ? const [Color(0xFF071728), Color(0xFF0D2741), Color(0xFF071728)]
+                                  : const [Color(0xFFF7F9FC), Color(0xFFF7F9FC), Color(0xFFEAF0F6)],
                             ),
                           ),
                           child: pages[index],
@@ -2681,7 +2728,14 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(titles[index]),
-        actions: [IconButton(onPressed: logout, icon: const Icon(Icons.logout_rounded))],
+        actions: [
+          IconButton(
+            tooltip: Theme.of(context).brightness == Brightness.dark ? 'الوضع النهاري' : 'الوضع الليلي',
+            onPressed: toggleTheme,
+            icon: Icon(Theme.of(context).brightness == Brightness.dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
+          ),
+          IconButton(onPressed: logout, icon: const Icon(Icons.logout_rounded)),
+        ],
       ),
       body: pages[index],
       bottomNavigationBar: NavigationBar(
@@ -2713,7 +2767,7 @@ class _DesktopTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 22),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF6B1023), Color(0xFF8C142D), Color(0xFF6B1023)],
+          colors: [Color(0xFF092A4A), Color(0xFF123B6D), Color(0xFF092A4A)],
         ),
         boxShadow: [BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 3))],
       ),
@@ -2759,50 +2813,58 @@ class _DesktopSideBar extends StatelessWidget {
   final bool isAdmin;
   final ValueChanged<int> onSelect;
   final VoidCallback onLogout;
+  final VoidCallback onToggleTheme;
+  final bool darkMode;
 
   const _DesktopSideBar({
     required this.selectedIndex,
     required this.isAdmin,
     required this.onSelect,
     required this.onLogout,
+    required this.onToggleTheme,
+    required this.darkMode,
   });
+
+  void _showAbout(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'المنظومة الإلكترونية الموحدة',
+      applicationVersion: '2.0.0',
+      applicationLegalese: 'الشركة المصرية لنقل الكهرباء — منطقة الدلتا\nتم التصميم والتطوير بواسطة خالد يوسف المنسي',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final items = <(IconData, String)>[
-      (Icons.home_rounded, 'الرئيسية'),
-      (Icons.person_outline_rounded, 'بياناتي الإدارية'),
-      (Icons.receipt_long_outlined, 'شريط المرتب'),
-      (Icons.account_balance_wallet_outlined, 'سجل الأجور'),
-      (Icons.notifications_none_rounded, 'الإشعارات'),
-      (Icons.forum_outlined, 'تواصل معنا'),
-      (Icons.star_border_rounded, 'تقييم الخدمة'),
-      (Icons.lock_outline_rounded, 'تغيير كلمة المرور'),
-      if (isAdmin) (Icons.admin_panel_settings_outlined, 'لوحة الإدارة'),
+    final items = <(IconData, String, int)>[
+      (Icons.home_rounded, 'الرئيسية', 0),
+      (Icons.person_outline_rounded, 'تعديل البيانات', 1),
+      (Icons.lock_outline_rounded, 'تغيير كلمة المرور', 7),
+      if (isAdmin) (Icons.admin_panel_settings_outlined, 'لوحة الإدارة', 8),
     ];
     return Container(
       width: 238,
-      color: const Color(0xFFFFFCF7),
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
         children: [
           const SizedBox(height: 18),
           ...List.generate(items.length, (i) {
-            final selected = selectedIndex == i;
+            final selected = selectedIndex == items[i].$3;
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               child: Material(
-                color: selected ? const Color(0xFF7B1227) : Colors.transparent,
+                color: selected ? const Color(0xFF1D5FA7) : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  onTap: () => onSelect(i),
+                  onTap: () => onSelect(items[i].$3),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     child: Row(
                       children: [
-                        Icon(items[i].$1, color: selected ? Colors.white : EmployeePortalApp.navy, size: 21),
+                        Icon(items[i].$1, color: selected ? Colors.white : Theme.of(context).colorScheme.onSurface, size: 21),
                         const SizedBox(width: 12),
-                        Expanded(child: Text(items[i].$2, style: TextStyle(color: selected ? Colors.white : const Color(0xFF5F4A45), fontWeight: selected ? FontWeight.w900 : FontWeight.w700, fontSize: 13))),
+                        Expanded(child: Text(items[i].$2, style: TextStyle(color: selected ? Colors.white : Theme.of(context).colorScheme.onSurface, fontWeight: selected ? FontWeight.w900 : FontWeight.w700, fontSize: 13))),
                       ],
                     ),
                   ),
@@ -2812,6 +2874,17 @@ class _DesktopSideBar extends StatelessWidget {
           }),
           const Spacer(),
           const Divider(height: 1),
+          ListTile(
+            onTap: () => _showAbout(context),
+            leading: Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.primary),
+            title: const Text('حول النظام', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          ListTile(
+            onTap: onToggleTheme,
+            leading: Icon(darkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: Theme.of(context).colorScheme.primary),
+            title: Text(darkMode ? 'الوضع النهاري' : 'الوضع الليلي', style: const TextStyle(fontWeight: FontWeight.w800)),
+            trailing: Switch(value: darkMode, onChanged: (_) => onToggleTheme()),
+          ),
           ListTile(
             onTap: onLogout,
             leading: const Icon(Icons.logout_rounded, color: EmployeePortalApp.navy),
@@ -2832,35 +2905,22 @@ class _PortalFooter extends StatelessWidget {
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
-  void _about(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('حول النظام'),
-        content: const Text(
-          'Payroll Portal — بوابة الموظفين\n\n'
-          'تم تصميم وتطوير وبرمجة هذا النظام بالكامل بواسطة خالد يوسف المنسي.\n'
-          'Version 1.0.0\n'
-          'تاريخ الإنشاء: يوليو 2026',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Column(children: const [
+          SizedBox(height: 3, width: double.infinity, child: ColoredBox(color: Color(0xFFCE1126))),
+          SizedBox(height: 3, width: double.infinity, child: ColoredBox(color: Colors.white)),
+          SizedBox(height: 3, width: double.infinity, child: ColoredBox(color: Colors.black)),
+        ]),
+        Container(
       constraints: const BoxConstraints(minHeight: 64),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFFCF7),
-        border: Border(top: BorderSide(color: Color(0x33C9A24B))),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF071728) : const Color(0xFFF7F9FC),
+        border: const Border(top: BorderSide(color: Color(0x331D5FA7))),
       ),
       child: Wrap(
         alignment: WrapAlignment.center,
@@ -2868,10 +2928,10 @@ class _PortalFooter extends StatelessWidget {
         spacing: 14,
         runSpacing: 6,
         children: [
-          const Text(
+          Text(
             'تم تصميم وتطوير وبرمجة هذا النظام بالكامل بواسطة خالد يوسف المنسي',
             style: TextStyle(
-              color: EmployeePortalApp.navy,
+              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFEDF3F8) : EmployeePortalApp.navy,
               fontWeight: FontWeight.w900,
               fontSize: 11.5,
             ),
@@ -2881,19 +2941,14 @@ class _PortalFooter extends StatelessWidget {
             child: const Text(
               'واتساب: 01201413051',
               style: TextStyle(
-                color: Color(0xFFB16F00),
+                color: Color(0xFF1D5FA7),
                 fontWeight: FontWeight.w900,
                 fontSize: 11.5,
               ),
             ),
           ),
-          const Text('| Version 1.0.0 | © 2026 جميع الحقوق محفوظة |',
-              style: TextStyle(color: Color(0xFF6A5B54), fontSize: 11)),
-          TextButton.icon(
-            onPressed: () => _about(context),
-            icon: const Icon(Icons.info_outline, size: 18),
-            label: const Text('حول النظام'),
-          ),
+          const Text('| © 2026 جميع الحقوق محفوظة |',
+              style: TextStyle(color: Color(0xFF6B7280), fontSize: 11)),
           IconButton(
             tooltip: 'صفحة الشركة المصرية لنقل الكهرباء',
             onPressed: () => _open('https://www.facebook.com/EgyptEETC/'),
@@ -2906,6 +2961,8 @@ class _PortalFooter extends StatelessWidget {
           ),
         ],
       ),
+        ),
+      ],
     );
   }
 }
@@ -2999,6 +3056,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   Map<String, dynamic>? info;
+  bool birthdayChecked = false;
 
   @override
   void initState() {
@@ -3011,9 +3069,38 @@ class _DashboardPageState extends State<DashboardPage> {
       final r = await api.get('/api/employee/me');
       if (r.statusCode == 200 && mounted) {
         final body = jsonDecode(r.body);
-        if (body is Map<String, dynamic>) setState(() => info = body);
+        if (body is Map<String, dynamic>) {
+          setState(() => info = body);
+          await _maybeCelebrateBirthday(body);
+        }
       }
     } catch (_) {}
+  }
+
+  Future<void> _maybeCelebrateBirthday(Map<String, dynamic> employee) async {
+    if (birthdayChecked || !mounted) return;
+    birthdayChecked = true;
+    final now = DateTime.now();
+    if ('${employee['birth_day']}' != '${now.day}' || '${employee['birth_month']}' != '${now.month}') return;
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'birthday_seen_${widget.employeeCode}_${now.year}_${now.month}_${now.day}';
+    if (prefs.getBool(key) == true || !mounted) return;
+    final firstName = widget.fullName.trim().split(RegExp(r'\s+')).first;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Text('🎂🎉', style: TextStyle(fontSize: 42)),
+        title: const Text('كل سنة وأنت طيب', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900)),
+        content: Text(
+          'كل سنة وأنت طيب يا أ/ $firstName، نتمنى لك عامًا سعيدًا مليئًا بالنجاح والصحة.\n\nمع أطيب تمنيات الشركة المصرية لنقل الكهرباء — منطقة الدلتا',
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [FilledButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('شكرًا ❤️'))],
+      ),
+    );
+    await prefs.setBool(key, true);
   }
 
   void _open(BuildContext context, Widget page) {
@@ -3035,81 +3122,82 @@ class _DashboardPageState extends State<DashboardPage> {
       _BoltService(Icons.receipt_long_rounded, 'شريط المرتب', widget.onPayslip),
       _BoltService(Icons.account_balance_wallet_rounded, 'سجل الأجور', widget.onWageRecord),
       _BoltService(Icons.notifications_active_rounded, 'الإشعارات', widget.onNotifications),
-      _BoltService(Icons.forum_rounded, 'التواصل', () => _open(context, const ContactPage())),
+      _BoltService(Icons.forum_rounded, 'تواصل معنا', () => _open(context, const ContactPage())),
       _BoltService(Icons.star_rounded, 'تقييم الخدمة', () => _open(context, const RatingPage())),
-      _BoltService(Icons.lock_reset_rounded, 'كلمة المرور', () => _open(context, const ChangePasswordPage())),
-      if (widget.isAdmin && widget.onAdminPanel != null) _BoltService(Icons.admin_panel_settings_rounded, 'الإدارة', widget.onAdminPanel!),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final desktop = constraints.maxWidth >= 900;
-        return ListView(
-          padding: EdgeInsets.symmetric(horizontal: desktop ? 32 : 12, vertical: 22),
-          children: [
-            Text('مرحباً بك، ${widget.fullName}', textAlign: TextAlign.right, style: const TextStyle(color: EmployeePortalApp.navy, fontSize: 21, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text('كود العامل: ${widget.employeeCode}', textAlign: TextAlign.right, style: const TextStyle(color: Color(0xFF6F5A50), fontSize: 13, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 18),
-            Wrap(
-              spacing: 14,
-              runSpacing: 14,
-              alignment: WrapAlignment.start,
-              children: [
-                _SummaryCard(icon: Icons.fact_check_outlined, title: 'آخر تحديث', value: _hireDate(), valueColor: EmployeePortalApp.navy),
-                _SummaryCard(icon: Icons.account_tree_outlined, title: 'الإدارة', value: _department(), valueColor: EmployeePortalApp.navy),
-                const _SummaryCard(icon: Icons.calendar_month_outlined, title: 'سنوات الخدمة', value: '—', valueColor: EmployeePortalApp.navy),
-                _SummaryCard(icon: Icons.person_rounded, title: 'الحالة الوظيفية', value: _statusText(), valueColor: EmployeePortalApp.green),
-              ],
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: const AssetImage('assets/login_bg_reference_v2.png'),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(dark ? const Color(0xD9071728) : const Color(0xBDF7F9FC), BlendMode.srcOver),
             ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Expanded(child: Divider(color: Color(0x55C9A24B))),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('الخدمات المتاحة', style: TextStyle(color: Color(0xFFB16F00), fontSize: 18, fontWeight: FontWeight.w900)),
+          ),
+          child: ListView(
+            padding: EdgeInsets.symmetric(horizontal: desktop ? 34 : 12, vertical: 24),
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: desktop ? 32 : 18, vertical: 25),
+                decoration: BoxDecoration(
+                  color: dark ? const Color(0xE60D2741) : const Color(0xEFFFFFFF),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: dark ? const Color(0xFF66788A) : EmployeePortalApp.line),
+                  boxShadow: const [BoxShadow(color: Color(0x26092A4A), blurRadius: 28, offset: Offset(0, 10))],
                 ),
-                const Expanded(child: Divider(color: Color(0x55C9A24B))),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: SizedBox(
-                width: 620,
-                height: widget.isAdmin ? 530 : 470,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(child: Icon(Icons.bolt_rounded, size: 300, color: EmployeePortalApp.gold.withValues(alpha: .72))),
-                    ..._servicePositions(services.length).asMap().entries.map((e) {
-                      final i = e.key;
-                      final p = e.value;
-                      return Positioned(left: p.dx, top: p.dy, child: _CircularServiceButton(service: services[i]));
-                    }),
-                  ],
-                ),
+                child: Row(children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('مرحبًا، ${widget.fullName}', style: TextStyle(color: dark ? const Color(0xFFEDF3F8) : EmployeePortalApp.navyLight, fontSize: desktop ? 28 : 21, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 7),
+                    Text('نتمنى لك يوم عمل موفقًا داخل المنظومة الإلكترونية الموحدة — منطقة الدلتا', style: TextStyle(color: dark ? const Color(0xFFC4CBD3) : EmployeePortalApp.gray, fontWeight: FontWeight.w600)),
+                  ])),
+                  const SizedBox(width: 14),
+                  const Icon(Icons.electric_bolt_rounded, color: EmployeePortalApp.gold, size: 58),
+                ]),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: services.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: desktop ? 3 : 2, crossAxisSpacing: 15, mainAxisSpacing: 15, childAspectRatio: desktop ? 1.75 : 1.15),
+                itemBuilder: (_, i) => _PortalServiceCard(service: services[i], dark: dark),
+              ),
+            ],
+          ),
         );
       },
     );
   }
+}
 
-  List<Offset> _servicePositions(int n) {
-    final base = <Offset>[
-      const Offset(260, 10),
-      const Offset(90, 120),
-      const Offset(430, 120),
-      const Offset(260, 125),
-      const Offset(260, 245),
-      const Offset(120, 300),
-      const Offset(400, 300),
-      const Offset(260, 365),
-    ];
-    return base.take(n).toList();
-  }
+class _PortalServiceCard extends StatelessWidget {
+  final _BoltService service;
+  final bool dark;
+  const _PortalServiceCard({required this.service, required this.dark});
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: dark ? const Color(0xE612324F) : const Color(0xF2FFFFFF),
+    borderRadius: BorderRadius.circular(16),
+    child: InkWell(
+      onTap: service.onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: dark ? const Color(0xFF66788A) : EmployeePortalApp.line)),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(width: 62, height: 62, decoration: BoxDecoration(shape: BoxShape.circle, color: dark ? const Color(0xFF0D2741) : const Color(0xFFEDF3F8), border: Border.all(color: EmployeePortalApp.line, width: 1.5)), child: Icon(service.icon, color: EmployeePortalApp.gold, size: 31)),
+          const SizedBox(height: 10),
+          Text(service.label, textAlign: TextAlign.center, style: TextStyle(color: dark ? const Color(0xFFEDF3F8) : EmployeePortalApp.navyLight, fontWeight: FontWeight.w900, fontSize: 14)),
+        ]),
+      ),
+    ),
+  );
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -3126,17 +3214,17 @@ class _SummaryCard extends StatelessWidget {
       height: 108,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
+        color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x22C9A24B)),
+        border: Border.all(color: const Color(0x221D5FA7)),
         boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 12, offset: Offset(0, 5))],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: const Color(0xFFB77805), size: 27),
+          Icon(icon, color: const Color(0xFF1D5FA7), size: 27),
           const SizedBox(height: 5),
-          Text(title, style: const TextStyle(color: Color(0xFF67544D), fontSize: 11.5, fontWeight: FontWeight.w700)),
+          Text(title, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11.5, fontWeight: FontWeight.w700)),
           const SizedBox(height: 3),
           Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: valueColor, fontSize: 13.5, fontWeight: FontWeight.w900)),
         ],
@@ -3176,14 +3264,14 @@ class _CircularServiceButton extends StatelessWidget {
                 height: 72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFFFFDF8),
+                  color: const Color(0xFFF7F9FC),
                   border: Border.all(
                     color: EmployeePortalApp.gold,
                     width: 1.8,
                   ),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x22C9A24B),
+                      color: Color(0x221D5FA7),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
@@ -3251,7 +3339,7 @@ class _BoltGlowPainter extends CustomPainter {
     canvas.drawPath(
       glowPath,
       Paint()
-        ..color = const Color(0x24C9A24B)
+        ..color = const Color(0x241D5FA7)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 13
         ..strokeCap = StrokeCap.round
@@ -3261,7 +3349,7 @@ class _BoltGlowPainter extends CustomPainter {
     canvas.drawPath(
       glowPath,
       Paint()
-        ..color = const Color(0xA6C9A24B)
+        ..color = const Color(0xA61D5FA7)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.2
         ..strokeCap = StrokeCap.round
@@ -3303,7 +3391,7 @@ class _QuickCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x33C9A24B),
+                color: Color(0x331D5FA7),
                 blurRadius: 10,
                 offset: Offset(0, 4),
               ),
@@ -3320,7 +3408,7 @@ class _QuickCard extends StatelessWidget {
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(color: Color(0xFF6F5A50)),
+          style: const TextStyle(color: Color(0xFF6B7280)),
         ),
         trailing: const Icon(
           Icons.arrow_back_ios_new_rounded,
@@ -3503,9 +3591,9 @@ class _AdminInfoPageState extends State<AdminInfoPage> {
       width: 230,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
+        color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x22C9A24B)),
+        border: Border.all(color: const Color(0x221D5FA7)),
         boxShadow: const [
           BoxShadow(color: Color(0x18000000), blurRadius: 14, offset: Offset(0, 6)),
         ],
@@ -3586,9 +3674,9 @@ class _AdminInfoPageState extends State<AdminInfoPage> {
   Widget _detailsCard() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
+        color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x22C9A24B)),
+        border: Border.all(color: const Color(0x221D5FA7)),
         boxShadow: const [
           BoxShadow(color: Color(0x16000000), blurRadius: 14, offset: Offset(0, 6)),
         ],
@@ -3623,9 +3711,9 @@ class _AdminInfoPageState extends State<AdminInfoPage> {
   Widget _contactCard() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
+        color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x22C9A24B)),
+        border: Border.all(color: const Color(0x221D5FA7)),
       ),
       child: Column(
         children: [
@@ -3760,7 +3848,7 @@ class _PayslipPageState extends State<PayslipPage> {
       constraints: const BoxConstraints(minWidth: 175),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
+        color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: .28)),
       ),
@@ -3780,9 +3868,9 @@ class _PayslipPageState extends State<PayslipPage> {
     final installmentItems = items.where((item) => item['balance'] != null).toList();
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
+        color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x22C9A24B)),
+        border: Border.all(color: const Color(0x221D5FA7)),
       ),
       child: Column(
         children: [
@@ -3914,7 +4002,7 @@ class _PayslipPageState extends State<PayslipPage> {
                                 children: [
                                   _summary('إجمالي الاستحقاقات', earningsTotal, const Color(0xFF21843B)),
                                   _summary('إجمالي الاستقطاعات', deductionsTotal, const Color(0xFFD71920)),
-                                  _summary('إجمالي الصافي', net, const Color(0xFFB16F00)),
+                                  _summary('إجمالي الصافي', net, const Color(0xFF1D5FA7)),
                                 ],
                               ),
                               const SizedBox(height: 16),
@@ -4029,7 +4117,7 @@ class _WageRecordPageState extends State<WageRecordPage> {
         constraints: const BoxConstraints(minWidth: 180),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFDF8),
+          color: const Color(0xFFF7F9FC),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withValues(alpha: .25)),
         ),
@@ -4072,7 +4160,7 @@ class _WageRecordPageState extends State<WageRecordPage> {
                             children: [
                               summary('إجمالي الاستحقاقات', earningsTotal, const Color(0xFF21843B)),
                               summary('إجمالي الاستقطاعات', deductionsTotal, const Color(0xFFD71920)),
-                              summary('إجمالي الصافي', netTotal, const Color(0xFFB16F00)),
+                              summary('إجمالي الصافي', netTotal, const Color(0xFF1D5FA7)),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -4084,16 +4172,16 @@ class _WageRecordPageState extends State<WageRecordPage> {
                           else
                             Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFFDF8),
+                                color: const Color(0xFFF7F9FC),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0x22C9A24B)),
+                                border: Border.all(color: const Color(0x221D5FA7)),
                               ),
                               child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: DataTable(
                                   headingRowColor: WidgetStateProperty.all(const Color(0xFFF1E7DB)),
                                   columns: const [
-                                    DataColumn(label: Text('الصرفية')),
+                                    DataColumn(label: Text('رقم واسم الصرفية')),
                                     DataColumn(label: Text('إجمالي الاستحقاقات')),
                                     DataColumn(label: Text('إجمالي الاستقطاعات')),
                                     DataColumn(label: Text('الصافي')),
@@ -4102,7 +4190,12 @@ class _WageRecordPageState extends State<WageRecordPage> {
                                   rows: rows.map((r) {
                                     return DataRow(
                                       cells: [
-                                        DataCell(Text('${r['sarfia_no'] ?? '-'}')),
+                                        DataCell(
+                                          Text(
+                                            '${r['sarfia_no'] ?? '-'} — ${r['sarfia_name'] ?? 'صرفية إضافية'}',
+                                            style: const TextStyle(fontWeight: FontWeight.w800),
+                                          ),
+                                        ),
                                         DataCell(Text(money(r['earnings_total']))),
                                         DataCell(Text(money(r['deductions_total']))),
                                         DataCell(Text(money(r['net_salary']))),
@@ -4164,9 +4257,9 @@ class _MonthYearSelector extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
+        color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x22C9A24B)),
+        border: Border.all(color: const Color(0x221D5FA7)),
         boxShadow: const [
           BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: Offset(0, 4)),
         ],
@@ -4230,9 +4323,15 @@ class AdminDashboardPage extends StatelessWidget {
     final items = [
       (
         Icons.people_alt_outlined,
-        'إدارة الموظفين',
-        'بحث، عرض وتعديل البيانات وإعادة كلمة المرور',
+        'البحث الشامل',
+        'بحث بالكود أو الاسم وعرض خدمات الموظف',
         const AdminEmployeesPage(),
+      ),
+      (
+        Icons.analytics_outlined,
+        'الإحصائيات',
+        'الرواتب والحوافز والمعاشات وإجمالي البنود',
+        const AdminStatisticsPage(),
       ),
       (
         Icons.forum_outlined,
@@ -4267,7 +4366,7 @@ class AdminDashboardPage extends StatelessWidget {
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF74162A), Color(0xFF4A0D19)],
+              colors: [Color(0xFF123B6D), Color(0xFF092A4A)],
             ),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: EmployeePortalApp.gold.withValues(alpha: .5)),
@@ -4333,6 +4432,148 @@ class AdminDashboardPage extends StatelessWidget {
   }
 }
 
+class AdminStatisticsPage extends StatefulWidget {
+  const AdminStatisticsPage({super.key});
+
+  @override
+  State<AdminStatisticsPage> createState() => _AdminStatisticsPageState();
+}
+
+class _AdminStatisticsPageState extends State<AdminStatisticsPage> {
+  int month = DateTime.now().month;
+  int year = DateTime.now().year;
+  bool loading = false;
+  Map<String, dynamic>? data;
+  List<Map<String, dynamic>> items = [];
+  int? selectedBandCode;
+  Map<String, dynamic>? itemTotal;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    loadItems();
+  }
+
+  Future<void> loadItems() async {
+    try {
+      final response = await api.get('/api/admin/statistics/items');
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 200) throw Exception(body['error'] ?? 'تعذر تحميل البنود');
+      if (!mounted) return;
+      setState(() {
+        items = (body as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      });
+    } catch (e) {
+      if (mounted) setState(() => error = cleanError(e));
+    }
+  }
+
+  Future<void> loadItemTotal() async {
+    if (selectedBandCode == null) return;
+    setState(() { loading = true; error = null; });
+    try {
+      final response = await api.get('/api/admin/statistics/item-total?month=$month&year=$year&band_code=$selectedBandCode');
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 200) throw Exception(body['error'] ?? 'تعذر حساب البند');
+      if (mounted) setState(() => itemTotal = Map<String, dynamic>.from(body));
+    } catch (e) {
+      if (mounted) setState(() => error = cleanError(e));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> load() async {
+    setState(() { loading = true; error = null; });
+    try {
+      final response = await api.get('/api/admin/statistics/summary?month=$month&year=$year');
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 200) throw Exception(body['error'] ?? 'تعذر تحميل الإحصائيات');
+      setState(() => data = Map<String, dynamic>.from(body));
+    } catch (e) {
+      setState(() => error = cleanError(e));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Widget metric(String title, dynamic raw, {String suffix = 'جنيه'}) {
+    final item = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+    final value = item['value'];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(color: EmployeePortalApp.gray, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Text(value == null ? '—' : '${(value as num).toStringAsFixed(2)} $suffix', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: EmployeePortalApp.navy)),
+          const SizedBox(height: 4),
+          Text(item['full_name'] == null ? 'لا توجد بيانات' : '${item['full_name']} — كود ${item['employee_code'] ?? ''}', style: const TextStyle(fontSize: 11.5)),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final retirement = data?['retirements'] is Map ? Map<String, dynamic>.from(data!['retirements']) : <String, dynamic>{};
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('الإحصائيات')),
+        body: ListView(padding: const EdgeInsets.all(14), children: [
+          Wrap(spacing: 10, runSpacing: 10, children: [
+            SizedBox(width: 170, child: DropdownButtonFormField<int>(value: month, decoration: const InputDecoration(labelText: 'الشهر'), items: List.generate(12, (i) => DropdownMenuItem(value: i + 1, child: Text('${i + 1}'))), onChanged: (v) => setState(() => month = v ?? month))),
+            SizedBox(width: 140, child: TextFormField(initialValue: '$year', keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'السنة'), onChanged: (v) => year = int.tryParse(v) ?? year)),
+            FilledButton.icon(onPressed: loading ? null : load, icon: const Icon(Icons.refresh), label: const Text('عرض')),
+          ]),
+          if (loading) const Padding(padding: EdgeInsets.all(18), child: LinearProgressIndicator()),
+          if (error != null) Padding(padding: const EdgeInsets.all(12), child: Text(error!, style: const TextStyle(color: EmployeePortalApp.red))),
+          if (data != null) ...[
+            const SizedBox(height: 12),
+            LayoutBuilder(builder: (_, c) {
+              final width = c.maxWidth >= 720 ? (c.maxWidth - 20) / 3 : c.maxWidth;
+              return Wrap(spacing: 10, runSpacing: 10, children: [
+                SizedBox(width: width, child: metric('أعلى إجمالي', data!['highest_gross'])),
+                SizedBox(width: width, child: metric('أعلى صافي', data!['highest_net'])),
+                SizedBox(width: width, child: metric('أقل صافي', data!['lowest_net'])),
+                SizedBox(width: width, child: metric('أعلى نسبة حافز', data!['highest_incentive_percentage'], suffix: '%')),
+                SizedBox(width: width, child: metric('أقل نسبة حافز', data!['lowest_incentive_percentage'], suffix: '%')),
+                SizedBox(width: width, child: Card(child: ListTile(title: const Text('المحالون للمعاش'), subtitle: Text('هذا الشهر: ${retirement['month'] ?? 0}\nهذه السنة: ${retirement['year'] ?? 0}'), leading: const Icon(Icons.event_available)))),
+              ]);
+            }),
+          ],
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('إجمالي بند محدد', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int>(
+                  value: selectedBandCode,
+                  decoration: const InputDecoration(labelText: 'اختر البند'),
+                  items: items.map((i) => DropdownMenuItem<int>(value: i['band_code'] as int, child: Text('${i['band_name']} (${i['band_code']})'))).toList(),
+                  onChanged: (v) => setState(() { selectedBandCode = v; itemTotal = null; }),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.icon(onPressed: selectedBandCode == null || loading ? null : loadItemTotal, icon: const Icon(Icons.calculate_outlined), label: const Text('حساب الإجمالي')),
+                if (itemTotal != null) ...[
+                  const Divider(height: 24),
+                  Text('${itemTotal!['band_name']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text('${(itemTotal!['total'] as num).toStringAsFixed(2)} جنيه', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: EmployeePortalApp.navy)),
+                  Text('عدد الموظفين: ${itemTotal!['employee_count']}'),
+                ],
+              ]),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 class AdminEmployeesPage extends StatefulWidget {
   const AdminEmployeesPage({super.key});
 
@@ -4342,14 +4583,22 @@ class AdminEmployeesPage extends StatefulWidget {
 
 class _AdminEmployeesPageState extends State<AdminEmployeesPage> {
   final search = TextEditingController();
+  Timer? searchTimer;
   List<Map<String, dynamic>> results = [];
   bool loading = false;
   String? error;
 
   @override
   void dispose() {
+    searchTimer?.cancel();
     search.dispose();
     super.dispose();
+  }
+
+  void scheduleSearch(String value) {
+    searchTimer?.cancel();
+    if (value.trim().length < 2) return;
+    searchTimer = Timer(const Duration(milliseconds: 300), doSearch);
   }
 
   Future<void> doSearch() async {
@@ -4401,6 +4650,7 @@ class _AdminEmployeesPageState extends State<AdminEmployeesPage> {
                   Expanded(
                     child: TextField(
                       controller: search,
+                      onChanged: scheduleSearch,
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => doSearch(),
                       decoration: const InputDecoration(
@@ -4594,39 +4844,35 @@ class _AdminEmployeeDetailsPageState extends State<AdminEmployeeDetailsPage> {
   }
 
   Future<void> resetPassword() async {
-    final controller = TextEditingController(text: 'Welcome123');
-    final newPassword = await showDialog<String>(
+    final passwordSource = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('إعادة تعيين كلمة المرور'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'كلمة المرور الجديدة',
-            border: OutlineInputBorder(),
-          ),
+        content: const Text(
+          'اختر مصدر كلمة المرور المؤقتة. سيُطلب من الموظف تغييرها بعد أول دخول.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('إلغاء'),
           ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context, 'national_id'),
+            child: const Text('الرقم القومي'),
+          ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('تنفيذ'),
+            onPressed: () => Navigator.pop(context, 'birth_date'),
+            child: const Text('تاريخ الميلاد'),
           ),
         ],
       ),
     );
-    controller.dispose();
-
-    if (newPassword == null || newPassword.isEmpty) return;
+    if (passwordSource == null) return;
 
     try {
       final response = await api.post(
         '/api/admin/employees/${widget.employeeId}/reset-password',
-        {'new_password': newPassword},
+        {'password_source': passwordSource},
       );
       final body = jsonDecode(response.body);
       if (response.statusCode != 200) {
@@ -4639,7 +4885,7 @@ class _AdminEmployeeDetailsPageState extends State<AdminEmployeeDetailsPage> {
           title: const Text('تمت العملية'),
           content: SelectableText(
             '${body['message'] ?? 'تم تغيير كلمة المرور'}\n\n'
-            'كلمة المرور الجديدة: ${body['new_password'] ?? newPassword}',
+            'كلمة المرور الجديدة: ${body['new_password'] ?? ''}',
           ),
           actions: [
             FilledButton(
