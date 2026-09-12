@@ -74,6 +74,22 @@ def fmt_num(n):
     return f"{n:,.2f}"
 
 
+def _draw_page_frame(c, width, height, page_number=None):
+    """حد واضح لمنطقة الطباعة مع رقم الصفحة عند وجود أكثر من صفحة."""
+    c.saveState()
+    c.setStrokeColor(ROYAL_DARK)
+    c.setLineWidth(1.2)
+    c.roundRect(18, 18, width - 36, height - 36, 7, fill=0, stroke=1)
+    c.setStrokeColor(SILVER)
+    c.setLineWidth(0.45)
+    c.roundRect(22, 22, width - 44, height - 44, 5, fill=0, stroke=1)
+    if page_number is not None:
+        c.setFillColor(GRAY)
+        c.setFont("Amiri", 7.5)
+        c.drawString(30, 29, ar(f"صفحة {page_number}"))
+    c.restoreState()
+
+
 def _draw_header(c, width, height, title, subtitle, code_sarf=None):
     c.setFillColor(SNOW)
     c.rect(0, 0, width, height, fill=1, stroke=0)
@@ -137,6 +153,9 @@ def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
 
     y = y_start
 
+    # إطار القسم والفاصل الرأسي يجعلان الاستحقاقات والاستقطاعات منفصلين بصريًا.
+    section_top = y + 13
+
     c.setFillColor(NAVY)
     c.setFont("Amiri-Bold", 12)
     c.drawRightString(right_col_x, y, ar("الاستحقاقات"))
@@ -186,6 +205,14 @@ def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
     earnings_bottom = y - (len(earnings) * row_step)
     content_bottom = min(earnings_bottom, deduction_y) - 10
 
+    c.saveState()
+    c.setStrokeColor(SILVER)
+    c.setLineWidth(0.8)
+    c.roundRect(35, content_bottom - 27, width - 70, section_top - content_bottom + 27, 6, fill=0, stroke=1)
+    divider_x = width / 2
+    c.line(divider_x, section_top, divider_x, content_bottom - 27)
+    c.restoreState()
+
     # مجموع كل عمود
     c.setStrokeColor(LINE)
     c.line(right_col_x - col_width, content_bottom, right_col_x, content_bottom)
@@ -204,6 +231,7 @@ def _draw_net_box(c, width, y, net):
     c.setFillColor(HexColor("#EAF1F8"))
     c.roundRect(40, y - 30, width - 80, 40, 6, fill=1, stroke=0)
     c.setStrokeColor(SILVER)
+    c.setLineWidth(1.1)
     c.roundRect(40, y - 30, width - 80, 40, 6, fill=0, stroke=1)
     c.setFillColor(ROYAL_DARK)
     c.setFont("Amiri-Bold", 14)
@@ -258,6 +286,7 @@ def generate_payslip_pdf(output_path, employee_name, employee_code, month_name, 
         f"{month_name} {year} — {employee_name} (كود {employee_code})",
         code_sarf,
     )
+    _draw_page_frame(c, width, height, 1)
     y, _, _ = _draw_columns(c, width, y, earnings, deductions, fill_page=True)
     y = _draw_net_box(c, width, y, net_salary)
     _draw_footer(c, width, 60)
@@ -278,12 +307,18 @@ def generate_wage_record_pdf(output_path, employee_name, employee_code, month_na
 
     width, height = A4
 
+    page_number = 0
+
     def new_page():
-        return _draw_header(
+        nonlocal page_number
+        page_number += 1
+        page_y = _draw_header(
             c, width, height,
             "سجل الأجور",
             f"{month_name} {year} — {employee_name} (كود {employee_code})",
         )
+        _draw_page_frame(c, width, height, page_number)
+        return page_y
 
     def block_height(d):
         rows = max(len(d["earnings"]), len(d["deductions"]), 1)
@@ -296,7 +331,9 @@ def generate_wage_record_pdf(output_path, employee_name, employee_code, month_na
         title = f"صرفية رقم {d['sarfia_no']} - {name}"
 
         c.setFillColor(HexColor("#EAF1F8"))
-        c.roundRect(left, y - 25, right - left, 27, 5, fill=1, stroke=0)
+        c.setStrokeColor(ROYAL)
+        c.setLineWidth(0.9)
+        c.roundRect(left, y - 25, right - left, 27, 5, fill=1, stroke=1)
         c.setFillColor(ROYAL_DARK)
         shaped_title = ar(title)
         title_size = 11
@@ -333,6 +370,17 @@ def generate_wage_record_pdf(output_path, employee_name, employee_code, month_na
         bottom = y - rows * 15 - 2
         earnings_total = sum(_item_parts(item)[1] for item in d["earnings"])
         deductions_total = sum(_item_parts(item)[1] for item in d["deductions"])
+
+        # إطار كامل للصرفية وفاصل بين العمودين.
+        table_top = y + 13
+        table_bottom = bottom - 29
+        c.saveState()
+        c.setStrokeColor(SILVER)
+        c.setLineWidth(0.8)
+        c.roundRect(left, table_bottom, right - left, table_top - table_bottom, 4, fill=0, stroke=1)
+        c.line(mid, table_top, mid, bottom + 8)
+        c.restoreState()
+
         c.setStrokeColor(SILVER)
         c.line(left, bottom + 8, right, bottom + 8)
         c.setFont("Amiri-Bold", 9)
@@ -340,8 +388,10 @@ def generate_wage_record_pdf(output_path, employee_name, employee_code, month_na
         c.drawRightString(right, bottom - 4, ar(f"إجمالي الاستحقاقات: {fmt_num(earnings_total)}"))
         c.setFillColor(RED)
         c.drawRightString(mid - 10, bottom - 4, ar(f"إجمالي الاستقطاعات: {fmt_num(deductions_total)}"))
+        c.setFillColor(HexColor("#EAF1F8"))
+        c.roundRect(left + 4, bottom - 27, right - left - 8, 18, 3, fill=1, stroke=0)
         c.setFillColor(ROYAL_DARK)
-        c.drawCentredString(width / 2, bottom - 20, ar(f"الصافي: {fmt_num(d['net_salary'])} ج.م"))
+        c.drawCentredString(width / 2, bottom - 22, ar(f"الصافي: {fmt_num(d['net_salary'])} ج.م"))
         return bottom - 34
 
     y = new_page()
