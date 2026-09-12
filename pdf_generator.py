@@ -47,14 +47,19 @@ BOLD_FONT = _first_existing_font([
 pdfmetrics.registerFont(TTFont("Amiri", REGULAR_FONT))
 pdfmetrics.registerFont(TTFont("Amiri-Bold", BOLD_FONT))
 
-NAVY = HexColor("#5C1524")
-GOLD = HexColor("#C9A24B")
+NAVY = HexColor("#092A4A")
+ROYAL_DARK = HexColor("#123B6D")
+ROYAL = HexColor("#1D5FA7")
+SILVER = HexColor("#C4CBD3")
+SNOW = HexColor("#F7F9FC")
+INK = HexColor("#172433")
 GRAY = HexColor("#6B7280")
-RED = HexColor("#B14A3D")
-GREEN = HexColor("#2F7A4F")
-LINE = HexColor("#DFD9C8")
+RED = HexColor("#D92D20")
+GREEN = HexColor("#22A06B")
+LINE = SILVER
 
-APP_VERSION = "Version 1.0.0"
+APP_VERSION = "Version 2.0.0"
+LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo.jpg")
 
 
 def ar(text):
@@ -70,26 +75,61 @@ def fmt_num(n):
 
 
 def _draw_header(c, width, height, title, subtitle, code_sarf=None):
-    y = height - 60
+    c.setFillColor(SNOW)
+    c.rect(0, 0, width, height, fill=1, stroke=0)
+    y = height - 54
 
     c.setFillColor(NAVY)
-    c.rect(0, height - 90, width, 90, fill=1, stroke=0)
+    c.rect(0, height - 100, width, 100, fill=1, stroke=0)
+    c.setFillColor(ROYAL)
+    c.rect(0, height - 103, width, 3, fill=1, stroke=0)
 
-    c.setFillColor(GOLD)
+    if os.path.isfile(LOGO_PATH):
+        c.drawImage(LOGO_PATH, 30, height - 86, 58, 58, preserveAspectRatio=True, mask="auto")
+
+    c.setFillColor(HexColor("#FFFFFF"))
     c.setFont("Amiri-Bold", 16)
     c.drawRightString(width - 40, y, ar(title))
 
-    c.setFillColor(HexColor("#E9D9AE"))
+    c.setFillColor(SILVER)
     c.setFont("Amiri", 11)
     sub_text = subtitle
     if code_sarf:
         sub_text += f" — كود الصرف: {code_sarf}"
     c.drawRightString(width - 40, y - 22, ar(sub_text))
 
-    return height - 110
+    return height - 128
 
 
-def _draw_columns(c, width, y_start, earnings, deductions):
+def _item_parts(item):
+    """Accept both legacy (name, amount) tuples and the site's item dictionaries."""
+    if isinstance(item, dict):
+        return item.get("name", "بند غير مسمى"), float(item.get("amount", 0)), item.get("balance")
+    return item[0], float(item[1]), None
+
+
+def _draw_installment_card(c, x_left, x_right, y, name, amount, balance):
+    """Draw the same installment / balance card used in the website."""
+    card_height = 48
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.setStrokeColor(SILVER)
+    c.roundRect(x_left, y - card_height + 7, x_right - x_left, card_height, 5, fill=1, stroke=1)
+    c.setFillColor(ROYAL_DARK)
+    c.setFont("Amiri-Bold", 9.5)
+    c.drawRightString(x_right - 8, y - 7, ar(name))
+    c.setFont("Amiri-Bold", 8)
+    c.setFillColor(GRAY)
+    c.drawRightString(x_right - 8, y - 27, ar("القسط"))
+    c.setFillColor(RED)
+    c.drawRightString(x_right - 50, y - 27, fmt_num(amount))
+    c.setFillColor(GRAY)
+    c.drawRightString(x_right - 105, y - 27, ar("الرصيد"))
+    c.setFillColor(INK)
+    c.drawRightString(x_right - 148, y - 27, fmt_num(float(balance)))
+    return card_height + 5
+
+
+def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
     """بترسم عمودين (استحقاقات | استقطاعات) وترجع نقطة النهاية Y."""
     col_width = (width - 80) / 2
     right_col_x = width - 40
@@ -101,33 +141,50 @@ def _draw_columns(c, width, y_start, earnings, deductions):
     c.setFont("Amiri-Bold", 12)
     c.drawRightString(right_col_x, y, ar("الاستحقاقات"))
     c.drawRightString(left_col_x, y, ar("الاستقطاعات"))
-    c.setStrokeColor(GOLD)
+    c.setStrokeColor(ROYAL)
     c.line(right_col_x - col_width, y - 4, right_col_x, y - 4)
     c.line(left_col_x - col_width, y - 4, left_col_x, y - 4)
 
-    y -= 22
+    y -= 24
     c.setFont("Amiri", 10.5)
 
-    max_rows = max(len(earnings), len(deductions))
-    earnings_total = 0
-    deductions_total = 0
+    earnings_total = sum(_item_parts(item)[1] for item in earnings)
+    deductions_total = sum(_item_parts(item)[1] for item in deductions)
+    regular_deductions = [item for item in deductions if _item_parts(item)[2] is None]
+    installments = [item for item in deductions if _item_parts(item)[2] is not None]
+    deduction_units = len(regular_deductions) + (len(installments) * 3)
+    max_rows = max(len(earnings), deduction_units)
 
-    for i in range(max_rows):
-        row_y = y - (i * 16)
-        if i < len(earnings):
-            name, amount = earnings[i]
-            earnings_total += amount
-            c.setFillColor(HexColor("#242730"))
+    row_step = 16
+    if fill_page and max_rows:
+        row_step = max(16, min(30, (y - 275) / max_rows))
+
+    for i, item in enumerate(earnings):
+        row_y = y - (i * row_step)
+        name, amount, _ = _item_parts(item)
+        if row_y > 170:
+            c.setFillColor(INK)
             c.drawRightString(right_col_x, row_y, ar(name))
             c.drawString(right_col_x - col_width, row_y, fmt_num(amount))
-        if i < len(deductions):
-            name, amount = deductions[i]
-            deductions_total += amount
-            c.setFillColor(RED)
-            c.drawRightString(left_col_x, row_y, ar(name))
-            c.drawString(left_col_x - col_width, row_y, fmt_num(amount))
 
-    content_bottom = y - (max_rows * 16) - 10
+    deduction_y = y
+    for item in regular_deductions:
+        name, amount, _ = _item_parts(item)
+        if deduction_y > 170:
+            c.setFillColor(RED)
+            c.drawRightString(left_col_x, deduction_y, ar(name))
+            c.drawString(left_col_x - col_width, deduction_y, fmt_num(amount))
+        deduction_y -= row_step
+
+    for item in installments:
+        name, amount, balance = _item_parts(item)
+        deduction_y -= 3
+        deduction_y -= _draw_installment_card(
+            c, left_col_x - col_width, left_col_x, deduction_y, name, amount, balance
+        )
+
+    earnings_bottom = y - (len(earnings) * row_step)
+    content_bottom = min(earnings_bottom, deduction_y) - 10
 
     # مجموع كل عمود
     c.setStrokeColor(LINE)
@@ -144,16 +201,19 @@ def _draw_columns(c, width, y_start, earnings, deductions):
 
 
 def _draw_net_box(c, width, y, net):
-    c.setFillColor(HexColor("#E9D9AE"))
+    c.setFillColor(HexColor("#EAF1F8"))
     c.roundRect(40, y - 30, width - 80, 40, 6, fill=1, stroke=0)
-    c.setFillColor(NAVY)
+    c.setStrokeColor(SILVER)
+    c.roundRect(40, y - 30, width - 80, 40, 6, fill=0, stroke=1)
+    c.setFillColor(ROYAL_DARK)
     c.setFont("Amiri-Bold", 14)
     c.drawRightString(width - 55, y - 15, ar(f"الصافي: {fmt_num(net)} ج.م"))
     return y - 55
 
 
 def _draw_footer(c, width, y):
-    c.setStrokeColor(RED)
+    c.setStrokeColor(SILVER)
+    c.line(40, y + 14, width - 40, y + 14)
     c.setFillColor(RED)
     c.setFont("Amiri", 8.5)
     c.drawCentredString(
@@ -167,14 +227,15 @@ def _draw_footer(c, width, y):
     y -= 11
     c.drawCentredString(width / 2, y, f"{APP_VERSION} — (c) 2026 All Rights Reserved")
 
-    # علامة مائية خفيفة جدًا في نص الصفحة
+    # علامة مائية قطرية تمتد بصريًا من أسفل اليسار إلى أعلى اليمين؛
+    # وباتجاه قراءة العربية تبدأ من أعلى اليمين إلى أسفل اليسار.
     c.saveState()
-    c.setFillColor(HexColor("#B4463D"))
-    c.setFillAlpha(0.07)
-    c.setFont("Amiri-Bold", 46)
-    c.translate(width / 2, 420)
-    c.rotate(30)
-    c.drawCentredString(0, 0, ar("سري للاستعلام فقط"))
+    c.setFillColor(ROYAL)
+    c.setFillAlpha(0.065)
+    c.setFont("Amiri-Bold", 54)
+    c.translate(width / 2, A4[1] / 2)
+    c.rotate(55)
+    c.drawCentredString(0, 0, ar("سري للغاية - للاستعلام فقط"))
     c.restoreState()
 
 
@@ -197,7 +258,7 @@ def generate_payslip_pdf(output_path, employee_name, employee_code, month_name, 
         f"{month_name} {year} — {employee_name} (كود {employee_code})",
         code_sarf,
     )
-    y, _, _ = _draw_columns(c, width, y, earnings, deductions)
+    y, _, _ = _draw_columns(c, width, y, earnings, deductions, fill_page=True)
     y = _draw_net_box(c, width, y, net_salary)
     _draw_footer(c, width, 60)
 
@@ -207,7 +268,7 @@ def generate_payslip_pdf(output_path, employee_name, employee_code, month_name, 
 def generate_wage_record_pdf(output_path, employee_name, employee_code, month_name, year, disbursements):
     """
     disbursements: قايمة من dicts فيها sarfia_no, earnings, deductions, net_salary
-    كل صرفية بترسم في صفحة منفصلة (أو تحت بعض لو المساحة سمحت)
+    يضع أكبر عدد ممكن من الصرفيات في الصفحة، وينتقل تلقائيًا عند امتلائها.
     """
     c = canvas.Canvas(output_path, pagesize=A4)
     c.setAuthor("Khaled Youssif Elmansy")
@@ -217,17 +278,81 @@ def generate_wage_record_pdf(output_path, employee_name, employee_code, month_na
 
     width, height = A4
 
-    for i, d in enumerate(disbursements):
-        if i > 0:
-            c.showPage()
-
-        y = _draw_header(
+    def new_page():
+        return _draw_header(
             c, width, height,
-            f"صرفية رقم {d['sarfia_no']}",
+            "سجل الأجور",
             f"{month_name} {year} — {employee_name} (كود {employee_code})",
         )
-        y, _, _ = _draw_columns(c, width, y, d["earnings"], d["deductions"])
-        y = _draw_net_box(c, width, y, d["net_salary"])
-        _draw_footer(c, width, 60)
+
+    def block_height(d):
+        rows = max(len(d["earnings"]), len(d["deductions"]), 1)
+        return 105 + rows * 15
+
+    def draw_block(d, y):
+        left, right = 40, width - 40
+        mid = width / 2
+        name = d.get("sarfia_name") or "صرفية إضافية"
+        title = f"صرفية رقم {d['sarfia_no']} - {name}"
+
+        c.setFillColor(HexColor("#EAF1F8"))
+        c.roundRect(left, y - 25, right - left, 27, 5, fill=1, stroke=0)
+        c.setFillColor(ROYAL_DARK)
+        shaped_title = ar(title)
+        title_size = 11
+        while title_size > 8 and c.stringWidth(shaped_title, "Amiri-Bold", title_size) > right - left - 18:
+            title_size -= 0.5
+        c.setFont("Amiri-Bold", title_size)
+        c.drawRightString(right - 9, y - 16, shaped_title)
+        y -= 42
+
+        c.setFont("Amiri-Bold", 9)
+        c.setFillColor(NAVY)
+        c.drawRightString(right, y, ar("الاستحقاقات"))
+        c.drawRightString(mid - 10, y, ar("الاستقطاعات"))
+        c.setStrokeColor(ROYAL)
+        c.line(mid + 10, y - 4, right, y - 4)
+        c.line(left, y - 4, mid - 10, y - 4)
+        y -= 17
+
+        rows = max(len(d["earnings"]), len(d["deductions"]), 1)
+        c.setFont("Amiri", 8.5)
+        for i in range(rows):
+            row_y = y - i * 15
+            if i < len(d["earnings"]):
+                item_name, amount, _ = _item_parts(d["earnings"][i])
+                c.setFillColor(INK)
+                c.drawRightString(right, row_y, ar(item_name))
+                c.drawString(mid + 10, row_y, fmt_num(amount))
+            if i < len(d["deductions"]):
+                item_name, amount, _ = _item_parts(d["deductions"][i])
+                c.setFillColor(RED)
+                c.drawRightString(mid - 10, row_y, ar(item_name))
+                c.drawString(left, row_y, fmt_num(amount))
+
+        bottom = y - rows * 15 - 2
+        earnings_total = sum(_item_parts(item)[1] for item in d["earnings"])
+        deductions_total = sum(_item_parts(item)[1] for item in d["deductions"])
+        c.setStrokeColor(SILVER)
+        c.line(left, bottom + 8, right, bottom + 8)
+        c.setFont("Amiri-Bold", 9)
+        c.setFillColor(GREEN)
+        c.drawRightString(right, bottom - 4, ar(f"إجمالي الاستحقاقات: {fmt_num(earnings_total)}"))
+        c.setFillColor(RED)
+        c.drawRightString(mid - 10, bottom - 4, ar(f"إجمالي الاستقطاعات: {fmt_num(deductions_total)}"))
+        c.setFillColor(ROYAL_DARK)
+        c.drawCentredString(width / 2, bottom - 20, ar(f"الصافي: {fmt_num(d['net_salary'])} ج.م"))
+        return bottom - 34
+
+    y = new_page()
+    for index, d in enumerate(disbursements):
+        required = block_height(d)
+        if y - required < 100:
+            _draw_footer(c, width, 60)
+            c.showPage()
+            y = new_page()
+        y = draw_block(d, y) - 8
+
+    _draw_footer(c, width, 60)
 
     c.save()
