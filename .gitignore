@@ -13,3 +13,43 @@ temp_pdfs/
 .test-venv/
 *.zip
 *.bak
+
+# Local secrets / credentials
+access key.txt
+ngrok_recovery_codes.txt
+login.json
+ngrok.yml
+
+# Local ngrok files
+ngrok.exe
+ngrok/
+
+# Local OS/config files
+desktop.ini
+pip.conf
+
+# Local backups and temporary copies
+employee_portal_old_backup/
+New Text Document.txt
+
+# Local helper/debug files
+debug_login.py
+generate_hash.py
+gemini-code-*.js
+gemini-code-*.py
+
+# Old/local portal copies
+employee_portal1.html
+index.html
+portal_link_qr.html
+qr employee.pdf
+employee_portal*/
+تعديلات/
+
+# Local SQL/archive workspace
+sql employee portal/
+
+# Local startup scripts
+start_flask.bat
+start_ngrok.bat
+employee_portalكيفية بناء مشروع.pdf

@@ -2524,7 +2524,7 @@ function renderStatisticsPanel() {
   const now = new Date();
   box.innerHTML = `
     <div class="card" style="margin-bottom:14px;">
-      <div class="card-header">📊 إحصائيات المرتبات والمعاشات</div>
+      <div class="card-header">📊 إحصائيات البنود والمعاشات</div>
       <div class="selectors" style="padding:18px;margin:0;">
         <div><label>الشهر</label><select id="statsMonth">${MONTHS.map((m,i)=>`<option value="${i+1}" ${i===now.getMonth()?"selected":""}>${m}</option>`).join("")}</select></div>
         <div><label>السنة</label><input id="statsYear" type="number" min="2020" max="2100" value="${now.getFullYear()}" style="padding:8px;border:1px solid var(--line);border-radius:6px;width:100px;"></div>
@@ -2552,15 +2552,16 @@ async function loadStatistics() {
     const res = await apiFetch(`${API_BASE}/api/admin/statistics/summary?month=${month}&year=${year}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر تحميل الإحصائيات");
+    const retirementCard = (title, group) => {
+      const names = (group?.employees || []).map(e => `<div style="margin-top:5px;font-size:12px;">${escapeHtml(e.full_name)} — كود ${escapeHtml(e.employee_code || "")}</div>`).join("");
+      return `<div class="stat-card"><div class="stat-title">${title}</div><div class="stat-value">${group?.count || 0}</div>${names || `<div class="stat-person">لا توجد أسماء</div>`}</div>`;
+    };
     box.innerHTML = `<div class="stats-grid">
-      ${statisticCard("أعلى إجمالي", data.highest_gross)}
-      ${statisticCard("أعلى صافي", data.highest_net)}
-      ${statisticCard("أقل صافي", data.lowest_net)}
-      ${statisticCard("أعلى نسبة حافز", data.highest_incentive_percentage, "%")}
-      ${statisticCard("أقل نسبة حافز", data.lowest_incentive_percentage, "%")}
-      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال الشهر</div><div class="stat-value">${data.retirements.month}</div></div>
-      <div class="stat-card"><div class="stat-title">المحالون للمعاش خلال السنة</div><div class="stat-value">${data.retirements.year}</div></div>
-      <div class="stat-card"><div class="stat-title">عدد الموظفين في كشف الفترة</div><div class="stat-value">${data.employee_count}</div></div>
+      <div class="stat-card"><div class="stat-title">عدد الموظفين الحاليين</div><div class="stat-value">${data.current_employee_count}</div></div>
+      ${retirementCard("المحالون للمعاش — الشهر السابق", data.retirements.previous)}
+      ${retirementCard("المحالون للمعاش — الشهر الحالي", data.retirements.current)}
+      ${retirementCard("المحالون للمعاش — الشهر التالي", data.retirements.next)}
+      ${retirementCard(`المحالون للمعاش خلال سنة ${data.retirements.year.year}`, data.retirements.year)}
     </div>`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
 }
@@ -2585,7 +2586,13 @@ async function loadSelectedItemTotal() {
     const res = await apiFetch(`${API_BASE}/api/admin/statistics/item-total?month=${month}&year=${year}&band_code=${bandCode}`, {headers:{Authorization:`Bearer ${session.token}`}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "تعذر حساب البند");
-    box.innerHTML = `<div class="stat-card" style="margin:0 18px 18px;"><div class="stat-title">${escapeHtml(data.band_name)} — ${data.employee_count} موظف</div><div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div></div>`;
+    const retiredNames = (data.retired_employees || []).map(e => `<div style="margin-top:5px;font-size:12px;">${escapeHtml(e.full_name)} — كود ${escapeHtml(e.employee_code || "")}</div>`).join("");
+    box.innerHTML = `<div class="stat-card" style="margin:0 18px 18px;">
+      <div class="stat-title">${escapeHtml(data.band_name)} — ${data.employee_count} موظف</div>
+      <div class="stat-value">${Number(data.total).toLocaleString("ar-EG",{maximumFractionDigits:2})} جنيه</div>
+      <div class="stat-person" style="margin-top:10px;">المحالون للمعاش في الشهر: ${data.retirement_count || 0}</div>
+      ${retiredNames}
+    </div>`;
   } catch (e) { box.innerHTML = `<div class="conn-error">⚠ ${escapeHtml(e.message)}</div>`; }
 }
 

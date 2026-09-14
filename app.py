@@ -1610,90 +1610,70 @@ def admin_statistics_summary():
     if not month or not year or month not in range(1, 13):
         return jsonify({"error": "لازم تحدد شهر وسنة صحيحين"}), 400
 
+    selected = datetime.datetime(year, month, 1)
+    prev_month = (selected - datetime.timedelta(days=1)).replace(day=1)
+    next_month = (selected.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        WITH salary AS (
-            SELECT p.employee_id,
-                   SUM(CASE WHEN p.band_type = 'earning' THEN p.amount ELSE 0 END) AS gross_salary,
-                   SUM(CASE WHEN p.band_type = 'deduction' THEN p.amount ELSE 0 END) AS deductions,
-                   SUM(CASE WHEN p.band_type = 'earning' THEN p.amount ELSE -p.amount END) AS net_salary,
-                   SUM(CASE WHEN p.band_type = 'earning' AND p.band_name LIKE N'%حافز%' THEN p.amount ELSE 0 END) AS incentive
-            FROM payroll_items p
-            WHERE p.month = ? AND p.year = ? AND p.sarfia_no = 1
-            GROUP BY p.employee_id
-        ), ranked AS (
-            SELECT s.*, e.employee_code, e.full_name,
-                   CASE WHEN s.gross_salary > 0 THEN (s.incentive * 100.0 / s.gross_salary) ELSE 0 END AS incentive_percentage
-            FROM salary s
-            JOIN employees e ON e.id = s.employee_id
-        )
-        SELECT
-          (SELECT TOP 1 employee_code FROM ranked ORDER BY gross_salary DESC) AS highest_gross_code,
-          (SELECT TOP 1 full_name FROM ranked ORDER BY gross_salary DESC) AS highest_gross_name,
-          (SELECT TOP 1 gross_salary FROM ranked ORDER BY gross_salary DESC) AS highest_gross_value,
-          (SELECT TOP 1 employee_code FROM ranked ORDER BY net_salary DESC) AS highest_net_code,
-          (SELECT TOP 1 full_name FROM ranked ORDER BY net_salary DESC) AS highest_net_name,
-          (SELECT TOP 1 net_salary FROM ranked ORDER BY net_salary DESC) AS highest_net_value,
-          (SELECT TOP 1 employee_code FROM ranked WHERE net_salary > 0 ORDER BY net_salary ASC) AS lowest_net_code,
-          (SELECT TOP 1 full_name FROM ranked WHERE net_salary > 0 ORDER BY net_salary ASC) AS lowest_net_name,
-          (SELECT TOP 1 net_salary FROM ranked WHERE net_salary > 0 ORDER BY net_salary ASC) AS lowest_net_value,
-          (SELECT TOP 1 employee_code FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage DESC) AS highest_incentive_code,
-          (SELECT TOP 1 full_name FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage DESC) AS highest_incentive_name,
-          (SELECT TOP 1 incentive_percentage FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage DESC) AS highest_incentive_value,
-          (SELECT TOP 1 employee_code FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage ASC) AS lowest_incentive_code,
-          (SELECT TOP 1 full_name FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage ASC) AS lowest_incentive_name,
-          (SELECT TOP 1 incentive_percentage FROM ranked WHERE incentive > 0 ORDER BY incentive_percentage ASC) AS lowest_incentive_value,
-          (SELECT COUNT(*) FROM ranked) AS employee_count
-        """,
-        month, year,
-    )
-    row = cursor.fetchone()
 
+    # العدد الحالي طبقًا لحالة الموظف في جدول employees.
+    cursor.execute("SELECT COUNT(*) AS employee_count FROM employees WHERE status = 'active'")
+    current_row = cursor.fetchone()
+
+    # تاريخ المعاش = تاريخ الميلاد + 60 سنة. نستخدم الرقم القومي عند توافره.
     cursor.execute(
         """
-        WITH births AS (
-          SELECT TRY_CONVERT(date,
-            (CASE LEFT(national_id, 1) WHEN '2' THEN '19' WHEN '3' THEN '20' END) +
-            SUBSTRING(national_id, 2, 2) + '-' + SUBSTRING(national_id, 4, 2) + '-' + SUBSTRING(national_id, 6, 2)
-          ) AS birth_date
+        WITH employee_births AS (
+          SELECT id, employee_code, full_name,
+                 TRY_CONVERT(date,
+                   (CASE LEFT(national_id, 1) WHEN '2' THEN '19' WHEN '3' THEN '20' END) +
+                   SUBSTRING(national_id, 2, 2) + '-' + SUBSTRING(national_id, 4, 2) + '-' + SUBSTRING(national_id, 6, 2)
+                 ) AS birth_date
           FROM employees
           WHERE LEN(national_id) = 14
         ), retirements AS (
-          SELECT DATEADD(year, 60, birth_date) AS retirement_date
-          FROM births WHERE birth_date IS NOT NULL
+          SELECT employee_code, full_name, DATEADD(year, 60, birth_date) AS retirement_date
+          FROM employee_births
+          WHERE birth_date IS NOT NULL
         )
-        SELECT
-          SUM(CASE WHEN MONTH(retirement_date) = ? AND YEAR(retirement_date) = ? THEN 1 ELSE 0 END) AS month_count,
-          SUM(CASE WHEN YEAR(retirement_date) = ? THEN 1 ELSE 0 END) AS year_count
+        SELECT employee_code, full_name, retirement_date
         FROM retirements
+        WHERE (MONTH(retirement_date) = ? AND YEAR(retirement_date) = ?)
+           OR (MONTH(retirement_date) = ? AND YEAR(retirement_date) = ?)
+           OR (MONTH(retirement_date) = ? AND YEAR(retirement_date) = ?)
+           OR YEAR(retirement_date) = ?
+        ORDER BY retirement_date, full_name
         """,
-        month, year, year,
+        prev_month.month, prev_month.year,
+        selected.month, selected.year,
+        next_month.month, next_month.year,
+        selected.year,
     )
-    retirement = cursor.fetchone()
+    rows = cursor.fetchall()
     conn.close()
 
-    def metric(prefix, suffix="value"):
-        value = getattr(row, f"{prefix}_{suffix}", None) if row else None
+    def retirement_entry(r):
         return {
-            "employee_code": getattr(row, f"{prefix}_code", None) if row else None,
-            "full_name": getattr(row, f"{prefix}_name", None) if row else None,
-            "value": float(value) if value is not None else None,
+            "employee_code": r.employee_code,
+            "full_name": r.full_name,
+            "retirement_date": r.retirement_date.strftime("%Y-%m-%d") if r.retirement_date else None,
         }
 
+    def month_group(target):
+        items = [retirement_entry(r) for r in rows if r.retirement_date and r.retirement_date.month == target.month and r.retirement_date.year == target.year]
+        return {"month": target.month, "year": target.year, "count": len(items), "employees": items}
+
+    year_items = [retirement_entry(r) for r in rows if r.retirement_date and r.retirement_date.year == selected.year]
     return jsonify({
         "month": month,
         "year": year,
-        "employee_count": int(row.employee_count or 0) if row else 0,
-        "highest_gross": metric("highest_gross"),
-        "highest_net": metric("highest_net"),
-        "lowest_net": metric("lowest_net"),
-        "highest_incentive_percentage": metric("highest_incentive"),
-        "lowest_incentive_percentage": metric("lowest_incentive"),
+        "current_employee_count": int(current_row.employee_count or 0) if current_row else 0,
         "retirements": {
-            "month": int(retirement.month_count or 0) if retirement else 0,
-            "year": int(retirement.year_count or 0) if retirement else 0,
+            "previous": month_group(prev_month),
+            "current": month_group(selected),
+            "next": month_group(next_month),
+            "year": {"year": selected.year, "count": len(year_items), "employees": year_items},
         },
     })
 
@@ -1737,12 +1717,48 @@ def admin_statistics_item_total():
         month, year, band_code,
     )
     row = cursor.fetchone()
+
+    cursor.execute(
+        """
+        WITH item_employees AS (
+          SELECT DISTINCT employee_id
+          FROM payroll_items
+          WHERE month = ? AND year = ? AND band_code = ?
+        ), births AS (
+          SELECT e.id, e.employee_code, e.full_name,
+                 TRY_CONVERT(date,
+                   (CASE LEFT(e.national_id, 1) WHEN '2' THEN '19' WHEN '3' THEN '20' END) +
+                   SUBSTRING(e.national_id, 2, 2) + '-' + SUBSTRING(e.national_id, 4, 2) + '-' + SUBSTRING(e.national_id, 6, 2)
+                 ) AS birth_date
+          FROM employees e
+          JOIN item_employees i ON i.employee_id = e.id
+          WHERE LEN(e.national_id) = 14
+        )
+        SELECT employee_code, full_name, DATEADD(year, 60, birth_date) AS retirement_date
+        FROM births
+        WHERE birth_date IS NOT NULL
+          AND MONTH(DATEADD(year, 60, birth_date)) = ?
+          AND YEAR(DATEADD(year, 60, birth_date)) = ?
+        ORDER BY full_name
+        """,
+        month, year, band_code, month, year,
+    )
+    retired_rows = cursor.fetchall()
     conn.close()
+
+    retired = [{
+        "employee_code": r.employee_code,
+        "full_name": r.full_name,
+        "retirement_date": r.retirement_date.strftime("%Y-%m-%d") if r.retirement_date else None,
+    } for r in retired_rows]
+
     return jsonify({
         "band_code": band_code,
         "band_name": row.band_name if row and row.band_name else f"بند {band_code}",
         "total": float(row.total or 0) if row else 0,
         "employee_count": int(row.employee_count or 0) if row else 0,
+        "retirement_count": len(retired),
+        "retired_employees": retired,
     })
 
 
