@@ -20,8 +20,26 @@ import smtplib
 import uuid
 import threading
 import time
+import json
+import urllib.parse
+import urllib.request
 from email.mime.text import MIMEText
 from functools import wraps
+
+# Passkeys / WebAuthn
+try:
+    from webauthn import (
+        generate_registration_options, verify_registration_response,
+        generate_authentication_options, verify_authentication_response,
+        options_to_json,
+    )
+    from webauthn.helpers.structs import (
+        AuthenticatorSelectionCriteria, ResidentKeyRequirement,
+        UserVerificationRequirement,
+    )
+    WEBAUTHN_AVAILABLE = True
+except ImportError:
+    WEBAUTHN_AVAILABLE = False
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -507,6 +525,240 @@ def login():
         "role": role,
         "employee_code": emp_code,
     })
+
+
+# ------------------------------------------------------------
+# 1.4) Passkeys / WebAuthn (بصمة / Windows Hello / Face ID)
+# ------------------------------------------------------------
+def _passkey_origin_and_rp():
+    """يربط الـPasskey بالـhost الحالي. في الإنتاج استخدم دومين HTTPS ثابت."""
+    host = request.host.split(":", 1)[0].strip().lower()
+    forwarded_proto = (request.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip()
+    scheme = forwarded_proto or request.scheme
+    origin = f"{scheme}://{request.host}"
+    return origin, host
+
+
+def _ensure_passkey_tables(cursor):
+    cursor.execute("""
+        IF OBJECT_ID('dbo.user_passkeys','U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.user_passkeys(
+                id BIGINT IDENTITY(1,1) PRIMARY KEY,
+                user_id INT NOT NULL,
+                credential_id VARBINARY(1024) NOT NULL UNIQUE,
+                public_key VARBINARY(MAX) NOT NULL,
+                sign_count BIGINT NOT NULL CONSTRAINT DF_user_passkeys_sign_count DEFAULT(0),
+                device_name NVARCHAR(200) NULL,
+                rp_id NVARCHAR(255) NOT NULL,
+                created_at DATETIME2 NOT NULL CONSTRAINT DF_user_passkeys_created_at DEFAULT(SYSDATETIME()),
+                last_used_at DATETIME2 NULL,
+                is_active BIT NOT NULL CONSTRAINT DF_user_passkeys_is_active DEFAULT(1),
+                CONSTRAINT FK_user_passkeys_users FOREIGN KEY(user_id) REFERENCES dbo.users(id)
+            );
+            CREATE INDEX IX_user_passkeys_user ON dbo.user_passkeys(user_id, is_active);
+        END
+        IF OBJECT_ID('dbo.passkey_challenges','U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.passkey_challenges(
+                challenge_id VARCHAR(64) PRIMARY KEY,
+                user_id INT NULL,
+                challenge VARBINARY(256) NOT NULL,
+                purpose VARCHAR(20) NOT NULL,
+                rp_id NVARCHAR(255) NOT NULL,
+                origin NVARCHAR(500) NOT NULL,
+                expires_at DATETIME2 NOT NULL,
+                created_at DATETIME2 NOT NULL CONSTRAINT DF_passkey_challenges_created_at DEFAULT(SYSDATETIME())
+            );
+            CREATE INDEX IX_passkey_challenges_expiry ON dbo.passkey_challenges(expires_at);
+        END
+    """)
+
+
+def _passkey_user_id_for_employee(cursor, employee_id):
+    cursor.execute("SELECT id FROM users WHERE employee_id = ? AND is_active = 1", employee_id)
+    row = cursor.fetchone()
+    return int(row.id) if row else None
+
+
+@app.route('/api/passkeys/register/options', methods=['POST'])
+@token_required
+def passkey_register_options():
+    if not WEBAUTHN_AVAILABLE:
+        return jsonify({'error': 'مكتبة WebAuthn غير مثبتة على السيرفر'}), 503
+    origin, rp_id = _passkey_origin_and_rp()
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        _ensure_passkey_tables(cur)
+        user_id = _passkey_user_id_for_employee(cur, request.employee_id)
+        if not user_id:
+            return jsonify({'error': 'تعذر تحديد حساب المستخدم'}), 404
+        cur.execute("SELECT full_name, employee_code FROM employees WHERE id = ?", request.employee_id)
+        emp = cur.fetchone()
+        opts = generate_registration_options(
+            rp_id=rp_id,
+            rp_name='المنظومة الإلكترونية الموحدة - منطقة الدلتا',
+            user_id=str(user_id).encode('utf-8'),
+            user_name=str(emp.employee_code),
+            user_display_name=str(emp.full_name),
+            authenticator_selection=AuthenticatorSelectionCriteria(
+                resident_key=ResidentKeyRequirement.REQUIRED,
+                user_verification=UserVerificationRequirement.REQUIRED,
+            ),
+        )
+        cid = secrets.token_hex(24)
+        cur.execute("DELETE FROM passkey_challenges WHERE expires_at < SYSDATETIME()")
+        cur.execute("INSERT INTO passkey_challenges(challenge_id,user_id,challenge,purpose,rp_id,origin,expires_at) VALUES(?,?,?,?,?,?,DATEADD(MINUTE,5,SYSDATETIME()))",
+                    cid, user_id, bytes(opts.challenge), 'register', rp_id, origin)
+        conn.commit()
+        return jsonify({'challenge_id': cid, 'options': json.loads(options_to_json(opts))})
+    finally:
+        conn.close()
+
+
+@app.route('/api/passkeys/register/verify', methods=['POST'])
+@token_required
+def passkey_register_verify():
+    if not WEBAUTHN_AVAILABLE:
+        return jsonify({'error': 'مكتبة WebAuthn غير مثبتة على السيرفر'}), 503
+    data = request.get_json(silent=True) or {}
+    cid = str(data.get('challenge_id') or '')
+    credential = data.get('credential')
+    device_name = (data.get('device_name') or 'هذا الجهاز').strip()[:200]
+    if not cid or not credential:
+        return jsonify({'error': 'بيانات تفعيل البصمة غير مكتملة'}), 400
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        _ensure_passkey_tables(cur)
+        user_id = _passkey_user_id_for_employee(cur, request.employee_id)
+        cur.execute("SELECT challenge,rp_id,origin FROM passkey_challenges WHERE challenge_id=? AND user_id=? AND purpose='register' AND expires_at>=SYSDATETIME()", cid, user_id)
+        ch = cur.fetchone()
+        if not ch:
+            return jsonify({'error': 'انتهت صلاحية طلب التفعيل؛ حاول مرة أخرى'}), 400
+        result = verify_registration_response(
+            credential=credential,
+            expected_challenge=bytes(ch.challenge),
+            expected_rp_id=str(ch.rp_id),
+            expected_origin=str(ch.origin),
+            require_user_verification=True,
+        )
+        cur.execute("SELECT 1 FROM user_passkeys WHERE credential_id=?", bytes(result.credential_id))
+        if cur.fetchone():
+            return jsonify({'error': 'هذه البصمة/Passkey مسجلة بالفعل'}), 409
+        cur.execute("INSERT INTO user_passkeys(user_id,credential_id,public_key,sign_count,device_name,rp_id) VALUES(?,?,?,?,?,?)",
+                    user_id, bytes(result.credential_id), bytes(result.credential_public_key), int(result.sign_count), device_name, str(ch.rp_id))
+        cur.execute("DELETE FROM passkey_challenges WHERE challenge_id=?", cid)
+        conn.commit()
+        return jsonify({'success': True, 'message': 'تم تفعيل الدخول بالبصمة على هذا الموقع'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'تعذر تفعيل البصمة: {str(e)}'}), 400
+    finally:
+        conn.close()
+
+
+@app.route('/api/passkeys/auth/options', methods=['POST'])
+def passkey_auth_options():
+    if not WEBAUTHN_AVAILABLE:
+        return jsonify({'error': 'مكتبة WebAuthn غير مثبتة على السيرفر'}), 503
+    origin, rp_id = _passkey_origin_and_rp()
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        _ensure_passkey_tables(cur)
+        cur.execute("SELECT COUNT(*) AS n FROM user_passkeys WHERE rp_id=? AND is_active=1", rp_id)
+        if int(cur.fetchone().n) == 0:
+            return jsonify({'error': 'لا توجد بصمة مفعلة لهذا الموقع حتى الآن'}), 404
+        opts = generate_authentication_options(rp_id=rp_id, user_verification=UserVerificationRequirement.REQUIRED)
+        cid = secrets.token_hex(24)
+        cur.execute("DELETE FROM passkey_challenges WHERE expires_at < SYSDATETIME()")
+        cur.execute("INSERT INTO passkey_challenges(challenge_id,user_id,challenge,purpose,rp_id,origin,expires_at) VALUES(?,NULL,?,'authenticate',?,?,DATEADD(MINUTE,5,SYSDATETIME()))",
+                    cid, bytes(opts.challenge), rp_id, origin)
+        conn.commit()
+        return jsonify({'challenge_id': cid, 'options': json.loads(options_to_json(opts))})
+    finally:
+        conn.close()
+
+
+@app.route('/api/passkeys/auth/verify', methods=['POST'])
+def passkey_auth_verify():
+    if not WEBAUTHN_AVAILABLE:
+        return jsonify({'error': 'مكتبة WebAuthn غير مثبتة على السيرفر'}), 503
+    data = request.get_json(silent=True) or {}
+    cid = str(data.get('challenge_id') or '')
+    credential = data.get('credential') or {}
+    raw_id = credential.get('rawId') or credential.get('id')
+    if not cid or not raw_id:
+        return jsonify({'error': 'بيانات الدخول بالبصمة غير مكتملة'}), 400
+    import base64
+    pad = '=' * (-len(raw_id) % 4)
+    try:
+        credential_id = base64.urlsafe_b64decode(raw_id + pad)
+    except Exception:
+        return jsonify({'error': 'معرف البصمة غير صالح'}), 400
+    conn = get_connection(); cur = conn.cursor()
+    try:
+        _ensure_passkey_tables(cur)
+        cur.execute("SELECT challenge,rp_id,origin FROM passkey_challenges WHERE challenge_id=? AND purpose='authenticate' AND expires_at>=SYSDATETIME()", cid)
+        ch = cur.fetchone()
+        if not ch:
+            return jsonify({'error': 'انتهت صلاحية محاولة الدخول؛ حاول مرة أخرى'}), 400
+        cur.execute("""SELECT p.id,p.user_id,p.public_key,p.sign_count,u.role,u.is_active,e.id AS employee_id,e.full_name,e.employee_code,u.must_change_password,e.phone,e.national_id
+                       FROM user_passkeys p JOIN users u ON u.id=p.user_id JOIN employees e ON e.id=u.employee_id
+                       WHERE p.credential_id=? AND p.is_active=1 AND p.rp_id=?""", credential_id, str(ch.rp_id))
+        row = cur.fetchone()
+        if not row or not row.is_active:
+            return jsonify({'error': 'البصمة غير مسجلة أو الحساب موقوف'}), 401
+        if row.must_change_password:
+            return jsonify({'error': 'يجب تسجيل الدخول بكلمة المرور وتغييرها أولًا'}), 403
+        phone_ok = row.phone and re.fullmatch(r'\d{11}', str(row.phone))
+        nid_ok = row.national_id and re.fullmatch(r'\d{14}', str(row.national_id))
+        if not phone_ok or not nid_ok:
+            return jsonify({'error': 'يجب تسجيل الدخول بكلمة المرور واستكمال البيانات أولًا'}), 403
+        result = verify_authentication_response(
+            credential=credential,
+            expected_challenge=bytes(ch.challenge),
+            expected_rp_id=str(ch.rp_id),
+            expected_origin=str(ch.origin),
+            credential_public_key=bytes(row.public_key),
+            credential_current_sign_count=int(row.sign_count),
+            require_user_verification=True,
+        )
+        cur.execute("UPDATE user_passkeys SET sign_count=?,last_used_at=SYSDATETIME() WHERE id=?", int(result.new_sign_count), int(row.id))
+        cur.execute("DELETE FROM passkey_challenges WHERE challenge_id=?", cid)
+        conn.commit()
+        token = jwt.encode({'employee_id': int(row.employee_id), 'role': str(row.role), 'exp': datetime.datetime.utcnow()+datetime.timedelta(hours=8)}, SECRET_KEY, algorithm='HS256')
+        return jsonify({'token': token, 'full_name': str(row.full_name), 'role': str(row.role), 'employee_code': str(row.employee_code)})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': f'فشل التحقق من البصمة: {str(e)}'}), 401
+    finally:
+        conn.close()
+
+
+@app.route('/api/passkeys', methods=['GET'])
+@token_required
+def passkey_list():
+    conn=get_connection(); cur=conn.cursor()
+    try:
+        _ensure_passkey_tables(cur)
+        uid=_passkey_user_id_for_employee(cur, request.employee_id)
+        cur.execute("SELECT id,device_name,rp_id,created_at,last_used_at FROM user_passkeys WHERE user_id=? AND is_active=1 ORDER BY created_at DESC", uid)
+        items=[{'id':int(r.id),'device_name':r.device_name or 'جهاز','rp_id':r.rp_id,'created_at':r.created_at.isoformat() if r.created_at else None,'last_used_at':r.last_used_at.isoformat() if r.last_used_at else None} for r in cur.fetchall()]
+        return jsonify({'items':items})
+    finally: conn.close()
+
+
+@app.route('/api/passkeys/<int:passkey_id>', methods=['DELETE'])
+@token_required
+def passkey_delete(passkey_id):
+    conn=get_connection(); cur=conn.cursor()
+    try:
+        _ensure_passkey_tables(cur)
+        uid=_passkey_user_id_for_employee(cur, request.employee_id)
+        cur.execute("UPDATE user_passkeys SET is_active=0 WHERE id=? AND user_id=?", passkey_id, uid)
+        conn.commit()
+        return jsonify({'success':True})
+    finally: conn.close()
 
 
 # ------------------------------------------------------------
@@ -2582,6 +2834,820 @@ def admin_get_audit_log():
         }
         for r in rows
     ])
+
+
+
+# ============================================================
+# 11) خدمات كارت المرتبات - Version 2.2.0
+# ============================================================
+
+def _current_user_id(cursor):
+    """يستخرج User ID من الموظف الموجود داخل JWT؛ لا نثق بأي UserID قادم من المتصفح."""
+    cursor.execute(
+        "SELECT TOP (1) id FROM users WHERE employee_id = ? AND is_active = 1",
+        request.employee_id,
+    )
+    row = cursor.fetchone()
+    return int(row.id) if row else None
+
+
+def _card_staff_roles(cursor, user_id):
+    cursor.execute(
+        """
+        SELECT cr.role_code
+        FROM card_user_roles cur
+        INNER JOIN card_roles cr
+            ON cr.role_code = cur.role_code
+        WHERE cur.user_id = ?
+          AND cr.is_active = 1
+        """,
+        user_id,
+    )
+    return {str(r.role_code) for r in cursor.fetchall()}
+
+
+def _card_error_response(exc):
+    """لا نرسل تفاصيل SQL الداخلية للعميل، ونحوّل رسائل الإجراءات المعروفة لرسالة آمنة."""
+    message = str(exc)
+    known_messages = [
+        "تسليم الكارت يجب أن يتم من خلال إجراء التسليم المخصص",
+        "رد البنك يجب أن يتم من خلال إجراء رد البنك المخصص",
+        "يجب تسجيل سبب رفض البنك",
+        "الطلب غير موجود",
+        "الحساب غير موجود أو غير نشط",
+        "الموظف غير موجود",
+        "الخدمة غير متاحة",
+        "سبب الطلب غير صالح",
+        "يوجد طلب مفتوح بالفعل",
+        "انتقال الحالة غير مسموح",
+        "ليس لديك صلاحية",
+        "لا يمكن تنفيذ",
+        "يجب اختيار الموظف",
+    ]
+    for known in known_messages:
+        if known in message:
+            return jsonify({"error": known}), 400
+    app.logger.exception("Card service database error")
+    return jsonify({"error": "تعذر تنفيذ العملية حاليًا. حاول مرة أخرى أو راجع مسئول النظام."}), 500
+
+
+@app.route("/api/card-services", methods=["GET"])
+@token_required
+def card_services_catalog():
+    """الخدمات والأسباب الفعالة التي تظهر للموظف."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                st.service_code, st.service_name, st.requires_card, st.display_order,
+                rr.reason_code, rr.reason_name, rr.display_order AS reason_order
+            FROM card_service_types st
+            LEFT JOIN card_request_reasons rr
+              ON rr.service_type_id = st.id AND rr.is_active = 1
+            WHERE st.is_active = 1
+            ORDER BY st.display_order, rr.display_order, rr.id
+            """
+        )
+        services = {}
+        for r in cursor.fetchall():
+            code = str(r.service_code)
+            if code not in services:
+                services[code] = {
+                    "service_code": code,
+                    "service_name": r.service_name,
+                    "requires_card": bool(r.requires_card),
+                    "reasons": [],
+                }
+            if r.reason_code:
+                services[code]["reasons"].append({
+                    "reason_code": str(r.reason_code),
+                    "reason_name": r.reason_name,
+                })
+        return jsonify(list(services.values()))
+    finally:
+        conn.close()
+
+
+
+# ===== Quran & Radio services - Version 2.2.0 =====
+QURAN_AUDIO_SOURCES = {
+    "mishary": {"name": "مشاري راشد العفاسي", "path": r"D:\\quran\\مشاري راشد العفاسي"},
+    "mixed": {"name": "قراء متنوعون", "path": r"D:\\quran\\Qoraan"},
+}
+QURAN_FILE_RE = re.compile(r"^\\s*(\\d{1,3})\\s+(.+?)\\.mp3$", re.IGNORECASE)
+
+def _quran_catalog(source_key):
+    source = QURAN_AUDIO_SOURCES.get(source_key)
+    if not source:
+        return []
+    folder = source["path"]
+    if not os.path.isdir(folder):
+        return []
+    items = {}
+    try:
+        for entry in os.scandir(folder):
+            if not entry.is_file():
+                continue
+            m = QURAN_FILE_RE.match(entry.name)
+            if not m:
+                continue
+            number = int(m.group(1))
+            if 1 <= number <= 114:
+                items[number] = {"number": number, "name": m.group(2).strip(), "filename": entry.name}
+    except OSError:
+        return []
+    return [items[n] for n in sorted(items)]
+
+@app.route("/api/quran/audio-library", methods=["GET"])
+@token_required
+def quran_audio_library():
+    sources = []
+    for key, meta in QURAN_AUDIO_SOURCES.items():
+        catalog = _quran_catalog(key)
+        sources.append({
+            "key": key, "name": meta["name"], "available": bool(catalog),
+            "surahs": [{"number": x["number"], "name": x["name"]} for x in catalog],
+        })
+    return jsonify({"sources": sources})
+
+@app.route("/api/quran/audio/<source_key>/<int:surah_no>", methods=["GET"])
+@token_required
+def quran_audio_stream(source_key, surah_no):
+    if source_key not in QURAN_AUDIO_SOURCES or not (1 <= surah_no <= 114):
+        return jsonify({"error": "تلاوة أو سورة غير صحيحة"}), 404
+    item = next((x for x in _quran_catalog(source_key) if x["number"] == surah_no), None)
+    if not item:
+        return jsonify({"error": "ملف السورة غير موجود"}), 404
+    base = os.path.realpath(QURAN_AUDIO_SOURCES[source_key]["path"])
+    path = os.path.realpath(os.path.join(base, item["filename"]))
+    try:
+        if os.path.commonpath([base, path]) != base or not os.path.isfile(path):
+            return jsonify({"error": "ملف غير صالح"}), 404
+    except ValueError:
+        return jsonify({"error": "ملف غير صالح"}), 404
+    return send_file(path, mimetype="audio/mpeg", as_attachment=False, conditional=True, max_age=0)
+
+RADIO_BROWSER_SERVERS = (
+    "https://de1.api.radio-browser.info",
+    "https://at1.api.radio-browser.info",
+    "https://nl1.api.radio-browser.info",
+)
+
+@app.route("/api/radio/stations", methods=["GET"])
+@token_required
+def radio_stations():
+    country = (request.args.get("country") or "EG").strip().upper()
+    if not re.fullmatch(r"[A-Z]{2}", country):
+        return jsonify({"error": "كود الدولة غير صالح"}), 400
+    query = urllib.parse.urlencode({
+        "countrycode": country, "countrycodeExact": "true", "hidebroken": "true",
+        "order": "clickcount", "reverse": "true", "limit": 250,
+    })
+    last_error = None
+    for server in RADIO_BROWSER_SERVERS:
+        try:
+            req = urllib.request.Request(
+                f"{server}/json/stations/search?{query}",
+                headers={"User-Agent": "EETC-EmployeePortal/2.2.0"},
+            )
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            stations = []
+            seen = set()
+            for x in data:
+                stream = (x.get("url_resolved") or x.get("url") or "").strip()
+                sid = str(x.get("stationuuid") or "").strip()
+                if not sid or not stream or sid in seen:
+                    continue
+                # الموقع العام يعمل HTTPS؛ روابط HTTP فقط تُحجب غالبًا كـ mixed content.
+                if not stream.lower().startswith("https://"):
+                    continue
+                seen.add(sid)
+                stations.append({
+                    "id": sid, "name": (x.get("name") or "محطة إذاعية").strip(),
+                    "stream": stream, "codec": x.get("codec") or "",
+                    "bitrate": int(x.get("bitrate") or 0), "tags": x.get("tags") or "",
+                })
+            return jsonify({"stations": stations, "country": country})
+        except Exception as exc:
+            last_error = str(exc)
+    return jsonify({"error": "تعذر الاتصال بدليل محطات الراديو حاليًا", "detail": last_error}), 502
+
+
+CARD_ID_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "private_uploads", "card_ids")
+CARD_ID_MAX_BYTES = 5 * 1024 * 1024
+CARD_ID_ALLOWED_FORMATS = {"JPEG": ".jpg", "PNG": ".png"}
+
+def _validate_private_card_image(file_storage):
+    """يفحص الصورة كاملة قبل إنشاء الطلب ويعيد البايتات والامتداد."""
+    if not file_storage or not file_storage.filename:
+        raise ValueError("ارفع صورة وجه البطاقة وصورة الظهر.")
+    raw = file_storage.read(CARD_ID_MAX_BYTES + 1)
+    if len(raw) > CARD_ID_MAX_BYTES:
+        raise ValueError("حجم كل صورة بطاقة يجب ألا يزيد عن 5 MB.")
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.verify()
+        fmt = (img.format or "").upper()
+    except Exception:
+        raise ValueError("ملف صورة البطاقة غير صالح.")
+    if fmt not in CARD_ID_ALLOWED_FORMATS:
+        raise ValueError("صور البطاقة يجب أن تكون JPG أو PNG فقط.")
+    return raw, CARD_ID_ALLOWED_FORMATS[fmt]
+
+def _save_private_card_image_bytes(raw, ext, request_id, side):
+    os.makedirs(CARD_ID_UPLOAD_DIR, exist_ok=True)
+    filename = f"req_{int(request_id)}_{side}_{secrets.token_hex(16)}{ext}"
+    path = os.path.join(CARD_ID_UPLOAD_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(raw)
+    return filename
+
+def _save_private_card_image(file_storage, request_id, side):
+    """يحفظ صورة البطاقة خارج static بعد التحقق الحقيقي من الصورة."""
+    if not file_storage or not file_storage.filename:
+        raise ValueError("ارفع صورة وجه البطاقة وصورة الظهر.")
+
+    raw = file_storage.read(CARD_ID_MAX_BYTES + 1)
+    if len(raw) > CARD_ID_MAX_BYTES:
+        raise ValueError("حجم كل صورة بطاقة يجب ألا يزيد عن 5 MB.")
+
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.verify()
+        fmt = (img.format or "").upper()
+    except Exception:
+        raise ValueError("ملف صورة البطاقة غير صالح.")
+
+    if fmt not in CARD_ID_ALLOWED_FORMATS:
+        raise ValueError("صور البطاقة يجب أن تكون JPG أو PNG فقط.")
+
+    os.makedirs(CARD_ID_UPLOAD_DIR, exist_ok=True)
+    filename = f"req_{int(request_id)}_{side}_{secrets.token_hex(16)}{CARD_ID_ALLOWED_FORMATS[fmt]}"
+    path = os.path.join(CARD_ID_UPLOAD_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(raw)
+    return filename
+
+def _delete_private_card_files(*filenames):
+    for filename in filenames:
+        if not filename:
+            continue
+        try:
+            path = os.path.join(CARD_ID_UPLOAD_DIR, os.path.basename(filename))
+            if os.path.isfile(path):
+                os.remove(path)
+        except Exception:
+            pass
+
+
+@app.route("/api/card-requests", methods=["POST"])
+@token_required
+def create_card_request():
+    """إنشاء طلب كارت مع البيانات الخاصة وصور البطاقة للموظف الحالي."""
+    service_code = (request.form.get("service_code") or "").strip().upper()
+    reason_code = (request.form.get("reason_code") or "").strip().upper() or None
+    address = (request.form.get("address") or "").strip()
+    phone = re.sub(r"\D", "", request.form.get("phone") or "")
+    national_id = re.sub(r"\D", "", request.form.get("national_id") or "")
+    id_front = request.files.get("id_front")
+    id_back = request.files.get("id_back")
+
+    if service_code not in {"NEW_CARD", "REPLACEMENT", "SMS"}:
+        return jsonify({"error": "اختر خدمة صحيحة"}), 400
+    if service_code == "SMS":
+        reason_code = None
+    if len(address) < 10 or len(address) > 500:
+        return jsonify({"error": "اكتب العنوان بالتفصيل وبحد أقصى 500 حرف"}), 400
+    if not re.fullmatch(r"01\d{9}", phone):
+        return jsonify({"error": "رقم التليفون يجب أن يكون 11 رقمًا ويبدأ بـ 01"}), 400
+    if not re.fullmatch(r"\d{14}", national_id):
+        return jsonify({"error": "الرقم القومي يجب أن يكون 14 رقمًا"}), 400
+    if not id_front or not id_back:
+        return jsonify({"error": "ارفع صورة وجه البطاقة وصورة الظهر"}), 400
+    try:
+        front_raw, front_ext = _validate_private_card_image(id_front)
+        back_raw, back_ext = _validate_private_card_image(id_back)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    conn = get_connection()
+    front_name = back_name = None
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        if not user_id:
+            return jsonify({"error": "الحساب غير موجود أو غير نشط"}), 403
+
+        try:
+            cursor.execute(
+                "EXEC dbo.sp_CreateCardRequest @UserID=?, @ServiceCode=?, @ReasonCode=?",
+                user_id, service_code, reason_code,
+            )
+            row = cursor.fetchone()
+
+            request_id = None
+            if row:
+                for attr in ("request_id", "id"):
+                    if hasattr(row, attr) and getattr(row, attr) is not None:
+                        request_id = int(getattr(row, attr))
+                        break
+
+            if request_id is None:
+                cursor.execute(
+                    """
+                    SELECT TOP (1) r.id
+                    FROM card_requests r
+                    INNER JOIN card_service_types st ON st.id = r.service_type_id
+                    WHERE r.employee_id = ? AND st.service_code = ?
+                    ORDER BY r.id DESC
+                    """,
+                    request.employee_id, service_code,
+                )
+                req_row = cursor.fetchone()
+                if not req_row:
+                    raise RuntimeError("تعذر تحديد رقم الطلب الجديد.")
+                request_id = int(req_row.id)
+
+            front_name = _save_private_card_image_bytes(front_raw, front_ext, request_id, "front")
+            back_name = _save_private_card_image_bytes(back_raw, back_ext, request_id, "back")
+
+            cursor.execute(
+                """
+                INSERT INTO card_request_private_data
+                    (request_id, address_text, phone, national_id,
+                     id_front_file, id_back_file, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, SYSDATETIME(), SYSDATETIME())
+                """,
+                request_id, address, phone, national_id, front_name, back_name,
+            )
+            conn.commit()
+            return jsonify({
+                "message": "تم إرسال الطلب بنجاح",
+                "request_id": request_id,
+                "status": "SUBMITTED",
+            }), 201
+
+        except ValueError as exc:
+            conn.rollback()
+            _delete_private_card_files(front_name, back_name)
+            return jsonify({"error": str(exc)}), 400
+        except Exception as exc:
+            conn.rollback()
+            _delete_private_card_files(front_name, back_name)
+            return _card_error_response(exc)
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/requests/<int:request_id>/private-details", methods=["GET"])
+@token_required
+def card_request_private_details(request_id):
+    """البيانات الحساسة متاحة فقط لموظفي وحدة الكروت المخولين أو hr_admin."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        roles = _card_staff_roles(cursor, user_id) if user_id else set()
+        if request.role != "hr_admin" and not roles.intersection({"REVIEWER", "EXECUTIVE"}):
+            return jsonify({"error": "ليس لديك صلاحية لعرض بيانات الطلب الخاصة"}), 403
+
+        cursor.execute(
+            """
+            SELECT request_id, address_text, phone, national_id
+            FROM card_request_private_data
+            WHERE request_id = ?
+            """,
+            request_id,
+        )
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "لا توجد بيانات خاصة لهذا الطلب"}), 404
+        return jsonify({
+            "request_id": int(row.request_id),
+            "address": row.address_text,
+            "phone": row.phone,
+            "national_id": row.national_id,
+            "id_front_url": f"/api/card-staff/requests/{request_id}/id-image/front",
+            "id_back_url": f"/api/card-staff/requests/{request_id}/id-image/back",
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/requests/<int:request_id>/id-image/<side>", methods=["GET"])
+@token_required
+def card_request_id_image(request_id, side):
+    """عرض محمي لصورة البطاقة؛ لا توجد الصور داخل static."""
+    if side not in {"front", "back"}:
+        return jsonify({"error": "صورة غير صحيحة"}), 404
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        roles = _card_staff_roles(cursor, user_id) if user_id else set()
+        if request.role != "hr_admin" and not roles.intersection({"REVIEWER", "EXECUTIVE"}):
+            return jsonify({"error": "ليس لديك صلاحية لعرض صورة البطاقة"}), 403
+
+        col = "id_front_file" if side == "front" else "id_back_file"
+        cursor.execute(f"SELECT {col} AS filename FROM card_request_private_data WHERE request_id = ?", request_id)
+        row = cursor.fetchone()
+        if not row or not row.filename:
+            return jsonify({"error": "الصورة غير موجودة"}), 404
+
+        filename = os.path.basename(str(row.filename))
+        path = os.path.join(CARD_ID_UPLOAD_DIR, filename)
+        if not os.path.isfile(path):
+            return jsonify({"error": "ملف الصورة غير موجود"}), 404
+
+        mimetype = "image/png" if filename.lower().endswith(".png") else "image/jpeg"
+        return send_file(path, mimetype=mimetype, as_attachment=False, max_age=0)
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-requests/mine", methods=["GET"])
+@token_required
+def my_card_requests():
+    """الموظف يرى طلباته فقط."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                r.id, st.service_code, st.service_name,
+                rr.reason_code, rr.reason_name,
+                r.status, r.submitted_at, r.completed_at,
+                r.employee_code_snapshot, r.employee_name_snapshot,
+                r.bank_code_snapshot, r.code_sarf_snapshot, r.region_snapshot
+            FROM card_requests r
+            INNER JOIN card_service_types st ON st.id = r.service_type_id
+            LEFT JOIN card_request_reasons rr ON rr.id = r.reason_id
+            WHERE r.employee_id = ?
+            ORDER BY r.submitted_at DESC, r.id DESC
+            """,
+            request.employee_id,
+        )
+        return jsonify([
+            {
+                "id": int(r.id),
+                "service_code": str(r.service_code),
+                "service_name": r.service_name,
+                "reason_code": str(r.reason_code) if r.reason_code else None,
+                "reason_name": r.reason_name,
+                "status": str(r.status),
+                "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
+                "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+                "employee_code": r.employee_code_snapshot,
+                "employee_name": r.employee_name_snapshot,
+                "bank_code": r.bank_code_snapshot,
+                "code_sarf": r.code_sarf_snapshot,
+                "region": r.region_snapshot,
+            }
+            for r in cursor.fetchall()
+        ])
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-requests/<int:request_id>/timeline", methods=["GET"])
+@token_required
+def card_request_timeline(request_id):
+    """Timeline للطلب: صاحبه أو موظف الوحدة المخول فقط."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        cursor.execute("SELECT employee_id FROM card_requests WHERE id = ?", request_id)
+        owner = cursor.fetchone()
+        if not owner:
+            return jsonify({"error": "الطلب غير موجود"}), 404
+
+        roles = _card_staff_roles(cursor, user_id) if user_id else set()
+        if int(owner.employee_id) != int(request.employee_id) and request.role != "hr_admin" and not roles:
+            return jsonify({"error": "ليس لديك صلاحية لعرض هذا الطلب"}), 403
+
+        cursor.execute(
+            """
+            SELECT id, old_status, new_status, action_code, action_name,
+                   actor_name, notes, created_at
+            FROM card_request_history
+            WHERE request_id = ?
+            ORDER BY created_at, id
+            """,
+            request_id,
+        )
+        return jsonify([
+            {
+                "id": int(r.id),
+                "old_status": str(r.old_status) if r.old_status else None,
+                "new_status": str(r.new_status),
+                "action_code": str(r.action_code),
+                "action_name": r.action_name,
+                "actor_name": r.actor_name,
+                "notes": r.notes,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in cursor.fetchall()
+        ])
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/me", methods=["GET"])
+@token_required
+def card_staff_me():
+    """الصلاحيات الخاصة بوحدة الكروت للواجهة، بدون تغيير users.role."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        roles = sorted(_card_staff_roles(cursor, user_id)) if user_id else []
+        return jsonify({
+            "user_id": user_id,
+            "is_hr_admin": request.role == "hr_admin",
+            "roles": roles,
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/queue", methods=["GET"])
+@token_required
+def card_staff_queue():
+    """
+    قائمة عمل آمنة ومقسمة حسب الشاشة المطلوبة:
+      review  -> الطلبات الجديدة للمراجع
+      execute -> التنفيذ/الرفع للبنك + متابعة SMS
+      receive -> استلام الكروت الفعلية من البنك فقط
+      deliver -> تسليم الكروت الفعلية للموظفين فقط
+
+    لا تعرض رقم قومي أو هاتف أو أي بيانات مرتب.
+    """
+    view = (request.args.get("view") or "").strip().lower()
+    view_rules = {
+        "review": {
+            "role": "REVIEWER",
+            "statuses": ("SUBMITTED",),
+            "requires_card": None,
+        },
+        "execute": {
+            "role": "EXECUTIVE",
+            "statuses": ("REVIEWED", "BANK_UPLOADED", "WAITING_BANK_RESPONSE"),
+            "requires_card": None,
+        },
+        "receive": {
+            "role": "BANK_RECEIVER",
+            "statuses": ("BANK_UPLOADED",),
+            "requires_card": True,
+        },
+        "deliver": {
+            "role": "DELIVERY",
+            "statuses": ("RECEIVED_FROM_BANK",),
+            "requires_card": True,
+        },
+    }
+
+    if view not in view_rules:
+        return jsonify({
+            "error": "يجب تحديد شاشة العمل: review أو execute أو receive أو deliver"
+        }), 400
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        if not user_id:
+            return jsonify({"error": "الحساب غير موجود أو غير نشط"}), 403
+
+        roles = _card_staff_roles(cursor, user_id)
+        rule = view_rules[view]
+
+        if request.role != "hr_admin" and rule["role"] not in roles:
+            return jsonify({"error": "ليس لديك صلاحية للوصول إلى هذه الشاشة"}), 403
+
+        statuses = rule["statuses"]
+        placeholders = ",".join("?" for _ in statuses)
+        where_parts = [f"r.status IN ({placeholders})"]
+        params = list(statuses)
+
+        # شاشتا الاستلام والتسليم للكروت الفعلية فقط.
+        # بهذا لا يمكن لطلبات SMS الظهور فيهما حتى لو كانت حالتها BANK_UPLOADED.
+        if rule["requires_card"] is True:
+            where_parts.append("st.requires_card = 1")
+        # بعد الرفع للبنك، طلبات الكروت الفعلية تنتقل لشاشة الاستلام فقط.
+        # شاشة التنفيذ تحتفظ بـ REVIEWED للجميع، وبمتابعة BANK_UPLOADED/WAITING_BANK_RESPONSE للـ SMS فقط.
+        if view == "execute":
+            where_parts.append("(r.status = 'REVIEWED' OR st.requires_card = 0)")
+
+        sql = f"""
+            SELECT
+                r.id, st.service_code, st.service_name, st.requires_card,
+                rr.reason_name, r.status,
+                r.employee_code_snapshot, r.employee_name_snapshot,
+                r.bank_code_snapshot, r.code_sarf_snapshot, r.region_snapshot,
+                r.submitted_at
+            FROM card_requests r
+            INNER JOIN card_service_types st ON st.id = r.service_type_id
+            LEFT JOIN card_request_reasons rr ON rr.id = r.reason_id
+            WHERE {" AND ".join(where_parts)}
+            ORDER BY r.submitted_at, r.id
+        """
+        cursor.execute(sql, *params)
+
+        return jsonify([
+            {
+                "id": int(r.id),
+                "service_code": str(r.service_code),
+                "service_name": r.service_name,
+                "requires_card": bool(r.requires_card),
+                "reason_name": r.reason_name,
+                "status": str(r.status),
+                "employee_code": r.employee_code_snapshot,
+                "employee_name": r.employee_name_snapshot,
+                "bank_code": r.bank_code_snapshot,
+                "code_sarf": r.code_sarf_snapshot,
+                "region": r.region_snapshot,
+                "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
+            }
+            for r in cursor.fetchall()
+        ])
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/requests/<int:request_id>/transition", methods=["POST"])
+@token_required
+def card_request_transition(request_id):
+    """المراحل العامة فقط؛ DELIVERED و ACCEPTED/REJECTED لها APIs متخصصة."""
+    data = request.get_json(silent=True) or {}
+    to_status = (data.get("to_status") or "").strip().upper()
+    notes = (data.get("notes") or "").strip() or None
+
+    allowed = {"REVIEWED", "BANK_UPLOADED", "WAITING_BANK_RESPONSE", "RECEIVED_FROM_BANK"}
+    if to_status not in allowed:
+        return jsonify({"error": "الحالة المطلوبة غير مسموح بتنفيذها من هذه الشاشة"}), 400
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        if not user_id:
+            return jsonify({"error": "الحساب غير موجود أو غير نشط"}), 403
+        roles = _card_staff_roles(cursor, user_id)
+        required_role = {
+            "REVIEWED": "REVIEWER",
+            "BANK_UPLOADED": "EXECUTIVE",
+            "WAITING_BANK_RESPONSE": "EXECUTIVE",
+            "RECEIVED_FROM_BANK": "BANK_RECEIVER",
+        }[to_status]
+        if request.role != "hr_admin" and required_role not in roles:
+            return jsonify({"error": "ليس لديك صلاحية لتنفيذ هذه المرحلة"}), 403
+        try:
+            cursor.execute(
+                "EXEC dbo.sp_CardRequestTransition @RequestID=?, @ToStatus=?, @ActorUserID=?, @Notes=?",
+                request_id, to_status, user_id, notes,
+            )
+            row = cursor.fetchone()
+            conn.commit()
+        except Exception as exc:
+            conn.rollback()
+            return _card_error_response(exc)
+
+        return jsonify({
+            "message": "تم تحديث حالة الطلب بنجاح",
+            "request_id": request_id,
+            "status": to_status,
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/requests/<int:request_id>/bank-response", methods=["POST"])
+@token_required
+def card_bank_response(request_id):
+    """قبول/رفض البنك لطلبات SMS فقط."""
+    data = request.get_json(silent=True) or {}
+    response_status = (data.get("response_status") or "").strip().upper()
+    rejection_reason = (data.get("rejection_reason") or "").strip() or None
+
+    if response_status not in {"ACCEPTED", "REJECTED"}:
+        return jsonify({"error": "رد البنك يجب أن يكون ACCEPTED أو REJECTED"}), 400
+    if response_status == "REJECTED" and not rejection_reason:
+        return jsonify({"error": "يجب تسجيل سبب رفض البنك"}), 400
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        if not user_id:
+            return jsonify({"error": "الحساب غير موجود أو غير نشط"}), 403
+        roles = _card_staff_roles(cursor, user_id)
+        if request.role != "hr_admin" and "EXECUTIVE" not in roles:
+            return jsonify({"error": "ليس لديك صلاحية تسجيل رد البنك"}), 403
+        try:
+            cursor.execute(
+                "EXEC dbo.sp_CardBankResponse @RequestID=?, @ActorUserID=?, @ResponseStatus=?, @RejectionReason=?",
+                request_id, user_id, response_status, rejection_reason,
+            )
+            cursor.fetchone()
+            conn.commit()
+        except Exception as exc:
+            conn.rollback()
+            return _card_error_response(exc)
+
+        return jsonify({
+            "message": "تم تسجيل رد البنك بنجاح",
+            "request_id": request_id,
+            "status": response_status,
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/requests/<int:request_id>/deliver", methods=["POST"])
+@token_required
+def card_deliver(request_id):
+    """تسليم الكارت لصاحبه أو لموظف آخر، مع تسجيل المستلم والمنفذ والتوقيت."""
+    data = request.get_json(silent=True) or {}
+    receiver_type = (data.get("receiver_type") or "").strip().upper()
+    receiver_employee_code = (data.get("receiver_employee_code") or "").strip() or None
+    notes = (data.get("notes") or "").strip() or None
+
+    if receiver_type not in {"SELF", "OTHER"}:
+        return jsonify({"error": "حدد طريقة الاستلام: SELF أو OTHER"}), 400
+    if receiver_type == "OTHER" and not receiver_employee_code:
+        return jsonify({"error": "يجب اختيار الموظف الذي استلم الكارت"}), 400
+    if receiver_type == "SELF":
+        receiver_employee_code = None
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        if not user_id:
+            return jsonify({"error": "الحساب غير موجود أو غير نشط"}), 403
+        roles = _card_staff_roles(cursor, user_id)
+        if request.role != "hr_admin" and "DELIVERY" not in roles:
+            return jsonify({"error": "ليس لديك صلاحية تسليم الكارت"}), 403
+        try:
+            cursor.execute(
+                "EXEC dbo.sp_CardDeliver @RequestID=?, @ActorUserID=?, @ReceiverType=?, @ReceiverEmployeeCode=?, @Notes=?",
+                request_id, user_id, receiver_type, receiver_employee_code, notes,
+            )
+            row = cursor.fetchone()
+            conn.commit()
+        except Exception as exc:
+            conn.rollback()
+            return _card_error_response(exc)
+
+        return jsonify({
+            "message": "تم تسجيل تسليم الكارت بنجاح",
+            "request_id": request_id,
+            "status": "DELIVERED",
+            "receiver_type": receiver_type,
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/employee-search", methods=["GET"])
+@token_required
+def card_delivery_employee_search():
+    """بحث محدود لاختيار مستلم OTHER؛ يعيد الكود والاسم فقط."""
+    q = (request.args.get("q") or "").strip()
+    if len(q) < 2:
+        return jsonify([])
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        roles = _card_staff_roles(cursor, user_id) if user_id else set()
+        if request.role != "hr_admin" and "DELIVERY" not in roles:
+            return jsonify({"error": "ليس لديك صلاحية التسليم"}), 403
+
+        like = f"%{q}%"
+        cursor.execute(
+            """
+            SELECT TOP (20) employee_code, full_name
+            FROM employees
+            WHERE status = 'active'
+              AND (employee_code LIKE ? OR full_name LIKE ?)
+            ORDER BY full_name
+            """,
+            like, like,
+        )
+        return jsonify([
+            {"employee_code": r.employee_code, "full_name": r.full_name}
+            for r in cursor.fetchall()
+        ])
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

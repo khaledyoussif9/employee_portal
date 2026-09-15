@@ -58,7 +58,7 @@ RED = HexColor("#D92D20")
 GREEN = HexColor("#22A06B")
 LINE = SILVER
 
-APP_VERSION = "Version 2.0.0"
+APP_VERSION = "Version 2.2.0"
 LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo.jpg")
 
 

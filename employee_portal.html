@@ -204,7 +204,7 @@
   .sidebar-profile img { width:72px; height:72px; object-fit:cover; border-radius:50%; border:3px solid var(--gold); background:#fff; }
   .sidebar-profile strong { display:block; color:var(--navy); font-size:13px; margin-top:6px; }
 
-  /* الاستايل المعتمد من نموذج النسخة 2.0.0 */
+  /* الاستايل المعتمد من نموذج النسخة 2.2.0 */
   #loginScreen { padding-bottom:92px; }
   .login-card {
     color:#fff;
@@ -350,7 +350,7 @@
     background: #FDECEC; border: 1px solid var(--red); color: var(--red); font-size: 13px; margin-bottom: 16px;
   }
 
-  /* هوية النسخة 2.0.0: أزرق ملكي + فضي */
+  /* هوية النسخة 2.2.0: أزرق ملكي + فضي */
   .login-title { color:#fff; }
   .btn-primary { color:#fff; background:linear-gradient(180deg,#286FB9,#1D5FA7); border-color:#C4CBD3; }
   .topbar::after, .login-header::after, .col-title.gold-shimmer::after {
@@ -410,7 +410,7 @@
   .birthday-confetti { position:absolute;top:-24px;font-size:24px;animation:confettiFall 3.2s linear infinite;pointer-events:none; }
   @keyframes confettiFall { to { transform:translateY(110vh) rotate(540deg); } }
 
-  /* الواجهة الداخلية المعتمدة للنسخة 2.0.0 */
+  /* الواجهة الداخلية المعتمدة للنسخة 2.2.0 */
   .home-v2 { position:relative;min-height:690px;padding:26px;border-radius:18px;overflow:hidden;background:linear-gradient(rgba(247,249,252,.58),rgba(237,243,248,.68)),url("/assets/login_bg_reference_v2.jpg?v=2.0.2") center/cover no-repeat; }
   .home-hero { display:grid;grid-template-columns:1.55fr .75fr;gap:20px;align-items:center;padding:25px 28px;border:1px solid rgba(196,203,211,.95);border-radius:18px;background:rgba(255,255,255,.78);box-shadow:0 12px 35px rgba(9,42,74,.12);backdrop-filter:blur(9px); }
   .home-hero h1 { margin:0;color:var(--navy-light);font:800 28px 'Tajawal',sans-serif; }
@@ -721,6 +721,9 @@
     .service-card-v2 { min-height:155px; }
   }
   }
+
+  /* خدمات كارت المرتبات + إضافات أخرى — إضافة على النسخة 2.2.0 */
+  .portal-subpage{max-width:1040px;margin:0 auto}.portal-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;padding:18px}.portal-action{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:18px;text-align:center;font-family:'Cairo',sans-serif;cursor:pointer}.portal-action:hover{border-color:var(--gold);box-shadow:0 10px 25px rgba(29,95,167,.14)}.portal-action b{display:block;color:var(--navy-light);font-size:15px;margin:7px 0}.portal-action small{color:var(--gray);line-height:1.6}.portal-form{padding:20px 24px}.portal-form select,.portal-form input,.portal-form textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);font-family:'Cairo',sans-serif;margin-top:6px}.portal-form label{display:block;margin-bottom:14px;font-size:13px;font-weight:700}.portal-msg{padding:10px 12px;border-radius:7px;margin-top:12px;font-size:13px}.portal-msg.ok{background:#E9F8F1;color:#176B39}.portal-msg.err{background:#FDECEC;color:var(--red)}html[data-theme="dark"] .portal-action{background:var(--surface)}html[data-theme="dark"] .portal-action b{color:#EDF3F8}
 </style>
 </head>
 <body>
@@ -763,6 +766,7 @@
         </div>
         <div id="loginError" class="error-text hidden"></div>
         <button class="btn-primary" id="loginBtn" onclick="handleLogin()">تسجيل الدخول</button>
+        <button class="btn-primary" id="passkeyLoginBtn" style="margin-top:9px;background:var(--navy);" onclick="loginWithPasskey()">🔐 الدخول بالبصمة / Passkey</button>
         <div class="system-status" data-system-status data-state="maintenance"><span class="status-lamp"></span><span>جاري فحص حالة النظام...</span></div>
         <div style="text-align:center;margin-top:12px;font-size:11.5px;color:var(--gray);line-height:1.6;">
           📍 تقاطع طريق الكورنيش مع طريق مدينة السماد، طلخا، المنصورة، محافظة الدقهلية
@@ -858,7 +862,7 @@
       </div>
     </div>
 
-    <!-- صفحة البداية للإصدار 2.0.0 -->
+    <!-- صفحة البداية للإصدار 2.2.0 -->
     <div class="lamp-gate" id="lampGate">
       <img src="assets/logo.jpg?v=delta-original" alt="شعار الشركة المصرية لنقل الكهرباء" style="width:110px;height:110px;object-fit:contain;border-radius:50%;background:#fff;padding:4px;border:3px solid var(--gold);margin-bottom:16px;">
       <div class="gate-title">الشركة المصرية لنقل الكهرباء</div>
@@ -868,7 +872,7 @@
       <div style="display:flex;gap:18px;color:#fff;font-size:11px;margin-top:16px;opacity:.9;">
         <span>🟢 يعمل</span><span>🟠 تحسينات جارية</span><span>🔴 متوقف</span>
       </div>
-      <div class="hint" style="margin-top:22px;">الإصدار 2.0.0</div>
+      <div class="hint" style="margin-top:22px;">الإصدار 2.2.0</div>
     </div>
   </div>
 
@@ -928,6 +932,7 @@
         <button class="nav-btn" id="navPayslip" onclick="switchTab('payslip')">📄 شريط المرتب</button>
         <button class="nav-btn" id="navWage" onclick="switchTab('wage')">📋 سجل الأجور</button>
         <button class="nav-btn" id="navChangePass" onclick="switchTab('changepass')">🔑 تغيير كلمة المرور</button>
+        <button class="nav-btn" type="button" onclick="openPasskeyManager()">🔐 تفعيل وإدارة البصمة</button>
         <button class="nav-btn" id="navContact" onclick="switchTab('contact')">✉️ تواصل معنا</button>
         <button class="nav-btn" id="navRating" onclick="switchTab('rating')">⭐ تقييم الخدمة</button>
         <button class="nav-btn" type="button" onclick="showAboutPage();closeSidebar();">ℹ️ حول النظام</button>
@@ -961,6 +966,8 @@
               <button class="service-card-v2" onclick="openNotifPanel()"><span class="service-icon-v2">🔔</span><strong>الإشعارات</strong><span>متابعة التنبيهات والإعلانات</span></button>
               <button class="service-card-v2" onclick="switchTab('contact')"><span class="service-icon-v2">💬</span><strong>تواصل معنا</strong><span>إرسال الاستفسارات والمقترحات</span></button>
               <button class="service-card-v2" onclick="switchTab('rating')"><span class="service-icon-v2">⭐</span><strong>تقييم الخدمة</strong><span>شاركنا رأيك لتحسين خدماتنا</span></button>
+              <button class="service-card-v2" onclick="switchTab('cardServices')"><span class="service-icon-v2">💳</span><strong>خدمات كارت المرتبات</strong><span>إصدار جديد، بدل فاقد أو تالف، ورسائل السحب والإيداع</span></button>
+              <button class="service-card-v2" onclick="switchTab('extras')"><span class="service-icon-v2">🧩</span><strong>إضافات أخرى</strong><span>القرآن والأذكار ومواقيت الصلاة والقبلة والراديو والطقس والنتيجة والإجازات</span></button>
             </div>
           </section>
         </div>
@@ -975,6 +982,8 @@
         <div id="tabStatistics" class="hidden"></div>
         <div id="tabEmployeeMessages" class="hidden"></div>
         <div id="tabServiceRatings" class="hidden"></div>
+        <div id="tabCardServices" class="hidden"></div>
+        <div id="tabExtras" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -982,7 +991,7 @@
 <script>
 const API_BASE = window.location.origin;
 
-const APP_VERSION = "Version 2.0.0";
+const APP_VERSION = "Version 2.2.0";
 const THEME_KEY = "eetc_portal_theme_v2";
 const BIRTHDAY_KEY_PREFIX = "eetc_birthday_seen_";
 
@@ -1395,6 +1404,82 @@ async function submitForgotStep2() {
   }
 }
 
+
+
+// ==================== Passkeys / WebAuthn ====================
+function b64urlToBytes(value) {
+  const pad = '='.repeat((4 - value.length % 4) % 4);
+  const b64 = (value + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+function bytesToB64url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let s = ''; bytes.forEach(b => s += String.fromCharCode(b));
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+function creationOptionsFromJSON(o) {
+  o.challenge = b64urlToBytes(o.challenge);
+  o.user.id = b64urlToBytes(o.user.id);
+  if (o.excludeCredentials) o.excludeCredentials = o.excludeCredentials.map(x => ({...x, id:b64urlToBytes(x.id)}));
+  return o;
+}
+function requestOptionsFromJSON(o) {
+  o.challenge = b64urlToBytes(o.challenge);
+  if (o.allowCredentials) o.allowCredentials = o.allowCredentials.map(x => ({...x, id:b64urlToBytes(x.id)}));
+  return o;
+}
+function credentialToJSON(cred) {
+  const r = cred.response;
+  const out = {id:cred.id, rawId:bytesToB64url(cred.rawId), type:cred.type, response:{}, clientExtensionResults:cred.getClientExtensionResults ? cred.getClientExtensionResults() : {}};
+  if (r.clientDataJSON) out.response.clientDataJSON = bytesToB64url(r.clientDataJSON);
+  if (r.attestationObject) out.response.attestationObject = bytesToB64url(r.attestationObject);
+  if (r.authenticatorData) out.response.authenticatorData = bytesToB64url(r.authenticatorData);
+  if (r.signature) out.response.signature = bytesToB64url(r.signature);
+  if (r.userHandle) out.response.userHandle = bytesToB64url(r.userHandle);
+  if (typeof r.getTransports === 'function') out.response.transports = r.getTransports();
+  return out;
+}
+function ensurePasskeySupport() {
+  if (!window.PublicKeyCredential || !navigator.credentials) throw new Error('المتصفح أو الجهاز لا يدعم Passkeys/WebAuthn');
+  if (!window.isSecureContext) throw new Error('البصمة تحتاج فتح الموقع من رابط HTTPS آمن');
+}
+async function enablePasskey() {
+  try {
+    ensurePasskeySupport();
+    if (!session?.token) throw new Error('سجّل الدخول أولًا');
+    const r1 = await apiFetch(`${API_BASE}/api/passkeys/register/options`, {method:'POST', headers:{Authorization:`Bearer ${session.token}`}});
+    const d1 = await r1.json(); if (!r1.ok) throw new Error(d1.error || 'تعذر بدء تفعيل البصمة');
+    const cred = await navigator.credentials.create({publicKey:creationOptionsFromJSON(d1.options)});
+    const deviceName = (navigator.userAgentData?.platform || navigator.platform || 'هذا الجهاز').slice(0,200);
+    const r2 = await apiFetch(`${API_BASE}/api/passkeys/register/verify`, {method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.token}`}, body:JSON.stringify({challenge_id:d1.challenge_id, credential:credentialToJSON(cred), device_name:deviceName})});
+    const d2 = await r2.json(); if (!r2.ok) throw new Error(d2.error || 'تعذر حفظ البصمة');
+    alert('✅ تم تفعيل الدخول بالبصمة / Passkey بنجاح على هذا الموقع.');
+  } catch(e) { if (e.name !== 'NotAllowedError') alert('تعذر تفعيل البصمة: ' + (e.message || e)); }
+}
+async function loginWithPasskey() {
+  const errorBox=document.getElementById('loginError'); errorBox.classList.add('hidden');
+  const btn=document.getElementById('passkeyLoginBtn'); btn.disabled=true; btn.textContent='جاري التحقق...';
+  try {
+    ensurePasskeySupport();
+    const r1=await apiFetch(`${API_BASE}/api/passkeys/auth/options`,{method:'POST'}); const d1=await r1.json(); if(!r1.ok) throw new Error(d1.error||'لا توجد بصمة مفعلة');
+    const cred=await navigator.credentials.get({publicKey:requestOptionsFromJSON(d1.options)});
+    const r2=await apiFetch(`${API_BASE}/api/passkeys/auth/verify`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({challenge_id:d1.challenge_id,credential:credentialToJSON(cred)})});
+    const d2=await r2.json(); if(!r2.ok) throw new Error(d2.error||'فشل الدخول بالبصمة');
+    session={token:d2.token,fullName:d2.full_name,role:d2.role,employeeCode:d2.employee_code}; showApp();
+  } catch(e) { if(e.name!=='NotAllowedError'){errorBox.textContent=e.message||'فشل الدخول بالبصمة';errorBox.classList.remove('hidden');} }
+  finally {btn.disabled=false;btn.textContent='🔐 الدخول بالبصمة / Passkey';}
+}
+async function openPasskeyManager() {
+  if (!session?.token) return;
+  try {
+    ensurePasskeySupport();
+    const r=await apiFetch(`${API_BASE}/api/passkeys`,{headers:{Authorization:`Bearer ${session.token}`}}); const d=await r.json();
+    const count=r.ok?(d.items||[]).length:0;
+    if (confirm(`🔐 البصمة / Passkey\n\nالمفعل على حسابك: ${count}\n\nاضغط موافق لإضافة بصمة/Passkey جديدة.`)) await enablePasskey();
+  } catch(e) { alert(e.message||e); }
+}
+
 async function handleLogin() {
   const code = document.getElementById("loginCode").value.trim();
   const password = document.getElementById("loginPassword").value;
@@ -1456,6 +1541,7 @@ async function handleLogin() {
 }
 
 function handleLogout() {
+  stopNotificationPolling();
   session = null;
   window._birthdayChecked = false;
   document.getElementById("appScreen").classList.add("hidden");
@@ -1479,7 +1565,7 @@ function showApp() {
   document.getElementById("navRating").classList.toggle("hidden", session.isDemo);
   setWelcomeBanner();
   startLiveClock();
-  refreshNotifBadge();
+  startNotificationPolling();
   switchTab("home");
 }
 
@@ -1536,6 +1622,32 @@ function setWelcomeBanner() {
 }
 
 let _cachedAnnouncements = [];
+let _notifPollTimer = null;
+let _notifBaselineReady = false;
+let _notifAudioCtx = null;
+
+function armNotificationSound(){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(Ctx && !_notifAudioCtx) _notifAudioCtx=new Ctx();
+    if(_notifAudioCtx?.state==='suspended') _notifAudioCtx.resume().catch(()=>{});
+  }catch(e){}
+}
+document.addEventListener('pointerdown',armNotificationSound,{once:false,passive:true});
+document.addEventListener('keydown',armNotificationSound,{once:false});
+
+function playNotificationSound(){
+  try{
+    armNotificationSound();
+    if(!_notifAudioCtx || _notifAudioCtx.state!=='running') return;
+    const now=_notifAudioCtx.currentTime;
+    const osc=_notifAudioCtx.createOscillator();
+    const gain=_notifAudioCtx.createGain();
+    osc.type='sine'; osc.frequency.setValueAtTime(880,now); osc.frequency.setValueAtTime(1174,now+0.12);
+    gain.gain.setValueAtTime(0.0001,now); gain.gain.exponentialRampToValueAtTime(0.12,now+0.02); gain.gain.exponentialRampToValueAtTime(0.0001,now+0.32);
+    osc.connect(gain); gain.connect(_notifAudioCtx.destination); osc.start(now); osc.stop(now+0.34);
+  }catch(e){}
+}
 
 async function refreshNotifBadge() {
   try {
@@ -1543,7 +1655,10 @@ async function refreshNotifBadge() {
       headers: { Authorization: `Bearer ${session.token}` },
     });
     if (!res.ok) return;
-    _cachedAnnouncements = await res.json();
+    const incoming = await res.json();
+    const previousIds = new Set(_cachedAnnouncements.map(a=>Number(a.id)));
+    const newUnread = _notifBaselineReady ? incoming.filter(a=>!a.is_read && !previousIds.has(Number(a.id))) : [];
+    _cachedAnnouncements = incoming;
     const unread = _cachedAnnouncements.filter(a => !a.is_read).length;
     const badge = document.getElementById("notifBadge");
     if (unread > 0) {
@@ -1552,9 +1667,28 @@ async function refreshNotifBadge() {
     } else {
       badge.classList.add("hidden");
     }
-  } catch (e) {
-  }
+    if(newUnread.length) playNotificationSound();
+    _notifBaselineReady = true;
+  } catch (e) {}
 }
+
+function startNotificationPolling(){
+  if(_notifPollTimer) clearInterval(_notifPollTimer);
+  _notifBaselineReady=false;
+  refreshNotifBadge();
+  _notifPollTimer=setInterval(()=>{
+    if(!document.hidden && session?.token) refreshNotifBadge();
+  },15000);
+}
+
+function stopNotificationPolling(){
+  if(_notifPollTimer){clearInterval(_notifPollTimer);_notifPollTimer=null;}
+  _notifBaselineReady=false;
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden && session?.token) refreshNotifBadge();
+});
 
 function openNotifPanel() {
   document.getElementById("notifOverlay").classList.remove("hidden");
@@ -1599,11 +1733,11 @@ function renderNotifList() {
   list.innerHTML = _cachedAnnouncements.map(a => `
     <div style="padding:12px 14px;border-bottom:1px solid var(--line);${a.is_read ? "" : "background:#EDF3F8;"}">
       <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">
-        <span style="font-weight:700;font-size:14px;color:var(--navy);">${a.is_read ? "" : "🔵 "}${a.title}</span>
-        <span style="font-size:11px;color:var(--gray);white-space:nowrap;">${a.created_at}</span>
+        <span style="font-weight:700;font-size:14px;color:var(--navy);">${a.is_read ? "" : "🔵 "}${escHtml(a.title)}</span>
+        <span style="font-size:11px;color:var(--gray);white-space:nowrap;">${escHtml(a.created_at)}</span>
       </div>
-      ${a.body ? `<div style="font-size:13px;color:var(--ink);margin-top:6px;white-space:pre-wrap;">${a.body}</div>` : ""}
-      ${a.file_name ? `<a href="${API_BASE}/uploads/${a.file_name}?token=${session.token}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12.5px;color:var(--navy);text-decoration:underline;">📎 ${a.original_name || "تحميل المرفق"}</a>` : ""}
+      ${a.body ? `<div style="font-size:13px;color:var(--ink);margin-top:6px;white-space:pre-wrap;">${escHtml(a.body)}</div>` : ""}
+      ${a.file_name ? `<a href="${API_BASE}/uploads/${encodeURIComponent(a.file_name)}?token=${encodeURIComponent(session.token)}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12.5px;color:var(--navy);text-decoration:underline;">📎 ${escHtml(a.original_name || "تحميل المرفق")}</a>` : ""}
       <div style="margin-top:8px;">
         <button onclick="toggleAnnouncementLike(${a.id})" id="likeBtn_${a.id}" style="background:none;border:1px solid ${a.is_liked ? "var(--gold)" : "var(--line)"};border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;color:${a.is_liked ? "var(--gold)" : "var(--gray)"};">
           👍 <span id="likeCount_${a.id}">${a.like_count || 0}</span>
@@ -1665,6 +1799,8 @@ function switchTab(tab) {
   document.getElementById("tabStatistics").classList.toggle("hidden", tab !== "statistics");
   document.getElementById("tabEmployeeMessages").classList.toggle("hidden", tab !== "employeeMessages");
   document.getElementById("tabServiceRatings").classList.toggle("hidden", tab !== "serviceRatings");
+  document.getElementById("tabCardServices").classList.toggle("hidden", tab !== "cardServices");
+  document.getElementById("tabExtras").classList.toggle("hidden", tab !== "extras");
 
   if (tab === "home") loadHomeExperience();
   else if (tab === "admin") loadAdminInfo();
@@ -1678,8 +1814,593 @@ function switchTab(tab) {
   else if (tab === "statistics") renderStatisticsPanel();
   else if (tab === "employeeMessages") renderEmployeeMessagesPanel();
   else if (tab === "serviceRatings") renderServiceRatingsPanel();
+  else if (tab === "cardServices") renderCardServicesPanel();
+  else if (tab === "extras") renderExtrasPanel();
 
   closeSidebar(); // قفل القائمة تلقائيًا بعد اختيار أي تبويب (سلوك طبيعي في الموبايل)
+}
+
+function renderCardServicesPanel() {
+  const el = document.getElementById("tabCardServices");
+  el.innerHTML = `<div class="portal-subpage"><button class="back-link" onclick="switchTab('home')">→ رجوع للرئيسية</button><div class="card"><div class="card-header">💳 خدمات كارت المرتبات</div><div class="portal-actions"><button class="portal-action" onclick="showCardRequestForm('NEW_CARD')">🆕<b>إصدار كارت جديد</b><small>تعيين / منقول / عودة من إجازة</small></button><button class="portal-action" onclick="showCardRequestForm('REPLACEMENT')">♻️<b>بدل فاقد / تالف</b><small>طلب بدل فاقد أو بدل تالف</small></button><button class="portal-action" onclick="showCardRequestForm('SMS')">📱<b>رسائل السحب والإيداع</b><small>طلب خدمة الرسائل البنكية</small></button><button class="portal-action" onclick="loadMyCardRequests()">📋<b>طلباتي</b><small>متابعة حالة الطلبات السابقة</small></button><button class="portal-action" onclick="window.open('https://www.nbe.com.eg/NBE/E/#/AR/ProductDetails?inParams=%7B%22CategoryID%22%3A%22selfservices%22%2C%22ProductID%22%3A%22%D8%AD%D8%AC%D8%B2%20%D9%85%D9%88%D8%B9%D8%AF%20%D8%A8%D8%A7%D9%84%D9%81%D8%B1%D8%B9_18782%22%7D','_blank','noopener,noreferrer')">🏦<b>حجز موعد بالبنك الأهلي المصري</b><small>فتح خدمة الحجز الرسمية في نافذة جديدة</small></button></div><div id="cardStaffActions" style="margin-top:12px"></div><div id="cardServiceWork"></div></div></div>`;
+  loadCardStaffActions();
+}
+
+
+const CARD_STATUS_AR={SUBMITTED:'تم إرسال الطلب',REVIEWED:'تمت المراجعة والتفعيل',BANK_UPLOADED:'تم الرفع على البنك',WAITING_BANK_RESPONSE:'انتظار رد البنك',RECEIVED_FROM_BANK:'تم الاستلام من البنك',DELIVERED:'تم التسليم',ACCEPTED:'تم القبول',REJECTED:'تم الرفض'};
+async function loadCardStaffActions(){
+  const box=document.getElementById('cardStaffActions'); if(!box||!session?.token)return;
+  try{
+    const r=await apiFetch(`${API_BASE}/api/card-staff/me`,{headers:{Authorization:`Bearer ${session.token}`}}); if(!r.ok)return;
+    const d=await r.json(), roles=new Set(d.roles||[]), buttons=[];
+    if(d.is_hr_admin||roles.has('REVIEWER')) buttons.push(['review','📝 المراجعة']);
+    if(d.is_hr_admin||roles.has('EXECUTIVE')) buttons.push(['execute','🏦 التنفيذ / البنك']);
+    if(d.is_hr_admin||roles.has('BANK_RECEIVER')) buttons.push(['receive','📥 الاستلام من البنك']);
+    if(d.is_hr_admin||roles.has('DELIVERY')) buttons.push(['deliver','📦 التسليم']);
+    if(buttons.length) box.innerHTML=`<div class="state-box dashed"><b>إدارة طلبات الكروت</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${buttons.map(x=>`<button class="portal-action" style="width:auto" onclick="loadCardStaffQueue('${x[0]}')">${x[1]}</button>`).join('')}</div></div>`;
+  }catch(e){}
+}
+async function loadCardStaffQueue(view){
+  const w=document.getElementById('cardServiceWork'); w.innerHTML='<div class="state-box"><span class="spin"></span> جاري تحميل قائمة العمل...</div>';
+  try{
+    const r=await apiFetch(`${API_BASE}/api/card-staff/queue?view=${encodeURIComponent(view)}`,{headers:{Authorization:`Bearer ${session.token}`}}), rows=await r.json();
+    if(!r.ok) throw new Error(rows.error||'تعذر تحميل قائمة العمل');
+    w.innerHTML=`<div class="portal-form"><h3>💳 قائمة العمل</h3>${rows.length?rows.map(x=>renderCardStaffRow(x,view)).join(''):'<div class="state-box dashed">لا توجد طلبات في هذه المرحلة.</div>'}</div>`;
+  }catch(e){w.innerHTML=`<div class="portal-msg err">${escHtml(e.message)}</div>`;}
+}
+function renderCardStaffRow(x,view){
+  let actions='';
+  if(view==='review') actions=`<button class="portal-action" style="width:auto" onclick="cardTransition(${x.id},'REVIEWED','review')">✅ تمت المراجعة والتفعيل</button><button class="portal-action" style="width:auto" onclick="showCardPrivateDetails(${x.id})">🔐 بيانات الطلب</button>`;
+  if(view==='execute'){
+    if(x.status==='REVIEWED') actions=`<button class="portal-action" style="width:auto" onclick="cardTransition(${x.id},'BANK_UPLOADED','execute')">🏦 تم الرفع على البنك</button>`;
+    else if(!x.requires_card && x.status==='BANK_UPLOADED') actions=`<button class="portal-action" style="width:auto" onclick="cardTransition(${x.id},'WAITING_BANK_RESPONSE','execute')">⏳ انتظار رد البنك</button>`;
+    else if(!x.requires_card && x.status==='WAITING_BANK_RESPONSE') actions=`<button class="portal-action" style="width:auto" onclick="cardBankResponse(${x.id},'ACCEPTED')">✅ قبول</button><button class="portal-action" style="width:auto" onclick="cardBankResponse(${x.id},'REJECTED')">❌ رفض</button>`;
+    actions+=`<button class="portal-action" style="width:auto" onclick="showCardPrivateDetails(${x.id})">🔐 بيانات الطلب</button>`;
+  }
+  if(view==='receive') actions=`<button class="portal-action" style="width:auto" onclick="cardTransition(${x.id},'RECEIVED_FROM_BANK','receive')">📥 تم الاستلام من البنك</button>`;
+  if(view==='deliver') actions=`<button class="portal-action" style="width:auto" onclick="cardDeliver(${x.id})">📦 تسجيل التسليم</button>`;
+  return `<div class="stat-card" style="margin-bottom:10px"><b>#${x.id} — ${escHtml(x.employee_code||'')} — ${escHtml(x.employee_name||'')}</b><div class="r-meta">${escHtml(x.service_name||x.service_code||'')} — ${escHtml(CARD_STATUS_AR[x.status]||x.status||'')}</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">${actions}</div></div>`;
+}
+async function cardTransition(id,to,view){
+  if(!confirm('تأكيد تنفيذ الإجراء؟'))return;
+  const r=await apiFetch(`${API_BASE}/api/card-staff/requests/${id}/transition`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.token}`},body:JSON.stringify({to_status:to})}),d=await r.json();
+  if(!r.ok){alert(d.error||'تعذر تنفيذ الإجراء');return;} loadCardStaffQueue(view);
+}
+async function cardBankResponse(id,status){
+  let reason=null;if(status==='REJECTED'){reason=prompt('سبب رفض البنك:');if(!reason)return;}
+  const r=await apiFetch(`${API_BASE}/api/card-staff/requests/${id}/bank-response`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.token}`},body:JSON.stringify({response_status:status,rejection_reason:reason})}),d=await r.json();
+  if(!r.ok){alert(d.error||'تعذر تسجيل الرد');return;} loadCardStaffQueue('execute');
+}
+async function cardDeliver(id){
+  const other=confirm('اضغط موافق إذا كان المستلم موظفًا آخر. إلغاء = صاحب الكارت نفسه.'); let code=null;
+  if(other){code=(prompt('اكتب كود الموظف المستلم:')||'').trim();if(!code)return;}
+  const r=await apiFetch(`${API_BASE}/api/card-staff/requests/${id}/deliver`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.token}`},body:JSON.stringify({receiver_type:other?'OTHER':'SELF',receiver_employee_code:code})}),d=await r.json();
+  if(!r.ok){alert(d.error||'تعذر تسجيل التسليم');return;} loadCardStaffQueue('deliver');
+}
+async function showCardPrivateDetails(id){
+  const w=document.getElementById('cardServiceWork');
+  try{const r=await apiFetch(`${API_BASE}/api/card-staff/requests/${id}/private-details`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await r.json();if(!r.ok)throw new Error(d.error||'تعذر عرض البيانات');
+    w.insertAdjacentHTML('afterbegin',`<div class="portal-form"><h3>🔐 بيانات الطلب #${id}</h3><div>العنوان: ${escHtml(d.address)}</div><div>الهاتف: ${escHtml(d.phone)}</div><div>الرقم القومي: ${escHtml(d.national_id)}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="portal-action" style="width:auto" onclick="openProtectedCardImage('${d.id_front_url}')">صورة الوجه</button><button class="portal-action" style="width:auto" onclick="openProtectedCardImage('${d.id_back_url}')">صورة الظهر</button></div></div>`);
+  }catch(e){alert(e.message);}
+}
+async function openProtectedCardImage(url){
+  try{const r=await apiFetch(`${API_BASE}${url}`,{headers:{Authorization:`Bearer ${session.token}`}});if(!r.ok)throw new Error('تعذر تحميل الصورة');const blob=await r.blob(),u=URL.createObjectURL(blob);window.open(u,'_blank','noopener,noreferrer');setTimeout(()=>URL.revokeObjectURL(u),60000);}catch(e){alert(e.message);}
+}
+
+function showCardRequestForm(service) {
+  const w=document.getElementById('cardServiceWork');
+  const reasons=service==='NEW_CARD'
+    ?[['NEW_HIRE','تعيين جديد'],['TRANSFERRED','منقول'],['RETURN_FROM_LEAVE','عودة من إجازة']]
+    :service==='REPLACEMENT'
+      ?[['LOST','بدل فاقد'],['DAMAGED','بدل تالف']]
+      :[];
+
+  const serviceNames={
+    NEW_CARD:'إصدار كارت جديد',
+    REPLACEMENT:'بدل فاقد / تالف',
+    SMS:'رسائل السحب والإيداع'
+  };
+
+  w.innerHTML=`<div class="portal-form">
+    <h3>تقديم طلب — ${serviceNames[service]||''}</h3>
+    ${reasons.length?`<label>سبب الطلب
+      <select id="cardReason">${reasons.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select>
+    </label>`:''}
+
+    <label>العنوان بالتفصيل
+      <textarea id="cardAddress" rows="3" maxlength="500" placeholder="المحافظة - المركز/القسم - القرية/الشارع - رقم المنزل" required></textarea>
+    </label>
+
+    <label>رقم التليفون
+      <input id="cardPhone" type="tel" inputmode="numeric" maxlength="11"
+             placeholder="01XXXXXXXXX" autocomplete="tel" required>
+    </label>
+
+    <label>الرقم القومي
+      <input id="cardNationalId" type="text" inputmode="numeric" maxlength="14"
+             placeholder="14 رقم" autocomplete="off" required>
+    </label>
+
+    <label>صورة بطاقة الرقم القومي — الوجه
+      <input id="cardIdFront" type="file" accept="image/jpeg,image/png" required>
+    </label>
+
+    <label>صورة بطاقة الرقم القومي — الظهر
+      <input id="cardIdBack" type="file" accept="image/jpeg,image/png" required>
+    </label>
+
+    <div class="state-box dashed">JPG / JPEG / PNG فقط — بحد أقصى 5 MB لكل صورة.</div>
+    <button class="btn-primary" id="cardSubmitBtn" onclick="submitCardRequest('${service}')">تأكيد وإرسال الطلب</button>
+    <div id="cardRequestMsg"></div>
+  </div>`;
+}
+
+async function submitCardRequest(service){
+  const m=document.getElementById('cardRequestMsg');
+  const btn=document.getElementById('cardSubmitBtn');
+  const reason=document.getElementById('cardReason');
+  const address=(document.getElementById('cardAddress')?.value||'').trim();
+  const phone=(document.getElementById('cardPhone')?.value||'').trim();
+  const nationalId=(document.getElementById('cardNationalId')?.value||'').trim();
+  const front=document.getElementById('cardIdFront')?.files?.[0];
+  const back=document.getElementById('cardIdBack')?.files?.[0];
+
+  if(address.length<10){m.className='portal-msg err';m.textContent='اكتب العنوان بالتفصيل.';return;}
+  if(!/^01\d{9}$/.test(phone)){m.className='portal-msg err';m.textContent='رقم التليفون يجب أن يكون 11 رقمًا ويبدأ بـ 01.';return;}
+  if(!/^\d{14}$/.test(nationalId)){m.className='portal-msg err';m.textContent='الرقم القومي يجب أن يكون 14 رقمًا.';return;}
+  if(!front || !back){m.className='portal-msg err';m.textContent='ارفع صورة وجه البطاقة وصورة الظهر.';return;}
+
+  const allowed=['image/jpeg','image/png'], max=5*1024*1024;
+  for(const f of [front,back]){
+    if(!allowed.includes(f.type)){m.className='portal-msg err';m.textContent='صور البطاقة يجب أن تكون JPG أو PNG فقط.';return;}
+    if(f.size>max){m.className='portal-msg err';m.textContent='حجم كل صورة يجب ألا يزيد عن 5 MB.';return;}
+  }
+
+  const fd=new FormData();
+  fd.append('service_code',service);
+  if(reason) fd.append('reason_code',reason.value);
+  fd.append('address',address);
+  fd.append('phone',phone);
+  fd.append('national_id',nationalId);
+  fd.append('id_front',front);
+  fd.append('id_back',back);
+
+  btn.disabled=true;
+  m.className='portal-msg';
+  m.textContent='جاري رفع الصور وإرسال الطلب...';
+  try{
+    const r=await apiFetch(`${API_BASE}/api/card-requests`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${session.token}`},
+      body:fd
+    });
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||d.message||'تعذر إرسال الطلب');
+    m.className='portal-msg ok';
+    m.textContent=(d.message||'تم إرسال الطلب بنجاح.')+(d.request_id?` رقم الطلب: ${d.request_id}`:'');
+    setTimeout(()=>loadMyCardRequests(),1200);
+  }catch(e){
+    m.className='portal-msg err';m.textContent=e.message;
+    btn.disabled=false;
+  }
+}
+
+async function loadMyCardRequests(){const w=document.getElementById('cardServiceWork');w.innerHTML='<div class="state-box"><span class="spin"></span> جاري تحميل الطلبات...</div>';try{const r=await apiFetch(`${API_BASE}/api/card-requests/mine`,{headers:{Authorization:`Bearer ${session.token}`}});const d=await r.json();if(!r.ok)throw new Error(d.error||'تعذر تحميل الطلبات');const rows=Array.isArray(d)?d:(d.requests||[]);w.innerHTML=`<div class="portal-form"><h3>طلباتي</h3>${rows.length?rows.map(x=>`<div class="result-item"><div><div class="r-name">${escHtml(x.service_name||x.service_code||'طلب كارت')}</div><div class="r-meta">${escHtml(x.submitted_at||'')}</div></div><div class="r-code">${escHtml(x.status_name||x.status||'')}</div></div>`).join(''):'<div class="state-box dashed">لا توجد طلبات حتى الآن.</div>'}</div>`;}catch(e){w.innerHTML=`<div class="portal-form"><div class="portal-msg err">${e.message}</div></div>`;}}
+function renderExtrasPanel(){
+  const el=document.getElementById('tabExtras');
+  el.innerHTML=`<div class="portal-subpage">
+    <button class="back-link" onclick="switchTab('home')">→ رجوع للرئيسية</button>
+    <div class="card">
+      <div class="card-header">🧩 إضافات أخرى</div>
+      <div class="portal-actions">
+        <button class="portal-action" onclick="openExtraInfo('quran')">📖<b>القرآن الكريم</b><small>القراءة والاستماع</small></button>
+        <button class="portal-action" onclick="openExtraInfo('azkar')">🤲<b>الأذكار</b><small>أذكار الصباح والمساء</small></button>
+        <button class="portal-action" onclick="openExtraInfo('prayer')">🕌<b>مواقيت الصلاة</b><small>حسب موقع المستخدم</small></button>
+        <button class="portal-action" onclick="openExtraInfo('qibla')">🧭<b>القبلة</b><small>اتجاه القبلة حسب موقع المستخدم</small></button>
+        <button class="portal-action" onclick="openExtraInfo('radio')">📻<b>الراديو</b><small>محطات إذاعية مختارة</small></button>
+        <button class="portal-action" onclick="openExtraInfo('weather')">🌤️<b>الطقس</b><small>حالة الطقس</small></button>
+        <button class="portal-action" onclick="openExtraInfo('calendar')">📅<b>النتيجة الشهرية</b><small>عرض الشهر كاملًا</small></button>
+        <button class="portal-action" onclick="openExtraInfo('holidays')">🇪🇬<b>الإجازات الرسمية</b><small>جمهورية مصر العربية</small></button>
+      </div>
+      <div id="extraWork"></div>
+    </div>
+  </div>`;
+}
+
+let extrasCalendarDate = new Date();
+
+function openExtraInfo(type){
+  const w=document.getElementById('extraWork');
+  if(!w) return;
+
+  if(type==='calendar'){
+    extrasCalendarDate=new Date();
+    renderMonthlyCalendar();
+    return;
+  }
+
+  if(type==='prayer'){
+    w.innerHTML=`<div class="portal-form"><h3>🕌 مواقيت الصلاة</h3>
+      <div class="state-box"><span class="spin"></span> جاري تحديد الموقع وحساب المواقيت...</div></div>`;
+    loadPrayerTimes();
+    return;
+  }
+
+  if(type==='qibla'){
+    w.innerHTML=`<div class="portal-form"><h3>🧭 اتجاه القبلة</h3>
+      <div class="state-box"><span class="spin"></span> جاري تحديد الموقع...</div></div>`;
+    loadQibla();
+    return;
+  }
+
+  if(type==='quran'){ renderQuranHome(); return; }
+  if(type==='azkar'){ loadAzkar(); return; }
+  if(type==='radio'){ renderRadio(); return; }
+  if(type==='weather'){ loadWeather(); return; }
+  if(type==='holidays'){ renderEgyptHolidays2026(); return; }
+
+  w.innerHTML=`<div class="portal-form"><div class="state-box dashed">الخدمة غير متاحة.</div></div>`;
+}
+
+
+function escHtml(v){
+  return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let quranLibrary = null;
+let currentQuranSurah = 1;
+
+async function renderQuranHome(){
+  const w=document.getElementById('extraWork');
+  w.innerHTML=`<div class="portal-form"><h3>📖 القرآن الكريم — قراءة واستماع</h3>
+    <div class="state-box"><span class="spin"></span> جاري قراءة مكتبة القرآن من السيرفر...</div></div>`;
+  try{
+    const r=await apiFetch(`${API_BASE}/api/quran/audio-library`,{headers:{Authorization:`Bearer ${session.token}`}});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'تعذر قراءة مكتبة القرآن.');
+    quranLibrary=d;
+    const sources=(d.sources||[]).filter(x=>x.available);
+    if(!sources.length) throw new Error('لم يتم العثور على ملفات MP3 في مجلدات القرآن المعتمدة على السيرفر.');
+    w.innerHTML=`<div class="portal-form">
+      <h3>📖 القرآن الكريم — قراءة واستماع</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <label style="flex:1;min-width:190px">التلاوة
+          <select id="quranSource" onchange="refreshQuranSurahOptions()">
+            ${sources.map(x=>`<option value="${escHtml(x.key)}">${escHtml(x.name)}</option>`).join('')}
+          </select>
+        </label>
+        <label style="flex:1;min-width:190px">السورة
+          <select id="quranSurahNo"></select>
+        </label>
+        <button class="portal-action" style="width:auto" onclick="loadQuranSurah()">عرض وتشغيل</button>
+      </div>
+      <div id="quranWork" class="state-box dashed" style="margin-top:10px">اختر التلاوة والسورة.</div>
+    </div>`;
+    refreshQuranSurahOptions();
+    await loadQuranSurah();
+  }catch(e){
+    w.innerHTML=`<div class="portal-form"><h3>📖 القرآن الكريم</h3><div class="portal-msg err">${escHtml(e.message)}</div></div>`;
+  }
+}
+
+function refreshQuranSurahOptions(){
+  const sourceKey=document.getElementById('quranSource')?.value;
+  const source=(quranLibrary?.sources||[]).find(x=>x.key===sourceKey);
+  const sel=document.getElementById('quranSurahNo');
+  if(!sel || !source) return;
+  sel.innerHTML=(source.surahs||[]).map(x=>`<option value="${x.number}" ${Number(x.number)===currentQuranSurah?'selected':''}>${x.number} — ${escHtml(x.name)}</option>`).join('');
+  if(!sel.value && sel.options.length) sel.selectedIndex=0;
+}
+
+async function loadQuranSurah(){
+  const box=document.getElementById('quranWork');
+  const sourceKey=document.getElementById('quranSource')?.value;
+  const no=Math.max(1,Math.min(114,Number(document.getElementById('quranSurahNo')?.value||1)));
+  if(!box || !sourceKey) return;
+  currentQuranSurah=no;
+  box.innerHTML='<span class="spin"></span> جاري تحميل السورة...';
+  let quranHtml='';
+  try{
+    const r=await fetch(`https://api.alquran.cloud/v1/surah/${no}/quran-uthmani`);
+    const d=await r.json();
+    if(!r.ok || !d?.data?.ayahs) throw new Error('تعذر تحميل نص السورة.');
+    const q=d.data;
+    quranHtml=`<div style="text-align:center;margin:14px 0"><h3>${escHtml(q.name||'')}</h3>
+      <small>عدد الآيات: ${q.numberOfAyahs||q.ayahs.length}</small></div>
+      <div style="font-size:1.25rem;line-height:2.25;text-align:justify">${q.ayahs.map(a=>`${escHtml(a.text)} <span style="white-space:nowrap">﴿${a.numberInSurah}﴾</span>`).join(' ')}</div>`;
+  }catch(e){
+    quranHtml=`<div class="portal-msg err">${escHtml(e.message)} — يمكنك الاستماع للصوت إذا كان الملف متاحًا.</div>`;
+  }
+  const source=(quranLibrary?.sources||[]).find(x=>x.key===sourceKey);
+  const item=(source?.surahs||[]).find(x=>Number(x.number)===no);
+  const prev=(source?.surahs||[]).filter(x=>Number(x.number)<no).slice(-1)[0];
+  const next=(source?.surahs||[]).find(x=>Number(x.number)>no);
+  box.className='';
+  box.innerHTML=`<div class="stat-card" style="margin-bottom:12px;text-align:center">
+      <div class="stat-title">🎧 ${escHtml(source?.name||'التلاوة')} — ${escHtml(item?.name||('السورة '+no))}</div>
+      <audio id="quranAudio" controls preload="metadata" style="width:100%;margin-top:12px" src="${API_BASE}/api/quran/audio/${encodeURIComponent(sourceKey)}/${no}?token=${encodeURIComponent(session.token)}"></audio>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+        <button class="portal-action" style="width:auto" ${prev?'':'disabled'} onclick="selectQuranSurah(${prev?.number||no})">⏮️ السابقة</button>
+        <button class="portal-action" style="width:auto" ${next?'':'disabled'} onclick="selectQuranSurah(${next?.number||no})">التالية ⏭️</button>
+      </div>
+    </div>${quranHtml}`;
+}
+
+function selectQuranSurah(no){
+  currentQuranSurah=Number(no);
+  const sel=document.getElementById('quranSurahNo');
+  if(sel){ sel.value=String(no); loadQuranSurah(); }
+}
+
+async function loadAzkar(){
+  const w=document.getElementById('extraWork');
+  w.innerHTML=`<div class="portal-form"><h3>🤲 أذكار الصباح والمساء</h3>
+    <div class="state-box"><span class="spin"></span> جاري تحميل الأذكار...</div></div>`;
+  try{
+    const r=await fetch('https://raw.githubusercontent.com/Seen-Arabic/Morning-And-Evening-Adhkar-DB/main/ar.json');
+    if(!r.ok) throw new Error('تعذر تحميل الأذكار.');
+    const data=await r.json();
+    const rows=Array.isArray(data)?data:(data.data||data.azkar||[]);
+    if(!Array.isArray(rows) || !rows.length) throw new Error('لم تصل بيانات الأذكار بالشكل المتوقع.');
+
+    w.innerHTML=`<div class="portal-form"><h3>🤲 أذكار الصباح والمساء</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="portal-action" style="width:auto" onclick="filterAzkar('morning')">☀️ الصباح</button>
+        <button class="portal-action" style="width:auto" onclick="filterAzkar('evening')">🌙 المساء</button>
+        <button class="portal-action" style="width:auto" onclick="filterAzkar('all')">الكل</button>
+      </div><div id="azkarList"></div></div>`;
+    window.__portalAzkar=rows;
+    filterAzkar('all');
+  }catch(e){
+    w.innerHTML=`<div class="portal-form"><h3>🤲 الأذكار</h3><div class="portal-msg err">${escHtml(e.message)}</div>
+      <button class="portal-action" onclick="loadAzkar()">إعادة المحاولة</button></div>`;
+  }
+}
+
+function filterAzkar(mode){
+  const box=document.getElementById('azkarList'), rows=window.__portalAzkar||[];
+  const filtered=rows.filter(z=>{
+    const t=Number(z.type);
+    if(mode==='morning') return t===0 || t===1;
+    if(mode==='evening') return t===0 || t===2;
+    return true;
+  });
+  box.innerHTML=filtered.map(z=>`<div class="stat-card" style="margin-bottom:10px;text-align:right">
+    <div style="font-size:1.08rem;line-height:2">${escHtml(z.content||z.zekr||z.text||'')}</div>
+    ${z.count?`<div class="r-meta">التكرار: ${escHtml(z.count)}</div>`:''}
+    ${z.source?`<div class="r-meta">المصدر: ${escHtml(z.source)}</div>`:''}
+  </div>`).join('') || '<div class="state-box dashed">لا توجد أذكار للعرض.</div>';
+}
+
+let portalRadioAudio = null;
+let portalRadioStations = [];
+
+async function renderRadio(){
+  const w=document.getElementById('extraWork');
+  w.innerHTML=`<div class="portal-form"><h3>📻 الراديو</h3>
+    <div class="state-box"><span class="spin"></span> جاري تحميل المحطات المتاحة...</div></div>`;
+  try{
+    const r=await apiFetch(`${API_BASE}/api/radio/stations?country=EG`,{headers:{Authorization:`Bearer ${session.token}`}});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'تعذر تحميل المحطات.');
+    portalRadioStations=Array.isArray(d.stations)?d.stations:[];
+    if(!portalRadioStations.length) throw new Error('لا توجد محطات متاحة حاليًا.');
+    w.innerHTML=`<div class="portal-form"><h3>📻 الراديو — المحطات المتاحة</h3>
+      <label>بحث عن محطة<input id="radioSearch" type="search" placeholder="اكتب اسم المحطة..." oninput="filterRadioStations()"></label>
+      <div id="radioNow" class="state-box dashed" style="margin:10px 0">اختر محطة لبدء البث.</div>
+      <audio id="portalRadioAudio" controls preload="none" style="width:100%;margin-bottom:12px"></audio>
+      <div id="radioStations"></div>
+    </div>`;
+    portalRadioAudio=document.getElementById('portalRadioAudio');
+    filterRadioStations();
+  }catch(e){
+    w.innerHTML=`<div class="portal-form"><h3>📻 الراديو</h3><div class="portal-msg err">${escHtml(e.message)}</div>
+      <button class="portal-action" onclick="renderRadio()">إعادة المحاولة</button></div>`;
+  }
+}
+
+function filterRadioStations(){
+  const q=(document.getElementById('radioSearch')?.value||'').trim().toLowerCase();
+  const rows=portalRadioStations.filter(x=>!q || `${x.name} ${x.tags||''}`.toLowerCase().includes(q));
+  const box=document.getElementById('radioStations');
+  if(!box) return;
+  box.innerHTML=`<div class="r-meta" style="margin-bottom:8px">المتاح: ${rows.length} محطة</div>`+
+    rows.map((x,i)=>`<div class="result-item" style="gap:10px">
+      <div style="flex:1"><div class="r-name">📻 ${escHtml(x.name)}</div>
+      <div class="r-meta">${escHtml(x.codec||'بث مباشر')}${x.bitrate?` — ${x.bitrate} kbps`:''}</div></div>
+      <button class="portal-action" style="width:auto" onclick="playRadioStation('${escHtml(x.id)}')">▶️ تشغيل</button>
+    </div>`).join('');
+}
+
+function playRadioStation(id){
+  const x=portalRadioStations.find(s=>s.id===id);
+  const audio=document.getElementById('portalRadioAudio');
+  const now=document.getElementById('radioNow');
+  if(!x || !audio) return;
+  audio.src=x.stream;
+  audio.play().catch(()=>{});
+  if(now) now.innerHTML=`<b>🔊 الآن:</b> ${escHtml(x.name)}<div class="r-meta">إذا لم يبدأ البث فالمحطة قد تكون متوقفة أو تمنع التشغيل داخل المتصفح.</div>`;
+}
+
+function weatherText(code){
+  const m={
+    0:'سماء صافية',1:'غالبًا صافية',2:'غائم جزئيًا',3:'غائم',
+    45:'ضباب',48:'ضباب متجمد',51:'رذاذ خفيف',53:'رذاذ',55:'رذاذ كثيف',
+    61:'مطر خفيف',63:'مطر',65:'مطر غزير',80:'زخات مطر',81:'زخات مطر',82:'زخات قوية',
+    95:'عواصف رعدية',96:'عواصف رعدية',99:'عواصف رعدية قوية'
+  };
+  return m[Number(code)]||'حالة جوية';
+}
+
+async function loadWeather(){
+  const w=document.getElementById('extraWork');
+  w.innerHTML=`<div class="portal-form"><h3>🌤️ الطقس</h3>
+    <div class="state-box"><span class="spin"></span> جاري تحديد الموقع وتحميل الطقس...</div></div>`;
+  try{
+    const {lat,lon}=await getBrowserLocation();
+    const u=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`;
+    const r=await fetch(u), d=await r.json();
+    if(!r.ok || !d.current) throw new Error('تعذر تحميل بيانات الطقس.');
+    const c=d.current;
+    w.innerHTML=`<div class="portal-form"><h3>🌤️ الطقس الآن</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <div class="stat-card"><div class="stat-title">الحالة</div><div class="stat-value">${escHtml(weatherText(c.weather_code))}</div></div>
+        <div class="stat-card"><div class="stat-title">الحرارة</div><div class="stat-value">${escHtml(c.temperature_2m)}°</div></div>
+        <div class="stat-card"><div class="stat-title">المحسوسة</div><div class="stat-value">${escHtml(c.apparent_temperature)}°</div></div>
+        <div class="stat-card"><div class="stat-title">الرطوبة</div><div class="stat-value">${escHtml(c.relative_humidity_2m)}%</div></div>
+        <div class="stat-card"><div class="stat-title">الرياح</div><div class="stat-value">${escHtml(c.wind_speed_10m)} كم/س</div></div>
+      </div><div class="state-box dashed" style="margin-top:10px">البيانات حسب موقع الجهاز.</div></div>`;
+  }catch(e){
+    w.innerHTML=`<div class="portal-form"><h3>🌤️ الطقس</h3><div class="portal-msg err">${escHtml(e.message)}</div>
+      <button class="portal-action" onclick="loadWeather()">إعادة المحاولة</button></div>`;
+  }
+}
+
+const EGYPT_HOLIDAYS_2026=[
+  ['2026-01-07','عيد الميلاد المجيد'],
+  ['2026-01-29','ثورة 25 يناير وعيد الشرطة'],
+  ['2026-03-19','عيد الفطر المبارك'],['2026-03-20','عيد الفطر المبارك'],
+  ['2026-03-21','عيد الفطر المبارك'],['2026-03-22','عيد الفطر المبارك'],['2026-03-23','عيد الفطر المبارك'],
+  ['2026-04-13','عيد شم النسيم'],
+  ['2026-04-25','عيد تحرير سيناء'],
+  ['2026-05-07','عيد العمال'],
+  ['2026-05-26','وقفة عيد الأضحى المبارك'],
+  ['2026-05-27','عيد الأضحى المبارك'],['2026-05-28','عيد الأضحى المبارك'],
+  ['2026-05-29','عيد الأضحى المبارك'],['2026-05-30','عيد الأضحى المبارك'],['2026-05-31','عيد الأضحى المبارك'],
+  ['2026-06-18','رأس السنة الهجرية'],
+  ['2026-07-02','ثورة 30 يونيو'],
+  ['2026-07-23','ثورة 23 يوليو'],
+  ['2026-08-27','المولد النبوي الشريف'],
+  ['2026-10-06','عيد القوات المسلحة']
+];
+
+function renderEgyptHolidays2026(){
+  const w=document.getElementById('extraWork');
+  const rows=EGYPT_HOLIDAYS_2026.map(([d,n])=>{
+    const dt=new Date(d+'T12:00:00');
+    return `<div class="result-item"><div><div class="r-name">${escHtml(n)}</div>
+      <div class="r-meta">${dt.toLocaleDateString('ar-EG',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div></div></div>`;
+  }).join('');
+  w.innerHTML=`<div class="portal-form"><h3>🇪🇬 الإجازات الرسمية — مصر 2026</h3>
+    <div class="state-box dashed" style="margin-bottom:10px">القائمة وفق صفحة العطلات الرسمية المنشورة من رئاسة الجمهورية لعام 2026، وتُحدَّث سنويًا.</div>
+    ${rows}</div>`;
+}
+
+function renderMonthlyCalendar(){
+  const w=document.getElementById('extraWork');
+  if(!w) return;
+
+  const y=extrasCalendarDate.getFullYear(), m=extrasCalendarDate.getMonth();
+  const today=new Date();
+  const first=new Date(y,m,1);
+  const days=new Date(y,m+1,0).getDate();
+
+  // JavaScript: الأحد=0. نحول العرض ليبدأ بالسبت.
+  const start=(first.getDay()+1)%7;
+  const dayNames=['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
+
+  let cells='';
+  for(let i=0;i<start;i++) cells+='<div style="min-height:58px"></div>';
+  for(let d=1;d<=days;d++){
+    const isToday=d===today.getDate() && m===today.getMonth() && y===today.getFullYear();
+    cells+=`<div style="min-height:58px;padding:9px;border:1px solid var(--line);border-radius:10px;
+      background:${isToday?'var(--navy-light)':'var(--surface)'};color:${isToday?'#fff':'var(--ink)'};
+      font-weight:${isToday?'800':'600'};display:flex;align-items:center;justify-content:center">${d}</div>`;
+  }
+
+  const monthName=new Date(y,m,1).toLocaleDateString('ar-EG',{month:'long',year:'numeric'});
+  w.innerHTML=`<div class="portal-form">
+    <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px">
+      <button class="portal-action" style="width:auto;padding:9px 14px" onclick="changeExtrasMonth(-1)">→ السابق</button>
+      <h3 style="margin:0">📅 ${monthName}</h3>
+      <button class="portal-action" style="width:auto;padding:9px 14px" onclick="changeExtrasMonth(1)">التالي ←</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center">
+      ${dayNames.map(x=>`<div style="font-weight:800;padding:7px 2px">${x}</div>`).join('')}
+      ${cells}
+    </div>
+  </div>`;
+}
+
+function changeExtrasMonth(delta){
+  extrasCalendarDate=new Date(extrasCalendarDate.getFullYear(),extrasCalendarDate.getMonth()+delta,1);
+  renderMonthlyCalendar();
+}
+
+function getBrowserLocation(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation){
+      reject(new Error('المتصفح لا يدعم تحديد الموقع.'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude}),
+      ()=>reject(new Error('تعذر تحديد الموقع. اسمح للموقع باستخدام الموقع الجغرافي ثم أعد المحاولة.')),
+      {enableHighAccuracy:true,timeout:12000,maximumAge:300000}
+    );
+  });
+}
+
+async function loadPrayerTimes(){
+  const w=document.getElementById('extraWork');
+  try{
+    const {lat,lon}=await getBrowserLocation();
+    // method=5: طريقة الهيئة المصرية العامة للمساحة.
+    const url=`https://api.aladhan.com/v1/timings?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&method=5`;
+    const r=await fetch(url);
+    const d=await r.json();
+    if(!r.ok || !d || d.code!==200 || !d.data) throw new Error('تعذر تحميل مواقيت الصلاة.');
+
+    const t=d.data.timings||{};
+    const rows=[
+      ['الفجر',t.Fajr],['الشروق',t.Sunrise],['الظهر',t.Dhuhr],
+      ['العصر',t.Asr],['المغرب',t.Maghrib],['العشاء',t.Isha]
+    ];
+    const dateText=(d.data.date && d.data.date.readable) ? d.data.date.readable : '';
+
+    w.innerHTML=`<div class="portal-form"><h3>🕌 مواقيت الصلاة</h3>
+      <div class="state-box dashed" style="margin-bottom:10px">المواقيت محسوبة حسب موقع الجهاز — ${dateText}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+        ${rows.map(([n,v])=>`<div class="stat-card"><div class="stat-title">${n}</div><div class="stat-value">${v||'—'}</div></div>`).join('')}
+      </div></div>`;
+  }catch(e){
+    w.innerHTML=`<div class="portal-form"><h3>🕌 مواقيت الصلاة</h3><div class="portal-msg err">${e.message}</div>
+      <button class="portal-action" onclick="loadPrayerTimes()">إعادة المحاولة</button></div>`;
+  }
+}
+
+function calculateQiblaBearing(lat,lon){
+  const kaabaLat=21.422487, kaabaLon=39.826206;
+  const toRad=x=>x*Math.PI/180, toDeg=x=>x*180/Math.PI;
+  const phi1=toRad(lat), phi2=toRad(kaabaLat);
+  const dLon=toRad(kaabaLon-lon);
+  const y=Math.sin(dLon)*Math.cos(phi2);
+  const x=Math.cos(phi1)*Math.sin(phi2)-Math.sin(phi1)*Math.cos(phi2)*Math.cos(dLon);
+  return (toDeg(Math.atan2(y,x))+360)%360;
+}
+
+async function loadQibla(){
+  const w=document.getElementById('extraWork');
+  try{
+    const {lat,lon}=await getBrowserLocation();
+    const bearing=calculateQiblaBearing(lat,lon);
+    w.innerHTML=`<div class="portal-form"><h3>🧭 اتجاه القبلة</h3>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px">
+        <div style="width:170px;height:170px;border:3px solid var(--navy-light);border-radius:50%;position:relative;
+          display:flex;align-items:center;justify-content:center;background:var(--surface)">
+          <span style="position:absolute;top:5px;font-weight:800">N</span>
+          <div style="font-size:64px;transform:rotate(${bearing}deg);transform-origin:center">⬆️</div>
+        </div>
+        <div class="stat-card" style="width:min(100%,420px)">
+          <div class="stat-title">زاوية القبلة من الشمال</div>
+          <div class="stat-value">${bearing.toFixed(1)}°</div>
+        </div>
+        <div class="state-box dashed">وجّه أعلى الجهاز إلى الشمال، ثم اتبع اتجاه السهم. النتيجة محسوبة من موقع الجهاز.</div>
+      </div></div>`;
+  }catch(e){
+    w.innerHTML=`<div class="portal-form"><h3>🧭 اتجاه القبلة</h3><div class="portal-msg err">${e.message}</div>
+      <button class="portal-action" onclick="loadQibla()">إعادة المحاولة</button></div>`;
+  }
 }
 
 async function loadHomeExperience() {
@@ -2678,7 +3399,7 @@ async function loadAuditLog() {
           <div style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;">
             <div style="display:flex;justify-content:space-between;align-items:start;">
               <span><b style="color:var(--navy);">${a.action_type}</b> — بواسطة ${a.admin_name} (${a.admin_code})</span>
-              <span style="color:var(--gray);white-space:nowrap;">${a.created_at}</span>
+              <span style="color:var(--gray);white-space:nowrap;">${escHtml(a.created_at)}</span>
             </div>
             ${a.target_name ? `<div style="color:var(--gray);margin-top:2px;">على الموظف: ${a.target_name} (${a.target_code})</div>` : ""}
             ${a.details ? `<div style="color:var(--gray);margin-top:2px;font-size:11.5px;">${a.details}</div>` : ""}
@@ -3196,7 +3917,7 @@ async function saveHRPayroll(empId) {
 }
 
 /* ============================================================
-   صفحة البداية وحالة النظام - الإصدار 2.0.0
+   صفحة البداية وحالة النظام - الإصدار 2.2.0
    ============================================================ */
 function enterPortal() {
   const gate = document.getElementById('lampGate');
