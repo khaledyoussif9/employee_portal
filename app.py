@@ -283,6 +283,7 @@ def demo_wage_record(month, year):
             "items": items,
             "earnings_total": earnings_total,
             "deductions_total": deductions_total,
+            "installments_total": installments_total,
             "net_salary": earnings_total - deductions_total,
         }],
         "is_demo": True,
@@ -420,6 +421,78 @@ def admin_required(f):
             return jsonify({"error": "الصفحة دي للموارد البشرية بس"}), 403
         return f(*args, **kwargs)
     return decorated
+
+
+# موظفون مصرح لهم بالبحث الشامل دون منحهم دور hr_admin.
+# يمكن تغيير القائمة من .env: EMPLOYEE_SEARCH_CODES=8067,1234
+EMPLOYEE_SEARCH_CODES = {
+    x.strip() for x in os.getenv("EMPLOYEE_SEARCH_CODES", "8067").split(",") if x.strip()
+}
+
+def _current_employee_code():
+    if getattr(request, "is_demo", False):
+        return DEMO_EMPLOYEE_CODE
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT employee_code FROM employees WHERE id = ?", request.employee_id)
+        row = cur.fetchone()
+        return str(row.employee_code).strip() if row else ""
+    finally:
+        conn.close()
+
+def _has_employee_search_access():
+    return request.role == "hr_admin" or _current_employee_code() in EMPLOYEE_SEARCH_CODES
+
+def employee_search_required(f):
+    @wraps(f)
+    @token_required
+    def decorated(*args, **kwargs):
+        if not _has_employee_search_access():
+            return jsonify({"error": "غير مصرح لك باستخدام البحث الشامل"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+def _authorized_target_employee_id():
+    target = request.args.get("employee_id", type=int)
+    if not target or target == request.employee_id:
+        return request.employee_id
+    if not _has_employee_search_access():
+        return None
+    return target
+
+def load_installments(cursor, employee_code):
+    """الأقساط والأرصدة الحالية من المصدر الأصلي human_r_ash دون إدخال الرصيد في إجمالي الخصومات."""
+    try:
+        cursor.execute(
+            f"""
+            SELECT r.band_code, COALESCE(c.band_name, CONCAT(N'بند ', r.band_code)) AS band_name,
+                   r.kest_VAL, r.raseed_val
+            FROM [{SARFIA_DATABASE}].[dbo].[payroll_raseed] r
+            LEFT JOIN [{SARFIA_DATABASE}].[dbo].[payroll_BAND_Codes] c
+              ON c.BAND_CODE = r.band_code
+            WHERE TRY_CONVERT(NVARCHAR(50), r.emp_no) = ?
+              AND ISNULL(r.kest_VAL, 0) <> 0
+              AND ISNULL(r.raseed_val, 0) > 0
+            ORDER BY r.band_code
+            """, str(employee_code)
+        )
+        return [{
+            "band_code": int(r.band_code),
+            "name": r.band_name or f"بند {r.band_code}",
+            "installment": float(r.kest_VAL or 0),
+            "balance": float(r.raseed_val or 0),
+        } for r in cursor.fetchall()]
+    except Exception:
+        return []
+
+@app.route("/api/employee-search/capabilities", methods=["GET"])
+@token_required
+def employee_search_capabilities():
+    return jsonify({
+        "employee_search": _has_employee_search_access(),
+        "is_hr_admin": request.role == "hr_admin",
+    })
 
 
 # ------------------------------------------------------------
@@ -1106,12 +1179,20 @@ def get_payslip():
     if request.is_demo:
         return jsonify(demo_payslip(month, year))
 
+    target_employee_id = _authorized_target_employee_id()
+    if target_employee_id is None:
+        return jsonify({"error": "غير مصرح لك بعرض شريط هذا الموظف"}), 403
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT code_sarf FROM employees WHERE id = ?", request.employee_id)
-    code_sarf_row = cursor.fetchone()
-    code_sarf = code_sarf_row.code_sarf if code_sarf_row else None
+    cursor.execute("SELECT employee_code, full_name, code_sarf FROM employees WHERE id = ?", target_employee_id)
+    employee_row = cursor.fetchone()
+    if not employee_row:
+        conn.close()
+        return jsonify({"error": "الموظف غير موجود"}), 404
+    code_sarf = employee_row.code_sarf
+    installments = load_installments(cursor, employee_row.employee_code)
 
     cursor.execute(
         """
@@ -1137,7 +1218,7 @@ def get_payslip():
             band_type
         ORDER BY band_type DESC, amount DESC
         """,
-        request.employee_id,
+        target_employee_id,
         month,
         year,
     )
@@ -1155,7 +1236,22 @@ def get_payslip():
             for r in item_rows
         ])
         earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
-        deductions_total = sum(i["amount"] for i in items if i["type"] == "deduction")
+        # القاعدة المعتمدة: البند ذو الرصيد الموجب ينتقل من الاستقطاعات العادية
+        # إلى لوحة الأقساط، وتدخل قيمة القسط مرة واحدة فقط في الإجمالي.
+        active_installment_codes = {
+            int(i["band_code"]) for i in installments if float(i.get("balance") or 0) > 0
+        }
+        regular_deductions_for_total = [
+            i for i in items
+            if i["type"] == "deduction"
+            and int(i.get("band_code") or -1) not in active_installment_codes
+        ]
+        installments_total = sum(
+            float(i.get("installment") or 0)
+            for i in installments
+            if float(i.get("balance") or 0) > 0
+        )
+        deductions_total = sum(i["amount"] for i in regular_deductions_for_total) + installments_total
 
         conn.close()
         return jsonify({
@@ -1163,6 +1259,9 @@ def get_payslip():
             "year": year,
             "source": "items",
             "code_sarf": code_sarf,
+            "employee_name": employee_row.full_name,
+            "employee_code": employee_row.employee_code,
+            "installments": installments,
             "items": items,
             "earnings_total": earnings_total,
             "deductions_total": deductions_total,
@@ -1177,7 +1276,7 @@ def get_payslip():
         FROM payroll_records
         WHERE employee_id = ? AND month = ? AND year = ?
         """,
-        request.employee_id,
+        target_employee_id,
         month,
         year,
     )
@@ -1208,6 +1307,9 @@ def get_payslip():
         "year": row.year,
         "source": "fixed",
         "code_sarf": code_sarf,
+        "employee_name": employee_row.full_name,
+        "employee_code": employee_row.employee_code,
+        "installments": installments,
         "items": items,
         "earnings_total": float(row.basic_salary + row.transport_allowance + row.housing_allowance + row.bonus),
         "deductions_total": float(row.insurance_deduction + row.tax_deduction + row.absence_deduction),
@@ -1230,8 +1332,17 @@ def get_wage_record():
     if request.is_demo:
         return jsonify(demo_wage_record(month, year))
 
+    target_employee_id = _authorized_target_employee_id()
+    if target_employee_id is None:
+        return jsonify({"error": "غير مصرح لك بعرض سجل أجور هذا الموظف"}), 403
+
     conn = get_connection()
     cursor = conn.cursor()
+    cursor.execute("SELECT employee_code, full_name FROM employees WHERE id = ?", target_employee_id)
+    employee_row = cursor.fetchone()
+    if not employee_row:
+        conn.close()
+        return jsonify({"error": "الموظف غير موجود"}), 404
 
     cursor.execute(
         """
@@ -1244,7 +1355,7 @@ def get_wage_record():
         GROUP BY sarfia_no, band_name, band_type
         ORDER BY sarfia_no, band_type DESC, amount DESC
         """,
-        request.employee_id,
+        target_employee_id,
         month,
         year,
     )
@@ -1283,6 +1394,8 @@ def get_wage_record():
     return jsonify({
         "month": month,
         "year": year,
+        "employee_name": employee_row.full_name,
+        "employee_code": employee_row.employee_code,
         "disbursements": result,
     })
 
@@ -1322,17 +1435,23 @@ def download_payslip_pdf():
         )
         return send_file(filepath, as_attachment=True, download_name=f"شريط_مرتب_تجريبي_{MONTHS_AR[month-1]}_{year}.pdf")
 
+    target_employee_id = _authorized_target_employee_id()
+    if target_employee_id is None:
+        return jsonify({"error": "غير مصرح لك بعرض شريط هذا الموظف"}), 403
+
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
         "SELECT full_name, employee_code, code_sarf FROM employees WHERE id = ?",
-        request.employee_id,
+        target_employee_id,
     )
     emp_row = cursor.fetchone()
     if emp_row is None:
         conn.close()
         return jsonify({"error": "الموظف غير موجود"}), 404
+
+    installments = load_installments(cursor, emp_row.employee_code)
 
     cursor.execute(
         """
@@ -1358,7 +1477,7 @@ def download_payslip_pdf():
             band_type
         ORDER BY band_type DESC, amount DESC
         """,
-        request.employee_id, month, year,
+        target_employee_id, month, year,
     )
     rows = cursor.fetchall()
     conn.close()
@@ -1378,7 +1497,17 @@ def download_payslip_pdf():
     ])
     earnings = [i for i in pdf_items if i["type"] == "earning"]
     deductions = [i for i in pdf_items if i["type"] == "deduction"]
-    net_salary = sum(i["amount"] for i in earnings) - sum(i["amount"] for i in deductions)
+    # الرصيد > صفر: يظهر في لوحة الأقساط والأرصدة فقط، ولا يتكرر بصريًا ضمن الاستقطاعات.
+    # الرصيد = صفر: لا يدخل installments أصلًا، فيظل البند ضمن الاستقطاعات العادية.
+    active_installment_codes = {int(i["band_code"]) for i in installments if float(i.get("balance") or 0) > 0}
+    display_deductions = [i for i in deductions if int(i.get("band_code") or -1) not in active_installment_codes]
+    # الإجمالي والصافي يتبعان نفس منطق العرض: الاستقطاعات العادية + قيمة كل قسط ذي رصيد موجب.
+    # بهذه الطريقة لا يسقط قسط موجود في payroll_raseed (مثل بند 222)، ولا يتكرر بند موجود أصلًا في payroll_items.
+    deductions_total = (
+        sum(i["amount"] for i in display_deductions)
+        + sum(float(i.get("installment") or 0) for i in installments if float(i.get("balance") or 0) > 0)
+    )
+    net_salary = sum(i["amount"] for i in earnings) - deductions_total
 
     filename = f"payslip_{emp_row.employee_code}_{year}_{month}_{uuid.uuid4().hex[:8]}.pdf"
     filepath = os.path.join(PDF_TEMP_FOLDER, filename)
@@ -1391,8 +1520,9 @@ def download_payslip_pdf():
         year=year,
         code_sarf=emp_row.code_sarf,
         earnings=earnings,
-        deductions=deductions,
+        deductions=display_deductions,
         net_salary=net_salary,
+        installments=installments,
     )
 
     return send_file(filepath, as_attachment=True, download_name=f"شريط_المرتب_{MONTHS_AR[month-1]}_{year}.pdf")
@@ -1432,12 +1562,16 @@ def download_wage_record_pdf():
         )
         return send_file(filepath, as_attachment=True, download_name=f"سجل_أجور_تجريبي_{MONTHS_AR[month-1]}_{year}.pdf")
 
+    target_employee_id = _authorized_target_employee_id()
+    if target_employee_id is None:
+        return jsonify({"error": "غير مصرح لك بعرض سجل أجور هذا الموظف"}), 403
+
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute(
         "SELECT full_name, employee_code FROM employees WHERE id = ?",
-        request.employee_id,
+        target_employee_id,
     )
     emp_row = cursor.fetchone()
     if emp_row is None:
@@ -1455,7 +1589,7 @@ def download_wage_record_pdf():
         GROUP BY sarfia_no, band_name, band_type
         ORDER BY sarfia_no, band_type DESC, amount DESC
         """,
-        request.employee_id, month, year,
+        target_employee_id, month, year,
     )
     rows = cursor.fetchall()
     sarfia_names = load_sarfia_names(cursor, month, year)
@@ -1655,7 +1789,7 @@ def change_password():
 # 4) [إداري] البحث عن موظف بالكود أو الاسم
 # ------------------------------------------------------------
 @app.route("/api/admin/employees", methods=["GET"])
-@admin_required
+@employee_search_required
 def admin_search_employees():
     search = request.args.get("search", "").strip()
     if not search:
@@ -1695,7 +1829,7 @@ def admin_search_employees():
 # 5) [إداري] بيانات موظف معيّن كاملة (عرض وتعديل)
 # ------------------------------------------------------------
 @app.route("/api/admin/employees/<int:emp_id>", methods=["GET"])
-@admin_required
+@employee_search_required
 def admin_get_employee(emp_id):
     conn = get_connection()
     cursor = conn.cursor()
@@ -2933,10 +3067,10 @@ def card_services_catalog():
 
 # ===== Quran & Radio services - Version 2.2.0 =====
 QURAN_AUDIO_SOURCES = {
-    "mishary": {"name": "مشاري راشد العفاسي", "path": r"D:\\quran\\مشاري راشد العفاسي"},
-    "mixed": {"name": "قراء متنوعون", "path": r"D:\\quran\\Qoraan"},
+    "mishary": {"name": "مشاري راشد العفاسي", "path": os.getenv("QURAN_MISHARY_DIR", r"D:\quran\مشاري راشد العفاسي")},
+    "mixed": {"name": "قراء متنوعون", "path": os.getenv("QURAN_VARIOUS_DIR", r"D:\quran\Qoraan")},
 }
-QURAN_FILE_RE = re.compile(r"^\\s*(\\d{1,3})\\s+(.+?)\\.mp3$", re.IGNORECASE)
+QURAN_FILE_RE = re.compile(r"^\s*(\d{1,3})[\s._-]*(.*?)\.mp3$", re.IGNORECASE)
 
 def _quran_catalog(source_key):
     source = QURAN_AUDIO_SOURCES.get(source_key)
@@ -3341,19 +3475,35 @@ def card_request_timeline(request_id):
             """,
             request_id,
         )
-        return jsonify([
-            {
+        status_ar = {
+            "SUBMITTED": "تم إرسال الطلب",
+            "REVIEWED": "تمت مراجعته",
+            "BANK_UPLOADED": "تم رفعه للبنك",
+            "WAITING_BANK_RESPONSE": "بانتظار رد البنك",
+            "RECEIVED_FROM_BANK": "تم استلامه من البنك",
+            "DELIVERED": "تم التسليم للموظف",
+            "ACCEPTED": "تم القبول",
+            "REJECTED": "تم الرفض",
+        }
+        items = []
+        for r in cursor.fetchall():
+            notes = str(r.notes) if r.notes else None
+            receiver_name = None
+            if notes and notes.startswith("[RECEIVER_NAME]"):
+                receiver_name = notes[len("[RECEIVER_NAME]"):].split("\n", 1)[0].strip() or None
+            new_status = str(r.new_status)
+            items.append({
                 "id": int(r.id),
                 "old_status": str(r.old_status) if r.old_status else None,
-                "new_status": str(r.new_status),
+                "new_status": new_status,
+                "display_name": status_ar.get(new_status, r.action_name or new_status),
                 "action_code": str(r.action_code),
                 "action_name": r.action_name,
                 "actor_name": r.actor_name,
-                "notes": r.notes,
+                "receiver_name": receiver_name,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in cursor.fetchall()
-        ])
+            })
+        return jsonify(items)
     finally:
         conn.close()
 
@@ -3594,10 +3744,24 @@ def card_deliver(request_id):
         roles = _card_staff_roles(cursor, user_id)
         if request.role != "hr_admin" and "DELIVERY" not in roles:
             return jsonify({"error": "ليس لديك صلاحية تسليم الكارت"}), 403
+
+        receiver_name = None
+        if receiver_type == "SELF":
+            cursor.execute("SELECT employee_name_snapshot FROM card_requests WHERE id = ?", request_id)
+            rr = cursor.fetchone()
+            receiver_name = (str(rr.employee_name_snapshot).strip() if rr and rr.employee_name_snapshot else "الموظف نفسه")
+        else:
+            cursor.execute("SELECT full_name FROM employees WHERE employee_code = ?", receiver_employee_code)
+            rr = cursor.fetchone()
+            if not rr:
+                return jsonify({"error": "لم يتم العثور على الموظف المستلم"}), 400
+            receiver_name = str(rr.full_name).strip()
+
+        history_notes = f"[RECEIVER_NAME]{receiver_name}" + (("\n" + notes) if notes else "")
         try:
             cursor.execute(
                 "EXEC dbo.sp_CardDeliver @RequestID=?, @ActorUserID=?, @ReceiverType=?, @ReceiverEmployeeCode=?, @Notes=?",
-                request_id, user_id, receiver_type, receiver_employee_code, notes,
+                request_id, user_id, receiver_type, receiver_employee_code, history_notes,
             )
             row = cursor.fetchone()
             conn.commit()
@@ -3610,6 +3774,7 @@ def card_deliver(request_id):
             "request_id": request_id,
             "status": "DELIVERED",
             "receiver_type": receiver_type,
+            "receiver_name": receiver_name,
         })
     finally:
         conn.close()

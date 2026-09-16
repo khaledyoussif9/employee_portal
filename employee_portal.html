@@ -766,7 +766,7 @@
         </div>
         <div id="loginError" class="error-text hidden"></div>
         <button class="btn-primary" id="loginBtn" onclick="handleLogin()">تسجيل الدخول</button>
-        <button class="btn-primary" id="passkeyLoginBtn" style="margin-top:9px;background:var(--navy);" onclick="loginWithPasskey()">🔐 الدخول بالبصمة / Passkey</button>
+        <button class="btn-primary" id="passkeyLoginBtn" style="margin-top:9px;background:var(--navy);" onclick="loginWithPasskey()">🔐 الدخول بالبصمة / Face ID</button>
         <div class="system-status" data-system-status data-state="maintenance"><span class="status-lamp"></span><span>جاري فحص حالة النظام...</span></div>
         <div style="text-align:center;margin-top:12px;font-size:11.5px;color:var(--gray);line-height:1.6;">
           📍 تقاطع طريق الكورنيش مع طريق مدينة السماد، طلخا، المنصورة، محافظة الدقهلية
@@ -929,8 +929,8 @@
         </div>
         <button class="nav-btn active" id="navHome" onclick="switchTab('home')">🏠 الرئيسية</button>
         <button class="nav-btn" id="navAdmin" onclick="switchTab('admin')">👤 تعديل البيانات</button>
-        <button class="nav-btn" id="navPayslip" onclick="switchTab('payslip')">📄 شريط المرتب</button>
-        <button class="nav-btn" id="navWage" onclick="switchTab('wage')">📋 سجل الأجور</button>
+        <button class="nav-btn" id="navPayslip" onclick="clearEmployeeViewContext();switchTab('payslip')">📄 شريط المرتب</button>
+        <button class="nav-btn" id="navWage" onclick="clearEmployeeViewContext();switchTab('wage')">📋 سجل الأجور</button>
         <button class="nav-btn" id="navChangePass" onclick="switchTab('changepass')">🔑 تغيير كلمة المرور</button>
         <button class="nav-btn" type="button" onclick="openPasskeyManager()">🔐 تفعيل وإدارة البصمة</button>
         <button class="nav-btn" id="navContact" onclick="switchTab('contact')">✉️ تواصل معنا</button>
@@ -941,6 +941,7 @@
         </button>
         <button class="nav-btn" type="button" onclick="handleLogout()">🚪 خروج</button>
         <button class="nav-btn hidden" id="navHR" onclick="switchTab('hr')">🗂 لوحة التحكم</button>
+        <button class="nav-btn hidden" id="navEmployeeSearchSpecial" onclick="switchTab('employeeSearch')">🔎 البحث الشامل</button>
         <div class="admin-v2-nav hidden" id="adminV2Nav">
           <button class="nav-btn" id="navEmployeeSearch" onclick="switchTab('employeeSearch')">🔎 البحث الشامل</button>
           <button class="nav-btn" id="navStatistics" onclick="switchTab('statistics')">📊 الإحصائيات</button>
@@ -1454,7 +1455,7 @@ async function enablePasskey() {
     const deviceName = (navigator.userAgentData?.platform || navigator.platform || 'هذا الجهاز').slice(0,200);
     const r2 = await apiFetch(`${API_BASE}/api/passkeys/register/verify`, {method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.token}`}, body:JSON.stringify({challenge_id:d1.challenge_id, credential:credentialToJSON(cred), device_name:deviceName})});
     const d2 = await r2.json(); if (!r2.ok) throw new Error(d2.error || 'تعذر حفظ البصمة');
-    alert('✅ تم تفعيل الدخول بالبصمة / Passkey بنجاح على هذا الموقع.');
+    alert('✅ تم تفعيل الدخول بالبصمة / Face ID بنجاح على هذا الموقع.');
   } catch(e) { if (e.name !== 'NotAllowedError') alert('تعذر تفعيل البصمة: ' + (e.message || e)); }
 }
 async function loginWithPasskey() {
@@ -1468,7 +1469,7 @@ async function loginWithPasskey() {
     const d2=await r2.json(); if(!r2.ok) throw new Error(d2.error||'فشل الدخول بالبصمة');
     session={token:d2.token,fullName:d2.full_name,role:d2.role,employeeCode:d2.employee_code}; showApp();
   } catch(e) { if(e.name!=='NotAllowedError'){errorBox.textContent=e.message||'فشل الدخول بالبصمة';errorBox.classList.remove('hidden');} }
-  finally {btn.disabled=false;btn.textContent='🔐 الدخول بالبصمة / Passkey';}
+  finally {btn.disabled=false;btn.textContent='🔐 الدخول بالبصمة / Face ID';}
 }
 async function openPasskeyManager() {
   if (!session?.token) return;
@@ -1476,7 +1477,7 @@ async function openPasskeyManager() {
     ensurePasskeySupport();
     const r=await apiFetch(`${API_BASE}/api/passkeys`,{headers:{Authorization:`Bearer ${session.token}`}}); const d=await r.json();
     const count=r.ok?(d.items||[]).length:0;
-    if (confirm(`🔐 البصمة / Passkey\n\nالمفعل على حسابك: ${count}\n\nاضغط موافق لإضافة بصمة/Passkey جديدة.`)) await enablePasskey();
+    if (confirm(`🔐 البصمة / Face ID\n\nوسائل الدخول الآمن المفعلة: ${count}\n\nاضغط موافق لإضافة وسيلة جديدة على هذا الجهاز.`)) await enablePasskey();
   } catch(e) { alert(e.message||e); }
 }
 
@@ -1550,6 +1551,7 @@ function handleLogout() {
 }
 
 function showApp() {
+  document.getElementById("navEmployeeSearchSpecial").classList.add("hidden");
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appScreen").classList.remove("hidden");
   document.getElementById("topbarName").textContent = session.isDemo
@@ -1561,6 +1563,11 @@ function showApp() {
     document.getElementById("navHR").classList.remove("hidden");
     document.getElementById("adminV2Nav").classList.remove("hidden");
   }
+  apiFetch(`${API_BASE}/api/employee-search/capabilities`, {headers:{Authorization:`Bearer ${session.token}`}})
+    .then(r=>r.ok?r.json():null).then(c=>{
+      if(c && c.employee_search && session.role !== "hr_admin")
+        document.getElementById("navEmployeeSearchSpecial").classList.remove("hidden");
+    }).catch(()=>{});
   document.getElementById("navChangePass").classList.toggle("hidden", session.isDemo);
   document.getElementById("navRating").classList.toggle("hidden", session.isDemo);
   setWelcomeBanner();
@@ -1784,6 +1791,7 @@ function switchTab(tab) {
   document.getElementById("navRating").classList.toggle("active", tab === "rating");
   document.getElementById("navHR").classList.toggle("active", tab === "hr");
   document.getElementById("navEmployeeSearch").classList.toggle("active", tab === "employeeSearch");
+  document.getElementById("navEmployeeSearchSpecial").classList.toggle("active", tab === "employeeSearch");
   document.getElementById("navStatistics").classList.toggle("active", tab === "statistics");
   document.getElementById("navEmployeeMessages").classList.toggle("active", tab === "employeeMessages");
   document.getElementById("navServiceRatings").classList.toggle("active", tab === "serviceRatings");
@@ -1827,7 +1835,7 @@ function renderCardServicesPanel() {
 }
 
 
-const CARD_STATUS_AR={SUBMITTED:'تم إرسال الطلب',REVIEWED:'تمت المراجعة والتفعيل',BANK_UPLOADED:'تم الرفع على البنك',WAITING_BANK_RESPONSE:'انتظار رد البنك',RECEIVED_FROM_BANK:'تم الاستلام من البنك',DELIVERED:'تم التسليم',ACCEPTED:'تم القبول',REJECTED:'تم الرفض'};
+const CARD_STATUS_AR={SUBMITTED:'تم إرسال الطلب',REVIEWED:'تمت مراجعته',BANK_UPLOADED:'تم رفعه للبنك',WAITING_BANK_RESPONSE:'بانتظار رد البنك',RECEIVED_FROM_BANK:'تم استلامه من البنك',DELIVERED:'تم التسليم للموظف',ACCEPTED:'تم القبول',REJECTED:'تم الرفض'};
 async function loadCardStaffActions(){
   const box=document.getElementById('cardStaffActions'); if(!box||!session?.token)return;
   try{
@@ -1985,7 +1993,35 @@ async function submitCardRequest(service){
   }
 }
 
-async function loadMyCardRequests(){const w=document.getElementById('cardServiceWork');w.innerHTML='<div class="state-box"><span class="spin"></span> جاري تحميل الطلبات...</div>';try{const r=await apiFetch(`${API_BASE}/api/card-requests/mine`,{headers:{Authorization:`Bearer ${session.token}`}});const d=await r.json();if(!r.ok)throw new Error(d.error||'تعذر تحميل الطلبات');const rows=Array.isArray(d)?d:(d.requests||[]);w.innerHTML=`<div class="portal-form"><h3>طلباتي</h3>${rows.length?rows.map(x=>`<div class="result-item"><div><div class="r-name">${escHtml(x.service_name||x.service_code||'طلب كارت')}</div><div class="r-meta">${escHtml(x.submitted_at||'')}</div></div><div class="r-code">${escHtml(x.status_name||x.status||'')}</div></div>`).join(''):'<div class="state-box dashed">لا توجد طلبات حتى الآن.</div>'}</div>`;}catch(e){w.innerHTML=`<div class="portal-form"><div class="portal-msg err">${e.message}</div></div>`;}}
+function formatCardDateTime(v){
+  if(!v) return '—';
+  const d=new Date(v); if(Number.isNaN(d.getTime())) return escHtml(v);
+  const z=n=>String(n).padStart(2,'0');
+  return `${z(d.getDate())}/${z(d.getMonth()+1)}/${d.getFullYear()} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+function cardStatusArabic(v){return CARD_STATUS_AR[String(v||'').toUpperCase()]||String(v||'');}
+async function loadMyCardRequests(){
+  const w=document.getElementById('cardServiceWork');w.innerHTML='<div class="state-box"><span class="spin"></span> جاري تحميل الطلبات...</div>';
+  try{
+    const r=await apiFetch(`${API_BASE}/api/card-requests/mine`,{headers:{Authorization:`Bearer ${session.token}`}});const d=await r.json();if(!r.ok)throw new Error(d.error||'تعذر تحميل الطلبات');
+    const rows=Array.isArray(d)?d:(d.requests||[]);
+    w.innerHTML=`<div class="portal-form"><h3>📋 طلباتي</h3>${rows.length?rows.map(x=>`<div class="result-item" style="display:block">
+      <button type="button" onclick="toggleCardTimeline(${x.id})" style="width:100%;border:0;background:transparent;color:inherit;text-align:right;cursor:pointer;padding:0">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div><div class="r-name">${escHtml(x.service_name||x.service_code||'طلب كارت')} ▾</div><div class="r-meta">تاريخ الطلب: ${formatCardDateTime(x.submitted_at)}</div><div class="r-meta">كود الموظف: ${escHtml(x.employee_code||'—')} &nbsp; | &nbsp; الكود البنكي: ${escHtml(x.bank_code||'غير مسجل')}</div></div><div class="r-code">${escHtml(cardStatusArabic(x.status))}</div></div>
+      </button><div id="cardTimeline-${x.id}" style="display:none;margin-top:10px"></div></div>`).join(''):'<div class="state-box dashed">لا توجد طلبات حتى الآن.</div>'}</div>`;
+  }catch(e){w.innerHTML=`<div class="portal-form"><div class="portal-msg err">${escHtml(e.message)}</div></div>`;}
+}
+async function toggleCardTimeline(id){
+  const box=document.getElementById(`cardTimeline-${id}`); if(!box)return;
+  if(box.dataset.loaded==='1'){box.style.display=box.style.display==='none'?'block':'none';return;}
+  box.style.display='block';box.innerHTML='<div class="state-box"><span class="spin"></span> جاري تحميل تتبع الطلب...</div>';
+  try{
+    const r=await apiFetch(`${API_BASE}/api/card-requests/${id}/timeline`,{headers:{Authorization:`Bearer ${session.token}`}});const d=await r.json();if(!r.ok)throw new Error(d.error||'تعذر تحميل التتبع');
+    const rows=Array.isArray(d)?d:(d.timeline||[]);
+    box.innerHTML=rows.length?`<div class="state-box dashed"><b>تتبع الطلب</b><div style="margin-top:8px;display:grid;gap:8px">${rows.map(x=>`<div style="border-bottom:1px solid var(--border);padding:7px 0"><b>● ${escHtml(x.display_name||cardStatusArabic(x.new_status)||x.action_name||'تحديث الطلب')}</b><div class="r-meta">${formatCardDateTime(x.created_at)}</div>${x.receiver_name?`<div class="r-meta">المستلم: ${escHtml(x.receiver_name)}</div>`:''}</div>`).join('')}</div></div>`:'<div class="state-box dashed">لا توجد مراحل مسجلة للطلب.</div>';
+    box.dataset.loaded='1';
+  }catch(e){box.innerHTML=`<div class="portal-msg err">${escHtml(e.message)}</div>`;}
+}
 function renderExtrasPanel(){
   const el=document.getElementById('tabExtras');
   el.innerHTML=`<div class="portal-subpage">
@@ -2379,27 +2415,46 @@ function calculateQiblaBearing(lat,lon){
   return (toDeg(Math.atan2(y,x))+360)%360;
 }
 
+let qiblaOrientationHandler=null;
+async function requestOrientationPermissionForQibla(){
+  if(typeof DeviceOrientationEvent==='undefined') return false;
+  if(typeof DeviceOrientationEvent.requestPermission==='function'){
+    const state=await DeviceOrientationEvent.requestPermission();
+    if(state!=='granted') throw new Error('اسمح للموقع باستخدام حساس الاتجاه لتشغيل بوصلة القبلة.');
+  }
+  return true;
+}
+function deviceHeadingFromEvent(e){
+  if(typeof e.webkitCompassHeading==='number') return e.webkitCompassHeading; // iPhone / iPad
+  if(typeof e.alpha==='number') return (360-e.alpha+360)%360;
+  return null;
+}
 async function loadQibla(){
   const w=document.getElementById('extraWork');
   try{
+    // iOS يشترط طلب إذن حساس الاتجاه مباشرة بعد ضغطة المستخدم.
+    const orientationAvailable=await requestOrientationPermissionForQibla();
     const {lat,lon}=await getBrowserLocation();
     const bearing=calculateQiblaBearing(lat,lon);
-    w.innerHTML=`<div class="portal-form"><h3>🧭 اتجاه القبلة</h3>
+    w.innerHTML=`<div class="portal-form"><h3>🧭 بوصلة اتجاه القبلة</h3>
       <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px">
-        <div style="width:170px;height:170px;border:3px solid var(--navy-light);border-radius:50%;position:relative;
-          display:flex;align-items:center;justify-content:center;background:var(--surface)">
-          <span style="position:absolute;top:5px;font-weight:800">N</span>
-          <div style="font-size:64px;transform:rotate(${bearing}deg);transform-origin:center">⬆️</div>
+        <div id="qiblaCompass" style="width:190px;height:190px;border:3px solid var(--navy-light);border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center;background:var(--surface)">
+          <span style="position:absolute;top:5px;font-weight:800">N</span><span style="position:absolute;bottom:5px;font-weight:800">S</span>
+          <div id="qiblaNeedle" style="font-size:70px;transform:rotate(${bearing}deg);transform-origin:center;transition:transform .15s linear">⬆️</div>
         </div>
-        <div class="stat-card" style="width:min(100%,420px)">
-          <div class="stat-title">زاوية القبلة من الشمال</div>
-          <div class="stat-value">${bearing.toFixed(1)}°</div>
-        </div>
-        <div class="state-box dashed">وجّه أعلى الجهاز إلى الشمال، ثم اتبع اتجاه السهم. النتيجة محسوبة من موقع الجهاز.</div>
+        <div class="stat-card" style="width:min(100%,420px)"><div class="stat-title">زاوية القبلة من الشمال</div><div class="stat-value">${bearing.toFixed(1)}°</div></div>
+        <div id="qiblaCompassMsg" class="state-box dashed">${orientationAvailable?'حرّك الهاتف ببطء، والسهم سيتجه نحو القبلة تلقائيًا.':'تم حساب اتجاه القبلة. هذا الجهاز/المتصفح لا يتيح حساس البوصلة للموقع.'}</div>
       </div></div>`;
+    if(qiblaOrientationHandler) window.removeEventListener('deviceorientation',qiblaOrientationHandler,true);
+    if(orientationAvailable){
+      qiblaOrientationHandler=e=>{
+        const heading=deviceHeadingFromEvent(e); if(heading===null)return;
+        const needle=document.getElementById('qiblaNeedle'); if(needle) needle.style.transform=`rotate(${bearing-heading}deg)`;
+      };
+      window.addEventListener('deviceorientation',qiblaOrientationHandler,true);
+    }
   }catch(e){
-    w.innerHTML=`<div class="portal-form"><h3>🧭 اتجاه القبلة</h3><div class="portal-msg err">${e.message}</div>
-      <button class="portal-action" onclick="loadQibla()">إعادة المحاولة</button></div>`;
+    w.innerHTML=`<div class="portal-form"><h3>🧭 بوصلة اتجاه القبلة</h3><div class="portal-msg err">${escHtml(e.message)}</div><button class="portal-action" onclick="loadQibla()">السماح وإعادة المحاولة</button></div>`;
   }
 }
 
@@ -2611,6 +2666,11 @@ async function saveMyEmail() {
   }
 }
 
+let employeeViewContext = null;
+function clearEmployeeViewContext(){ employeeViewContext = null; }
+function openSearchedPayslip(emp){ employeeViewContext={id:emp.id,name:emp.full_name,code:emp.employee_code}; switchTab('payslip'); }
+function openSearchedWage(emp){ employeeViewContext={id:emp.id,name:emp.full_name,code:emp.employee_code}; switchTab('wage'); }
+
 function renderPayslipShell() {
   const box = document.getElementById("tabPayslip");
   box.innerHTML = `
@@ -2673,7 +2733,7 @@ async function loadWageRecord() {
   body.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
 
   try {
-    const res = await apiFetch(`${API_BASE}/api/wage-record?month=${wageMonth + 1}&year=${wageYear}`, {
+    const res = await apiFetch(`${API_BASE}/api/wage-record?month=${wageMonth + 1}&year=${wageYear}${employeeViewContext ? `&employee_id=${employeeViewContext.id}` : ""}`, {
       headers: { Authorization: `Bearer ${session.token}` },
     });
 
@@ -2696,7 +2756,7 @@ async function loadWageRecord() {
           <div class="payslip-header">
             <div>
               <div class="payslip-title">صرفية رقم ${d.sarfia_no}${d.sarfia_name ? ` — ${d.sarfia_name}` : ""}</div>
-              <div class="payslip-sub">${MONTHS[wageMonth]} ${wageYear} — ${session.fullName} (كود ${session.employeeCode})</div>
+              <div class="payslip-sub">${MONTHS[wageMonth]} ${wageYear} — ${data.employee_name || session.fullName} (كود ${data.employee_code || session.employeeCode})</div>
             </div>
           </div>
           <div class="payslip-columns">
@@ -2741,7 +2801,7 @@ async function downloadPayslipPdf() {
   btn.disabled = true;
   btn.textContent = "⏳ جاري التجهيز...";
   try {
-    const res = await apiFetch(`${API_BASE}/api/payslip/pdf?month=${selectedMonth + 1}&year=${selectedYear}`, {
+    const res = await apiFetch(`${API_BASE}/api/payslip/pdf?month=${selectedMonth + 1}&year=${selectedYear}${employeeViewContext ? `&employee_id=${employeeViewContext.id}` : ""}`, {
       headers: { Authorization: `Bearer ${session.token}` },
     });
     if (!res.ok) {
@@ -2771,7 +2831,7 @@ async function downloadWageRecordPdf() {
   btn.disabled = true;
   btn.textContent = "⏳ جاري التجهيز...";
   try {
-    const res = await apiFetch(`${API_BASE}/api/wage-record/pdf?month=${wageMonth + 1}&year=${wageYear}`, {
+    const res = await apiFetch(`${API_BASE}/api/wage-record/pdf?month=${wageMonth + 1}&year=${wageYear}${employeeViewContext ? `&employee_id=${employeeViewContext.id}` : ""}`, {
       headers: { Authorization: `Bearer ${session.token}` },
     });
     if (!res.ok) {
@@ -2810,7 +2870,7 @@ async function loadPayslip() {
   body.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
 
   try {
-    const res = await apiFetch(`${API_BASE}/api/payslip?month=${selectedMonth + 1}&year=${selectedYear}`, {
+    const res = await apiFetch(`${API_BASE}/api/payslip?month=${selectedMonth + 1}&year=${selectedYear}${employeeViewContext ? `&employee_id=${employeeViewContext.id}` : ""}`, {
       headers: { Authorization: `Bearer ${session.token}` },
     });
 
@@ -2827,8 +2887,15 @@ async function loadPayslip() {
 
     const earnings = data.items.filter(i => i.type === "earning");
     const deductions = data.items.filter(i => i.type === "deduction");
-    const regularDeductions = deductions.filter(i => i.balance == null);
-    const installments = deductions.filter(i => i.balance != null);
+    const installments = (data.installments || []).filter(i => Number(i.balance || 0) > 0);
+    const activeInstallmentCodes = new Set(installments.map(i => Number(i.band_code)));
+    // الرصيد > صفر يظهر في لوحة الأقساط فقط؛ الرصيد = صفر يبقى ضمن الاستقطاعات العادية.
+    const regularDeductions = deductions.filter(i => !activeInstallmentCodes.has(Number(i.band_code)));
+    // مصدر حساب موحد لشريط الموظف وشريط الموظف المفتوح من البحث الإداري.
+    // الرصيد الموجب: نستبعد البند من الاستقطاعات العادية وندخل قيمة القسط مرة واحدة.
+    const calculatedDeductionsTotal = regularDeductions.reduce((sum, i) => sum + Number(i.amount || 0), 0)
+      + installments.reduce((sum, i) => sum + Number(i.installment || 0), 0);
+    const calculatedNetSalary = Number(data.earnings_total || 0) - calculatedDeductionsTotal;
 
     body.innerHTML = `
       <div class="print-watermark">سري للغاية - للاستعلام فقط</div>
@@ -2837,7 +2904,7 @@ async function loadPayslip() {
         <div class="payslip-header">
           <div>
             <div class="payslip-title">شريط المرتب</div>
-            <div class="payslip-sub">${MONTHS[selectedMonth]} ${selectedYear} — ${session.fullName} (كود ${session.employeeCode})${data.code_sarf ? ` — كود الصرف: ${data.code_sarf}` : ""}</div>
+            <div class="payslip-sub">${MONTHS[selectedMonth]} ${selectedYear} — ${data.employee_name || session.fullName} (كود ${data.employee_code || session.employeeCode})${data.code_sarf ? ` — كود الصرف: ${data.code_sarf}` : ""}</div>
           </div>
           <div class="seal">🛡<span>معتمد</span></div>
         </div>
@@ -2852,25 +2919,25 @@ async function loadPayslip() {
           </div>
           <div class="payslip-col deductions">
             <div class="col-title">الاستقطاعات</div>
-            ${deductions.length
+            ${(regularDeductions.length || installments.length)
               ? `${regularDeductions.map(i => `<div class="payslip-line"><span>${i.name}</span><span class="neg">${fmt(i.amount)}</span></div>`).join("")}
                  ${installments.length ? `<div class="installments-section">
                    ${installments.map(i => `<div class="installment-card">
                      <div class="installment-name">${i.name}</div>
                      <div class="installment-values">
-                       <div class="installment-value"><b>القسط</b><span class="neg">${fmt(i.amount)}</span></div>
+                       <div class="installment-value"><b>القسط</b><span class="neg">${fmt(i.installment)}</span></div>
                        <div class="installment-value"><b>الرصيد</b><span>${fmt(i.balance)}</span></div>
                      </div>
                    </div>`).join("")}
                  </div>` : ""}`
               : `<div class="payslip-line"><span style="color:var(--gray)">لا توجد استقطاعات</span></div>`}
-            <div class="col-total"><span>الإجمالي</span><span>${fmt(data.deductions_total)} ج.م</span></div>
+            <div class="col-total"><span>الإجمالي</span><span>${fmt(calculatedDeductionsTotal)} ج.م</span></div>
           </div>
         </div>
 
         <div class="net-box">
           <span class="label">صافي المرتب</span>
-          <span class="value">${fmt(data.net_salary)} ج.م</span>
+          <span class="value">${fmt(calculatedNetSalary)} ج.م</span>
         </div>
       </div>
       <div class="print-footer-note">لا يعتد بهذا البيان كمستند رسمي أمام أي جهة خارجية بدون اعتماد جهة العمل والختم</div>
@@ -3717,75 +3784,36 @@ async function openEmployeeDetails(empId) {
 
 function renderEmployeeEditForm(emp) {
   const box = document.getElementById("tabEmployeeSearch");
+  const isAdmin = session.role === "hr_admin";
+  const safeName = escHtml(emp.full_name || "");
+  const safeCode = escHtml(emp.employee_code || "");
   box.innerHTML = `
     <button class="back-link" onclick="renderEmployeeSearchPanel()">← رجوع للبحث</button>
-
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-      <button class="btn-save" onclick="document.getElementById('employeeAdminData').scrollIntoView({behavior:'smooth'})">👤 البيانات الإدارية</button>
-      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📄 شريط المرتب</button>
-      <button class="btn-save" onclick="document.getElementById('employeePayrollSection').scrollIntoView({behavior:'smooth'})">📋 سجل الأجور</button>
-      <button class="btn-save" style="background:var(--red)" onclick="document.getElementById('employeePasswordSection').scrollIntoView({behavior:'smooth'})">🔑 إعادة كلمة المرور</button>
+      <button class="btn-save" onclick='openSearchedPayslip(${JSON.stringify({id:emp.id,full_name:emp.full_name,employee_code:emp.employee_code})})'>📄 شريط المرتب</button>
+      <button class="btn-save" onclick='openSearchedWage(${JSON.stringify({id:emp.id,full_name:emp.full_name,employee_code:emp.employee_code})})'>📋 سجل الأجور</button>
     </div>
-
     <div class="card" id="employeeAdminData">
-      <div class="card-header">تعديل بيانات: ${emp.full_name} (كود ${emp.employee_code})</div>
+      <div class="card-header">👤 البيانات الإدارية: ${safeName} (كود ${safeCode})</div>
       <div class="edit-grid">
-        <div class="edit-field"><label>الاسم بالكامل</label><input id="edit_full_name" value="${emp.full_name || ""}"></div>
-        <div class="edit-field"><label>الوظيفة</label><input id="edit_job_title" value="${emp.job_title || ""}"></div>
-        <div class="edit-field"><label>رقم الهاتف والواتساب</label><input id="edit_phone" value="${emp.phone || ""}"></div>
-        <div class="edit-field"><label>الرقم القومي</label><input id="edit_national_id" value="${emp.national_id || ""}"></div>
-        <div class="edit-field"><label>البريد الإلكتروني</label><input value="${emp.email || "غير مسجل"}" disabled style="background:#EDF3F8;color:var(--gray);"></div>
-        <div class="edit-field">
-          <label>الحالة الوظيفية</label>
-          <select id="edit_status">
-            <option value="active" ${emp.status === "active" ? "selected" : ""}>سارى العمل</option>
-            <option value="suspended" ${emp.status === "suspended" ? "selected" : ""}>متوقف</option>
-            <option value="resigned" ${emp.status === "resigned" ? "selected" : ""}>استقالة</option>
-          </select>
-        </div>
+        <div class="edit-field"><label>الاسم بالكامل</label><input id="edit_full_name" value="${escHtml(emp.full_name || "")}" ${isAdmin?"":"disabled"}></div>
+        <div class="edit-field"><label>الوظيفة</label><input id="edit_job_title" value="${escHtml(emp.job_title || "")}" ${isAdmin?"":"disabled"}></div>
+        <div class="edit-field"><label>رقم الهاتف</label><input id="edit_phone" value="${escHtml(emp.phone || "")}" ${isAdmin?"":"disabled"}></div>
+        <div class="edit-field"><label>الرقم القومي</label><input id="edit_national_id" value="${escHtml(emp.national_id || "")}" ${isAdmin?"":"disabled"}></div>
+        <div class="edit-field"><label>البريد الإلكتروني</label><input value="${escHtml(emp.email || "غير مسجل")}" disabled></div>
+        <div class="edit-field"><label>الحالة الوظيفية</label><input value="${escHtml(emp.status || "")}" disabled></div>
       </div>
-      <div class="form-actions">
-        <button class="btn-save" onclick="saveEmployeeDetails(${emp.id})">حفظ التعديلات</button>
-      </div>
-      <div id="editSaveMsg" class="save-msg hidden"></div>
+      ${isAdmin ? `<div class="form-actions"><button class="btn-save" onclick="saveEmployeeDetails(${emp.id})">حفظ التعديلات</button></div><div id="editSaveMsg" class="save-msg hidden"></div>` : ""}
     </div>
-
-    <div class="card" id="employeePasswordSection" style="margin-top:18px;">
+    ${isAdmin ? `<div class="card" id="employeePasswordSection" style="margin-top:18px;">
       <div class="card-header" style="background:var(--navy-light);">🔑 كلمة المرور</div>
-      <div class="edit-grid">
-        <div class="edit-field">
-          <label>طريقة إنشاء كلمة المرور المؤقتة</label>
-          <select id="edit_password_source" onchange="document.getElementById('edit_new_password').disabled=this.value!=='generated'">
-            <option value="birth_date">من تاريخ الميلاد (يوم/شهر/سنة)</option>
-            <option value="national_id">من الرقم القومي</option>
-            <option value="generated">توليد تلقائي أو إدخال يدوي</option>
-          </select>
-          <input id="edit_new_password" type="text" placeholder="يُستخدم مع الاختيار الثالث فقط" disabled style="margin-top:8px;">
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn-save" style="background:var(--red);" onclick="resetEmployeePassword(${emp.id})">إعادة تعيين كلمة المرور</button>
-      </div>
-      <div id="resetPassMsg" class="save-msg hidden"></div>
-    </div>
-
-    <div class="section-divider" id="employeePayrollSection">شريط المرتب وسجل الأجور</div>
-    <div class="selectors">
-      <div><label>الشهر</label>
-        <select id="hrMonthSelect" onchange="onHRPayrollFilterChange(${emp.id})">
-          ${MONTHS.map((m, i) => `<option value="${i}" ${i === currentPayrollMonth ? "selected" : ""}>${m}</option>`).join("")}
-        </select>
-      </div>
-      <div><label>السنة</label>
-        <select id="hrYearSelect" onchange="onHRPayrollFilterChange(${emp.id})">
-          <option value="2025" ${currentPayrollYear === 2025 ? "selected" : ""}>2025</option>
-          <option value="2026" ${currentPayrollYear === 2026 ? "selected" : ""}>2026</option>
-        </select>
-      </div>
-    </div>
-    <div id="hrPayrollForm"></div>
+      <div class="edit-grid"><div class="edit-field"><label>طريقة إنشاء كلمة المرور المؤقتة</label>
+        <select id="edit_password_source" onchange="document.getElementById('edit_new_password').disabled=this.value!=='generated'">
+          <option value="birth_date">من تاريخ الميلاد (يوم/شهر/سنة)</option><option value="national_id">من الرقم القومي</option><option value="generated">توليد تلقائي أو إدخال يدوي</option>
+        </select><input id="edit_new_password" type="text" placeholder="يُستخدم مع الاختيار الثالث فقط" disabled style="margin-top:8px;"></div></div>
+      <div class="form-actions"><button class="btn-save" style="background:var(--red);" onclick="resetEmployeePassword(${emp.id})">إعادة تعيين كلمة المرور</button></div>
+      <div id="resetPassMsg" class="save-msg hidden"></div></div>` : ""}
   `;
-  loadHRPayrollForm(emp.id);
 }
 
 async function resetEmployeePassword(empId) {
@@ -3841,84 +3869,6 @@ async function saveEmployeeDetails(empId) {
   }
 }
 
-function onHRPayrollFilterChange(empId) {
-  currentPayrollMonth = Number(document.getElementById("hrMonthSelect").value);
-  currentPayrollYear = Number(document.getElementById("hrYearSelect").value);
-  loadHRPayrollForm(empId);
-}
-
-async function loadHRPayrollForm(empId) {
-  const form = document.getElementById("hrPayrollForm");
-  form.innerHTML = `<div class="state-box"><span class="spin"></span> جاري التحميل...</div>`;
-
-  try {
-    const res = await apiFetch(`${API_BASE}/api/admin/payroll?employee_id=${empId}&month=${currentPayrollMonth + 1}&year=${currentPayrollYear}`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "حصل خطأ");
-
-    const v = data || {};
-
-    form.innerHTML = `
-      <div class="card">
-        <div class="edit-grid">
-          <div class="edit-field"><label>المرتب الأساسي</label><input type="number" id="pay_basic" value="${v.basic_salary ?? 0}"></div>
-          <div class="edit-field"><label>بدل انتقال</label><input type="number" id="pay_transport" value="${v.transport_allowance ?? 0}"></div>
-          <div class="edit-field"><label>بدل سكن</label><input type="number" id="pay_housing" value="${v.housing_allowance ?? 0}"></div>
-          <div class="edit-field"><label>حافز / مكافأة</label><input type="number" id="pay_bonus" value="${v.bonus ?? 0}"></div>
-          <div class="edit-field"><label>التأمينات</label><input type="number" id="pay_insurance" value="${v.insurance_deduction ?? 0}"></div>
-          <div class="edit-field"><label>الضريبة</label><input type="number" id="pay_tax" value="${v.tax_deduction ?? 0}"></div>
-          <div class="edit-field"><label>خصم غياب</label><input type="number" id="pay_absence" value="${v.absence_deduction ?? 0}"></div>
-        </div>
-        <div class="form-actions">
-          <button class="btn-save" onclick="saveHRPayroll(${empId})">${data ? "تحديث سجل المرتب" : "إضافة سجل مرتب جديد"}</button>
-        </div>
-        <div id="paySaveMsg" class="save-msg hidden"></div>
-      </div>
-    `;
-  } catch (e) {
-    form.innerHTML = `<div class="conn-error">⚠ ${e.message}</div>`;
-  }
-}
-
-async function saveHRPayroll(empId) {
-  const msg = document.getElementById("paySaveMsg");
-  msg.className = "save-msg hidden";
-
-  const payload = {
-    employee_id: empId,
-    month: currentPayrollMonth + 1,
-    year: currentPayrollYear,
-    basic_salary: Number(document.getElementById("pay_basic").value) || 0,
-    transport_allowance: Number(document.getElementById("pay_transport").value) || 0,
-    housing_allowance: Number(document.getElementById("pay_housing").value) || 0,
-    bonus: Number(document.getElementById("pay_bonus").value) || 0,
-    insurance_deduction: Number(document.getElementById("pay_insurance").value) || 0,
-    tax_deduction: Number(document.getElementById("pay_tax").value) || 0,
-    absence_deduction: Number(document.getElementById("pay_absence").value) || 0,
-  };
-
-  try {
-    const res = await apiFetch(`${API_BASE}/api/admin/payroll`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.token}` },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "حصل خطأ");
-
-    msg.textContent = "✓ " + data.message;
-    msg.className = "save-msg ok";
-  } catch (e) {
-    msg.textContent = "⚠ " + e.message;
-    msg.className = "save-msg err";
-  }
-}
-
-/* ============================================================
-   صفحة البداية وحالة النظام - الإصدار 2.2.0
-   ============================================================ */
 function enterPortal() {
   const gate = document.getElementById('lampGate');
   gate.classList.add('on');

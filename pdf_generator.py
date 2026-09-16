@@ -149,7 +149,7 @@ def _draw_installment_card(c, x_left, x_right, y, name, amount, balance):
     return card_height + 5
 
 
-def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
+def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False, installments_info=None):
     """بترسم عمودين (استحقاقات | استقطاعات) وترجع نقطة النهاية Y."""
     content_left = 40
     content_right = width - 40
@@ -178,9 +178,17 @@ def _draw_columns(c, width, y_start, earnings, deductions, fill_page=False):
     c.setFont("Amiri", 10.5)
 
     earnings_total = sum(_item_parts(item)[1] for item in earnings)
-    deductions_total = sum(_item_parts(item)[1] for item in deductions)
-    regular_deductions = [item for item in deductions if _item_parts(item)[2] is None]
-    installments = [item for item in deductions if _item_parts(item)[2] is not None]
+    # الرصيد الموجب فقط له لوحة مستقلة؛ الرصيد صفر يظل استقطاعًا عاديًا.
+    regular_deductions = [item for item in deductions if _item_parts(item)[2] is None or float(_item_parts(item)[2] or 0) <= 0]
+    installments = [item for item in deductions if _item_parts(item)[2] is not None and float(_item_parts(item)[2] or 0) > 0]
+    for info in (installments_info or []):
+        if float(info.get("balance") or 0) > 0:
+            installments.append({"name": info.get("name", "قسط"), "amount": info.get("installment", 0), "balance": info.get("balance", 0)})
+    # إجمالي الاستقطاعات = البنود العادية المعروضة + الأقساط المعروضة، مرة واحدة لكل بند.
+    deductions_total = (
+        sum(_item_parts(item)[1] for item in regular_deductions)
+        + sum(_item_parts(item)[1] for item in installments)
+    )
     deduction_units = len(regular_deductions) + (len(installments) * 3)
     max_rows = max(len(earnings), deduction_units)
 
@@ -281,7 +289,7 @@ def _draw_footer(c, width, y):
 
 
 def generate_payslip_pdf(output_path, employee_name, employee_code, month_name, year,
-                          code_sarf, earnings, deductions, net_salary):
+                          code_sarf, earnings, deductions, net_salary, installments=None):
     """
     earnings / deductions: قايمة من tuples (اسم البند, القيمة)
     """
@@ -300,7 +308,7 @@ def generate_payslip_pdf(output_path, employee_name, employee_code, month_name, 
         code_sarf,
     )
     _draw_page_frame(c, width, height, 1)
-    y, _, _ = _draw_columns(c, width, y, earnings, deductions, fill_page=True)
+    y, _, _ = _draw_columns(c, width, y, earnings, deductions, fill_page=True, installments_info=installments)
     y = _draw_net_box(c, width, y, net_salary)
     _draw_footer(c, width, 60)
 
