@@ -742,7 +742,7 @@
         <div>
           <div class="login-title">الشركة المصرية لنقل الكهرباء</div>
           <div style="color:var(--gold-soft);font-size:13.5px;font-weight:600;margin-top:3px;">المنظومة الإلكترونية الموحدة</div>
-          <div class="login-sub"><a href="https://www.eetc-delta.com.eg/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">منطقة الدلتا</a></div>
+          <div class="login-sub"><a href="https://www.eetc-delta.com.eg/" data-region-link target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;"><span data-region-name>منطقة الدلتا</span></a></div>
         </div>
       </div>
       <div class="login-body" id="loginFormBody">
@@ -866,7 +866,7 @@
     <div class="lamp-gate" id="lampGate">
       <img src="assets/logo.jpg?v=delta-original" alt="شعار الشركة المصرية لنقل الكهرباء" style="width:110px;height:110px;object-fit:contain;border-radius:50%;background:#fff;padding:4px;border:3px solid var(--gold);margin-bottom:16px;">
       <div class="gate-title">الشركة المصرية لنقل الكهرباء</div>
-      <div class="gate-sub">المنظومة الإلكترونية الموحدة — منطقة الدلتا</div>
+      <div class="gate-sub">المنظومة الإلكترونية الموحدة — <span data-region-name>منطقة الدلتا</span></div>
       <button type="button" class="btn-primary" id="enterPortalBtn" style="max-width:260px;margin-top:28px;" onclick="enterPortal()">تسجيل الدخول</button>
       <div class="system-status" data-system-status data-state="maintenance" style="color:#8af0ae;margin-top:22px;"><span class="status-lamp"></span><span>جاري فحص حالة النظام...</span></div>
       <div style="display:flex;gap:18px;color:#fff;font-size:11px;margin-top:16px;opacity:.9;">
@@ -887,7 +887,7 @@
         <div>
           <div class="topbar-brand">الشركة المصرية لنقل الكهرباء</div>
           <div style="color:var(--gold-soft);font-size:12px;font-weight:600;margin-top:1px;">المنظومة الإلكترونية الموحدة</div>
-          <div style="color:var(--gold-soft);font-size:12px;font-weight:600;"><a href="https://www.eetc-delta.com.eg/" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">منطقة الدلتا</a></div>
+          <div style="color:var(--gold-soft);font-size:12px;font-weight:600;"><a href="https://www.eetc-delta.com.eg/" data-region-link target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;"><span data-region-name>منطقة الدلتا</span></a></div>
         </div>
       </div>
       <div class="topbar-right">
@@ -956,7 +956,7 @@
             <div class="home-hero">
               <div>
                 <h1 id="homeWelcomeName">مرحبًا بك</h1>
-                <p>نتمنى لك يوم عمل موفقًا داخل المنظومة الإلكترونية الموحدة — منطقة الدلتا</p>
+                <p>نتمنى لك يوم عمل موفقًا داخل المنظومة الإلكترونية الموحدة — <span data-region-name>منطقة الدلتا</span></p>
               </div>
               <div class="home-power-mark" aria-hidden="true">⚡</div>
             </div>
@@ -3927,7 +3927,7 @@ sidebarCloseBtnEl.addEventListener('click', closeSidebar);
     <a href="https://www.facebook.com/EgyptEETC/" target="_blank" rel="noopener" title="صفحة الشركة المصرية لنقل الكهرباء - الفيسبوك الرسمي" style="display:flex;align-items:center;justify-content:center;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
     </a>
-    <a href="https://www.facebook.com/share/g/1EVn6FzQuq/" target="_blank" rel="noopener" title="صفحة المنظومة الإلكترونية الموحدة - منطقة الدلتا" style="display:flex;align-items:center;justify-content:center;">
+    <a href="https://www.facebook.com/share/g/1EVn6FzQuq/" data-region-facebook target="_blank" rel="noopener" title="صفحة المنظومة الإلكترونية الموحدة" style="display:flex;align-items:center;justify-content:center;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="#1D5FA7"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
     </a>
   </div>
@@ -3969,11 +3969,33 @@ sidebarCloseBtnEl.addEventListener('click', closeSidebar);
       <div style="font-size:42px;line-height:1.2;margin-top:8px;">🎂🎉</div>
       <h2 class="birthday-title" id="birthdayTitle">كل سنة وأنت طيب</h2>
       <div id="birthdayMessage" style="font-size:16px;font-weight:700;line-height:1.9;"></div>
-      <div style="font-size:13px;color:var(--gray);margin-top:8px;">مع أطيب تمنيات الشركة المصرية لنقل الكهرباء — منطقة الدلتا</div>
+      <div style="font-size:13px;color:var(--gray);margin-top:8px;">مع أطيب تمنيات الشركة المصرية لنقل الكهرباء — <span data-region-name>منطقة الدلتا</span></div>
       <button type="button" class="btn-primary" onclick="closeBirthdayGreeting()" style="max-width:190px;margin:22px auto 0;display:block;">شكرًا ❤️</button>
     </div>
   </div>
 
 
+
+<script>
+// Multi-Region identity: public display values are loaded from server-side .env.
+(async function loadRegionIdentity(){
+  try {
+    const res = await fetch('/api/public-config', {cache:'no-store'});
+    if (!res.ok) return;
+    const cfg = await res.json();
+    const name = (cfg.region_name || 'منطقة الدلتا').trim();
+    document.querySelectorAll('[data-region-name]').forEach(el => { el.textContent = name; });
+    document.querySelectorAll('[data-region-link]').forEach(el => {
+      if (cfg.region_website) { el.href = cfg.region_website; el.style.display = ''; }
+      else { el.removeAttribute('href'); }
+    });
+    document.querySelectorAll('[data-region-facebook]').forEach(el => {
+      if (cfg.region_facebook_url) { el.href = cfg.region_facebook_url; el.style.display = 'flex'; }
+      else { el.style.display = 'none'; }
+      el.title = 'صفحة المنظومة الإلكترونية الموحدة - ' + name;
+    });
+  } catch (_) { /* تبقى هوية الدلتا الافتراضية عند تعذر تحميل الإعدادات */ }
+})();
+</script>
 </body>
 </html>

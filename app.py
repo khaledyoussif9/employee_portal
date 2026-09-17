@@ -82,6 +82,12 @@ if not SECRET_KEY:
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
+# هوية المنطقة: نفس الكود يعمل في جميع مناطق الشركة، والاختلاف من .env فقط.
+REGION_NAME = os.getenv("REGION_NAME", "منطقة الدلتا").strip() or "منطقة الدلتا"
+REGION_SHORT_NAME = os.getenv("REGION_SHORT_NAME", REGION_NAME.replace("منطقة ", "", 1)).strip()
+REGION_WEBSITE = os.getenv("REGION_WEBSITE", "https://www.eetc-delta.com.eg/").strip()
+REGION_FACEBOOK_URL = os.getenv("REGION_FACEBOOK_URL", "https://www.facebook.com/share/g/1EVn6FzQuq/").strip()
+
 # حساب عرض افتراضي لا يرتبط بأي موظف أو بيانات حقيقية في قاعدة البيانات.
 DEMO_EMPLOYEE_CODE = os.getenv("DEMO_EMPLOYEE_CODE", "11092026")
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "11092026")
@@ -361,6 +367,17 @@ def serve_asset(filename):
     response = send_from_directory(ASSET_FOLDER, filename, max_age=0)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return response
+
+
+@app.route("/api/public-config", methods=["GET"])
+def public_config():
+    """إعدادات الهوية العامة فقط؛ لا يعيد أي أسرار من ملف .env."""
+    return jsonify({
+        "region_name": REGION_NAME,
+        "region_short_name": REGION_SHORT_NAME,
+        "region_website": REGION_WEBSITE,
+        "region_facebook_url": REGION_FACEBOOK_URL,
+    })
 
 
 @app.route("/api/system-status", methods=["GET"])
@@ -670,7 +687,7 @@ def passkey_register_options():
         emp = cur.fetchone()
         opts = generate_registration_options(
             rp_id=rp_id,
-            rp_name='المنظومة الإلكترونية الموحدة - منطقة الدلتا',
+            rp_name=f'المنظومة الإلكترونية الموحدة - {REGION_NAME}',
             user_id=str(user_id).encode('utf-8'),
             user_name=str(emp.employee_code),
             user_display_name=str(emp.full_name),
