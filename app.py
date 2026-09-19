@@ -1209,8 +1209,6 @@ def get_payslip():
         conn.close()
         return jsonify({"error": "الموظف غير موجود"}), 404
     code_sarf = employee_row.code_sarf
-    installments = load_installments(cursor, employee_row.employee_code)
-
     cursor.execute(
         """
         SELECT
@@ -1252,23 +1250,21 @@ def get_payslip():
             }
             for r in item_rows
         ])
-        earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
-        # القاعدة المعتمدة: البند ذو الرصيد الموجب ينتقل من الاستقطاعات العادية
-        # إلى لوحة الأقساط، وتدخل قيمة القسط مرة واحدة فقط في الإجمالي.
-        active_installment_codes = {
-            int(i["band_code"]) for i in installments if float(i.get("balance") or 0) > 0
-        }
-        regular_deductions_for_total = [
-            i for i in items
-            if i["type"] == "deduction"
-            and int(i.get("band_code") or -1) not in active_installment_codes
+        # الأقساط التاريخية يجب أن تأتي من نفس سجل الشهر، لا من
+        # payroll_raseed لأنه يمثل الرصيد الحالي ويكرر آخر قيمة على الشهور السابقة.
+        installments = [
+            {
+                "band_code": int(i["band_code"]),
+                "name": i["name"],
+                "installment": float(i["amount"]),
+                "balance": float(i.get("balance") or 0),
+            }
+            for i in items
+            if i["type"] == "deduction" and float(i.get("balance") or 0) > 0
         ]
-        installments_total = sum(
-            float(i.get("installment") or 0)
-            for i in installments
-            if float(i.get("balance") or 0) > 0
-        )
-        deductions_total = sum(i["amount"] for i in regular_deductions_for_total) + installments_total
+        earnings_total = sum(i["amount"] for i in items if i["type"] == "earning")
+        # قيمة القسط موجودة أصلًا ضمن بند الاستقطاع الشهري؛ لا نضيفها مرة ثانية.
+        deductions_total = sum(i["amount"] for i in items if i["type"] == "deduction")
 
         conn.close()
         return jsonify({
@@ -1326,7 +1322,7 @@ def get_payslip():
         "code_sarf": code_sarf,
         "employee_name": employee_row.full_name,
         "employee_code": employee_row.employee_code,
-        "installments": installments,
+        "installments": [],
         "items": items,
         "earnings_total": float(row.basic_salary + row.transport_allowance + row.housing_allowance + row.bonus),
         "deductions_total": float(row.insurance_deduction + row.tax_deduction + row.absence_deduction),
@@ -1468,8 +1464,6 @@ def download_payslip_pdf():
         conn.close()
         return jsonify({"error": "الموظف غير موجود"}), 404
 
-    installments = load_installments(cursor, emp_row.employee_code)
-
     cursor.execute(
         """
         SELECT
@@ -1514,16 +1508,22 @@ def download_payslip_pdf():
     ])
     earnings = [i for i in pdf_items if i["type"] == "earning"]
     deductions = [i for i in pdf_items if i["type"] == "deduction"]
+    installments = [
+        {
+            "band_code": int(i["band_code"]),
+            "name": i["name"],
+            "installment": float(i["amount"]),
+            "balance": float(i.get("balance") or 0),
+        }
+        for i in deductions
+        if float(i.get("balance") or 0) > 0
+    ]
     # الرصيد > صفر: يظهر في لوحة الأقساط والأرصدة فقط، ولا يتكرر بصريًا ضمن الاستقطاعات.
     # الرصيد = صفر: لا يدخل installments أصلًا، فيظل البند ضمن الاستقطاعات العادية.
     active_installment_codes = {int(i["band_code"]) for i in installments if float(i.get("balance") or 0) > 0}
     display_deductions = [i for i in deductions if int(i.get("band_code") or -1) not in active_installment_codes]
-    # الإجمالي والصافي يتبعان نفس منطق العرض: الاستقطاعات العادية + قيمة كل قسط ذي رصيد موجب.
-    # بهذه الطريقة لا يسقط قسط موجود في payroll_raseed (مثل بند 222)، ولا يتكرر بند موجود أصلًا في payroll_items.
-    deductions_total = (
-        sum(i["amount"] for i in display_deductions)
-        + sum(float(i.get("installment") or 0) for i in installments if float(i.get("balance") or 0) > 0)
-    )
+    # الإجمالي يعتمد على بنود استقطاع الشهر الأصلية، بما فيها القسط مرة واحدة فقط.
+    deductions_total = sum(i["amount"] for i in deductions)
     net_salary = sum(i["amount"] for i in earnings) - deductions_total
 
     filename = f"payslip_{emp_row.employee_code}_{year}_{month}_{uuid.uuid4().hex[:8]}.pdf"

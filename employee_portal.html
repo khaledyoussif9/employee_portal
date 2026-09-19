@@ -2891,11 +2891,9 @@ async function loadPayslip() {
     const activeInstallmentCodes = new Set(installments.map(i => Number(i.band_code)));
     // الرصيد > صفر يظهر في لوحة الأقساط فقط؛ الرصيد = صفر يبقى ضمن الاستقطاعات العادية.
     const regularDeductions = deductions.filter(i => !activeInstallmentCodes.has(Number(i.band_code)));
-    // مصدر حساب موحد لشريط الموظف وشريط الموظف المفتوح من البحث الإداري.
-    // الرصيد الموجب: نستبعد البند من الاستقطاعات العادية وندخل قيمة القسط مرة واحدة.
-    const calculatedDeductionsTotal = regularDeductions.reduce((sum, i) => sum + Number(i.amount || 0), 0)
-      + installments.reduce((sum, i) => sum + Number(i.installment || 0), 0);
-    const calculatedNetSalary = Number(data.earnings_total || 0) - calculatedDeductionsTotal;
+    // الخادم يحسب الإجمالي من بنود الشهر الأصلية؛ القسط معروض في بطاقته ولا يخصم مرة ثانية.
+    const calculatedDeductionsTotal = Number(data.deductions_total || 0);
+    const calculatedNetSalary = Number(data.net_salary || 0);
 
     body.innerHTML = `
       <div class="print-watermark">سري للغاية - للاستعلام فقط</div>
