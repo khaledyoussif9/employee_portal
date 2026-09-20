@@ -1867,7 +1867,23 @@ function renderCardStaffRow(x,view){
   }
   if(view==='receive') actions=`<button class="portal-action" style="width:auto" onclick="cardTransition(${x.id},'RECEIVED_FROM_BANK','receive')">📥 تم الاستلام من البنك</button>`;
   if(view==='deliver') actions=`<button class="portal-action" style="width:auto" onclick="cardDeliver(${x.id})">📦 تسجيل التسليم</button>`;
-  return `<div class="stat-card" style="margin-bottom:10px"><b>#${x.id} — ${escHtml(x.employee_code||'')} — ${escHtml(x.employee_name||'')}</b><div class="r-meta">${escHtml(x.service_name||x.service_code||'')} — ${escHtml(CARD_STATUS_AR[x.status]||x.status||'')}</div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">${actions}</div></div>`;
+  return `<div class="stat-card" style="margin-bottom:10px">
+  <b>#${x.id} — ${escHtml(x.employee_code||'')} — ${escHtml(x.employee_name||'')}</b>
+
+  <div class="r-meta">
+    🏦 كود البنك: <b>${escHtml(x.bank_code||'غير مسجل')}</b>
+    &nbsp; | &nbsp;
+    كود الصرف: <b>${escHtml(x.code_sarf||'—')}</b>
+    — <b>${escHtml(x.region||'غير محددة')}</b>
+  </div>
+
+  <div class="r-meta">
+    ${escHtml(x.service_name||x.service_code||'')} —
+    ${escHtml(CARD_STATUS_AR[x.status]||x.status||'')}
+  </div>
+
+  <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:8px">${actions}</div>
+</div>`;
 }
 async function cardTransition(id,to,view){
   if(!confirm('تأكيد تنفيذ الإجراء؟'))return;
@@ -3495,9 +3511,9 @@ async function loadAnnouncementsList() {
       <div class="card" style="margin-bottom:8px;">
         <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:start;gap:10px;">
           <div>
-            <span style="font-weight:700;color:var(--navy);font-size:13.5px;">${a.title}</span>
-            ${a.target_name ? `<span style="font-size:11.5px;color:var(--gold);font-weight:700;"> (خاص بـ ${a.target_name})</span>` : `<span style="font-size:11.5px;color:var(--gray);"> (للجميع)</span>`}
-            <div style="font-size:11px;color:var(--gray);margin-top:2px;">${a.created_at} — 👍 ${a.like_count || 0}</div>
+            <span style="font-weight:700;color:var(--navy);font-size:13.5px;">${escHtml(a.title)}</span>
+            ${a.target_name ? `<span style="font-size:11.5px;color:var(--gold);font-weight:700;"> (خاص بـ ${escHtml(a.target_name)})</span>` : `<span style="font-size:11.5px;color:var(--gray);"> (للجميع)</span>`}
+            <div style="font-size:11px;color:var(--gray);margin-top:2px;">${escHtml(a.created_at)} — 👍 ${Number(a.like_count) || 0}</div>
           </div>
           <button onclick="deleteAnnouncement(${a.id})" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">🗑 حذف</button>
         </div>

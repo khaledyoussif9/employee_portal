@@ -14,7 +14,6 @@ import io
 import bcrypt
 import jwt
 import datetime
-import random
 import secrets
 import smtplib
 import uuid
@@ -42,6 +41,8 @@ except ImportError:
     WEBAUTHN_AVAILABLE = False
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from PIL import Image, UnidentifiedImageError
 from dotenv import load_dotenv
@@ -53,6 +54,22 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # يسمح لصفحة الويب (Frontend) إنها تكلم السيرفر ده من دومين مختلف
+# في الإنتاج اضبط RATELIMIT_STORAGE_URI على Redis مشتركة بين كل Workers.
+# الذاكرة مناسبة فقط للتشغيل المحلي أو Worker واحد.
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"),
+)
+
+
+@app.errorhandler(429)
+def rate_limit_exceeded(_error):
+    """يرجع JSON حتى تتعامل معه الواجهة بنفس شكل أخطاء الـ API الأخرى."""
+    return jsonify({"error": "تم تجاوز عدد المحاولات المسموح. انتظر قليلًا ثم حاول مرة أخرى"}), 429
+
+
 APP_STARTED_AT = time.time()
 
 SARFIA_DATABASE = os.getenv("SARFIA_DATABASE", "human_r_ash")
@@ -516,8 +533,9 @@ def employee_search_capabilities():
 # 1) تسجيل الدخول
 # ------------------------------------------------------------
 @app.route("/api/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     employee_code = data.get("employee_code")
     password = data.get("password")
 
@@ -1652,8 +1670,9 @@ def download_wage_record_pdf():
 # نسيت كلمة المرور
 # ------------------------------------------------------------
 @app.route("/api/forgot-password", methods=["POST"])
+@limiter.limit("3 per 15 minutes")
 def forgot_password():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     employee_code = data.get("employee_code")
     email = (data.get("email") or "").strip().lower()
 
@@ -1675,11 +1694,16 @@ def forgot_password():
 
     employee_id = row.id
 
-    code = str(random.randint(100000, 999999))
-    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    code = str(secrets.randbelow(900000) + 100000)
+    expires_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + datetime.timedelta(minutes=10)
 
     cursor.execute(
-        "INSERT INTO password_resets (employee_id, code, expires_at) VALUES (?, ?, ?)",
+        # لا نسمح بأكثر من كود فعال لنفس الموظف في نفس الوقت.
+        "UPDATE password_resets SET used = 1 WHERE employee_id = ? AND used = 0",
+        employee_id,
+    )
+    cursor.execute(
+        "INSERT INTO password_resets (employee_id, code, expires_at, attempt_count) VALUES (?, ?, ?, 0)",
         employee_id, code, expires_at,
     )
     conn.commit()
@@ -1700,8 +1724,9 @@ def forgot_password():
 
 
 @app.route("/api/reset-password", methods=["POST"])
+@limiter.limit("5 per 15 minutes")
 def reset_password():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     employee_code = data.get("employee_code")
     code = data.get("code")
     new_password = data.get("new_password")
@@ -1717,13 +1742,13 @@ def reset_password():
 
     cursor.execute(
         """
-        SELECT pr.id, pr.employee_id, pr.expires_at, pr.used
+        SELECT TOP (1) pr.id, pr.employee_id, pr.code, pr.expires_at, pr.used, pr.attempt_count
         FROM password_resets pr
         JOIN employees e ON e.id = pr.employee_id
-        WHERE e.employee_code = ? AND pr.code = ?
+        WHERE e.employee_code = ?
         ORDER BY pr.id DESC
         """,
-        employee_code, code,
+        employee_code,
     )
     row = cursor.fetchone()
 
@@ -1735,9 +1760,24 @@ def reset_password():
         conn.close()
         return jsonify({"error": "الكود ده مستخدم قبل كده، اطلب كود جديد"}), 400
 
-    if datetime.datetime.utcnow() > row.expires_at:
+    if datetime.datetime.now(datetime.UTC).replace(tzinfo=None) > row.expires_at:
         conn.close()
         return jsonify({"error": "انتهت صلاحية الكود، اطلب كود جديد"}), 400
+
+    if row.attempt_count >= 5:
+        conn.close()
+        return jsonify({"error": "تم تجاوز عدد المحاولات المسموح. اطلب كود جديد"}), 429
+
+    # مقارنة ثابتة الزمن لتفادي تسريب معلومات عن الكود.
+    if not secrets.compare_digest(str(row.code), str(code)):
+        next_attempt_count = row.attempt_count + 1
+        cursor.execute(
+            "UPDATE password_resets SET attempt_count = ?, used = ? WHERE id = ?",
+            next_attempt_count, 1 if next_attempt_count >= 5 else 0, row.id,
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({"error": "الكود غير صحيح"}), 400
 
     new_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
@@ -2526,10 +2566,50 @@ def mark_announcement_read(ann_id):
     return jsonify({"message": "تم"})
 
 
+# صور البروفايل ليست مرفقات عامة: الموظف يرى صورته فقط، وHR يرى الجميع.
+@app.route("/uploads/profile_photos/<path:filename>")
+@token_required
+def download_profile_photo(filename):
+    safe_filename = secure_filename(filename)
+    if safe_filename != filename:
+        return jsonify({"error": "اسم ملف غير صالح"}), 400
+
+    expected_filename = f"employee_{request.employee_id}.jpg"
+    if filename != expected_filename and request.role != "hr_admin":
+        return jsonify({"error": "غير مصرح لك بعرض هذه الصورة"}), 403
+
+    return send_from_directory(PROFILE_PHOTO_FOLDER, safe_filename)
+
+
 @app.route("/uploads/<path:filename>")
 @token_required
 def download_announcement_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    # لا يمكن استخدام المسار العام للوصول إلى صور البروفايل.
+    if filename.startswith("profile_photos/"):
+        return jsonify({"error": "غير مصرح"}), 403
+
+    # يسمح بالمرفق فقط لمن استهدفه الإعلان، أو بأي مستخدم مسجل للإعلان العام.
+    safe_filename = secure_filename(filename)
+    if safe_filename != filename:
+        return jsonify({"error": "اسم ملف غير صالح"}), 400
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT TOP (1) target_employee_id FROM announcements WHERE file_name = ?",
+            safe_filename,
+        )
+        row = cursor.fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        return jsonify({"error": "الملف غير موجود"}), 404
+    if row.target_employee_id is not None and row.target_employee_id != request.employee_id and request.role != "hr_admin":
+        return jsonify({"error": "غير مصرح لك بعرض هذا المرفق"}), 403
+
+    return send_from_directory(UPLOAD_FOLDER, safe_filename)
 
 
 # ------------------------------------------------------------
