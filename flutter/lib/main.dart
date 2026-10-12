@@ -6,9 +6,17 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 
-const String apiBaseUrl = 'https://awaken-vice-running.ngrok-free.dev';
+const String apiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'https://awaken-vice-running.ngrok-free.dev',
+);
 final ValueNotifier<ThemeMode> portalThemeMode = ValueNotifier(ThemeMode.system);
+const FlutterSecureStorage secureStorage = FlutterSecureStorage(
+  aOptions: AndroidOptions(encryptedSharedPreferences: true),
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -131,7 +139,7 @@ class EmployeePortalApp extends StatelessWidget {
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF5A9CE0), width: 1.6)),
         ),
       ),
-      home: const LoginPage(),
+      home: const SplashPage(),
     ));
   }
 }
@@ -213,7 +221,13 @@ class _SplashPageState extends State<SplashPage> {
     Future.delayed(const Duration(milliseconds: 1400), () async {
       final prefs = await SharedPreferences.getInstance();
 
-      final token = prefs.getString('token');
+      // نقل الجلسات القديمة مرة واحدة من SharedPreferences إلى التخزين المشفر.
+      final legacyToken = prefs.getString('token');
+      if (legacyToken != null && legacyToken.isNotEmpty) {
+        await secureStorage.write(key: 'session_token', value: legacyToken);
+        await prefs.remove('token');
+      }
+      final token = await secureStorage.read(key: 'session_token');
       final name = prefs.getString('full_name');
       final code = prefs.getString('employee_code');
       final role = prefs.getString('role') ?? 'employee';
@@ -221,7 +235,45 @@ class _SplashPageState extends State<SplashPage> {
       if (!mounted) return;
 
       if (token != null && token.isNotEmpty) {
+        final authenticator = LocalAuthentication();
+        var authenticated = false;
+        try {
+          final supported = await authenticator.isDeviceSupported();
+          authenticated = !supported || await authenticator.authenticate(
+            localizedReason: 'استخدم البصمة أو Face ID لفتح بوابة الموظفين',
+            options: const AuthenticationOptions(
+              biometricOnly: true,
+              stickyAuth: true,
+            ),
+          );
+        } catch (_) {
+          authenticated = false;
+        }
+
+        if (!authenticated || !mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginPage()),
+          );
+          return;
+        }
+
         api.token = token;
+        try {
+          final validation = await api.get('/api/employee/me');
+          if (validation.statusCode != 200) {
+            await secureStorage.delete(key: 'session_token');
+            api.token = null;
+            if (!mounted) return;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+            return;
+          }
+        } catch (_) {
+          // عند انقطاع الشبكة نترك الجلسة محفوظة ولا نحذفها.
+        }
 
         Navigator.pushReplacement(
           context,
@@ -318,13 +370,13 @@ class CinematicIntroPage extends StatelessWidget {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset('assets/industrial/scene_intro.png', fit: BoxFit.cover),
+            Image.asset('assets/login_bg_reference_v2.jpg', fit: BoxFit.cover),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x22000000), Color(0x00000000), Color(0xB8000000)],
+                  colors: [Color(0x33092A4A), Color(0x12092A4A), Color(0x99071728)],
                 ),
               ),
             ),
@@ -589,7 +641,7 @@ class _LoginPageState extends State<LoginPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x44000000), Color(0x22000000), Color(0x88000000)],
+                  colors: [Color(0x3D092A4A), Color(0x1F092A4A), Color(0x70071728)],
                 ),
               ),
             ),
@@ -604,11 +656,11 @@ class _LoginPageState extends State<LoginPage> {
                       gradient: const LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xF2770C22), Color(0xF24A0916)],
+                        colors: [Color(0xF5F7F9FC), Color(0xEAF7F9FC)],
                       ),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: EmployeePortalApp.gold.withValues(alpha: .78)),
-                      boxShadow: const [BoxShadow(color: Color(0x99000000), blurRadius: 30, offset: Offset(0, 14))],
+                      border: Border.all(color: const Color(0xE6C4CBD3)),
+                      boxShadow: const [BoxShadow(color: Color(0x66071728), blurRadius: 30, offset: Offset(0, 14))],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -616,17 +668,36 @@ class _LoginPageState extends State<LoginPage> {
                         const Center(child: _ExactCompanyLogo(size: 82)),
                         const SizedBox(height: 8),
                         const Text('بوابة الموظفين', textAlign: TextAlign.center,
-                          style: TextStyle(color: EmployeePortalApp.goldSoft, fontSize: 27, fontWeight: FontWeight.w900)),
+                          style: TextStyle(color: EmployeePortalApp.navy, fontSize: 27, fontWeight: FontWeight.w900)),
                         const SizedBox(height: 5),
                         const Text('الشركة المصرية لنقل الكهرباء', textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+                          style: TextStyle(color: EmployeePortalApp.navyLight, fontSize: 14, fontWeight: FontWeight.w800)),
                         const Text('منطقة الدلتا', textAlign: TextAlign.center,
                           style: TextStyle(color: EmployeePortalApp.gold, fontSize: 14, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0x1422A06B),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0x5522A06B)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.circle, color: EmployeePortalApp.green, size: 9),
+                                SizedBox(width: 7),
+                                Text('النظام يعمل', style: TextStyle(color: EmployeePortalApp.green, fontSize: 11, fontWeight: FontWeight.w900)),
+                              ],
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 20),
                         TextField(
                           controller: code,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Color(0xFF172433)),
                           decoration: _industrialInput('اسم المستخدم', Icons.person_rounded),
                         ),
                         const SizedBox(height: 12),
@@ -634,12 +705,12 @@ class _LoginPageState extends State<LoginPage> {
                           controller: password,
                           obscureText: hidePassword,
                           onSubmitted: (_) => login(),
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Color(0xFF172433)),
                           decoration: _industrialInput('كلمة المرور', Icons.lock_rounded).copyWith(
                             suffixIcon: IconButton(
                               onPressed: () => setState(() => hidePassword = !hidePassword),
                               icon: Icon(hidePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                                color: EmployeePortalApp.goldSoft),
+                                color: EmployeePortalApp.gold),
                             ),
                           ),
                         ),
@@ -647,7 +718,7 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Checkbox(value: rememberMe, activeColor: EmployeePortalApp.navy,
                               onChanged: (v) => setState(() => rememberMe = v ?? false)),
-                            const Text('تذكر كود الموظف', style: TextStyle(color: Color(0xFFD8D1C4), fontSize: 12)),
+                            const Text('تذكر كود الموظف', style: TextStyle(color: EmployeePortalApp.gray, fontSize: 12)),
                           ],
                         ),
                         if (error != null) ...[
@@ -658,22 +729,22 @@ class _LoginPageState extends State<LoginPage> {
                           height: 52,
                           child: FilledButton(
                             onPressed: loading ? null : login,
-                            style: FilledButton.styleFrom(backgroundColor: EmployeePortalApp.gold, foregroundColor: EmployeePortalApp.navy,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                            style: FilledButton.styleFrom(backgroundColor: EmployeePortalApp.gold, foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
                             child: loading
                               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                              : const Text('تسجيل الدخول', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: EmployeePortalApp.navy)),
+                              : const Text('تسجيل الدخول', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
                           ),
                         ),
                         TextButton(
                           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordPage())),
-                          child: const Text('نسيت كلمة المرور؟', style: TextStyle(color: EmployeePortalApp.goldSoft)),
+                          child: const Text('نسيت كلمة المرور؟', style: TextStyle(color: EmployeePortalApp.gold, fontWeight: FontWeight.w700)),
                         ),
                         const SizedBox(height: 4),
                         const Text(
                           'تصميم وبرمجة: خالد يوسف المنسي',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFFB9B2A7), fontSize: 10.5, fontWeight: FontWeight.w700),
+                          style: TextStyle(color: EmployeePortalApp.gray, fontSize: 10.5, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -690,12 +761,12 @@ class _LoginPageState extends State<LoginPage> {
   InputDecoration _industrialInput(String hint, IconData icon) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFFB9B2A7)),
-      prefixIcon: Icon(icon, color: EmployeePortalApp.goldSoft),
+      hintStyle: const TextStyle(color: EmployeePortalApp.gray),
+      prefixIcon: Icon(icon, color: EmployeePortalApp.gold),
       filled: true,
-      fillColor: const Color(0xCC2A0B13),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF6E6557))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: EmployeePortalApp.gold, width: 1.4)),
+      fillColor: Colors.white,
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: EmployeePortalApp.line)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: EmployeePortalApp.gold, width: 1.5)),
     );
   }
 }
@@ -1245,7 +1316,8 @@ Future<void> _saveSessionAndOpen(
   if (token.isEmpty) throw Exception('لم يستلم التطبيق رمز الدخول من السيرفر');
 
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('token', token);
+  await secureStorage.write(key: 'session_token', value: token);
+  await prefs.remove('token');
   await prefs.setString('full_name', '${data['full_name'] ?? ''}');
   await prefs.setString('employee_code', '${data['employee_code'] ?? ''}');
   if (data['role'] != null) await prefs.setString('role', '${data['role']}');
@@ -2600,6 +2672,26 @@ class _HomePageState extends State<HomePage> {
 
   bool get isAdmin => widget.role == 'hr_admin';
 
+  Widget _pageWithHomeButton(Widget page) {
+    if (index == 0) return page;
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            child: OutlinedButton.icon(
+              onPressed: () => setState(() => index = 0),
+              icon: const Icon(Icons.home_rounded),
+              label: const Text('الرجوع للقائمة الرئيسية'),
+            ),
+          ),
+        ),
+        Expanded(child: page),
+      ],
+    );
+  }
+
   Future<void> toggleTheme() async {
     final darkNow = Theme.of(context).brightness == Brightness.dark;
     portalThemeMode.value = darkNow ? ThemeMode.light : ThemeMode.dark;
@@ -2611,6 +2703,7 @@ class _HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     final savedTheme = prefs.getString('portal_theme_v2');
     await prefs.clear();
+    await secureStorage.delete(key: 'session_token');
     if (savedTheme != null) await prefs.setString('portal_theme_v2', savedTheme);
     api.token = null;
     if (!mounted) return;
@@ -2698,7 +2791,7 @@ class _HomePageState extends State<HomePage> {
                                   : const [Color(0xFFF7F9FC), Color(0xFFF7F9FC), Color(0xFFEAF0F6)],
                             ),
                           ),
-                          child: pages[index],
+                          child: _pageWithHomeButton(pages[index]),
                         ),
                       ),
                     ],
@@ -2719,12 +2812,9 @@ class _HomePageState extends State<HomePage> {
       const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'بياناتي'),
       const NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'المرتب'),
       const NavigationDestination(icon: Icon(Icons.payments_outlined), selectedIcon: Icon(Icons.payments), label: 'الأجور'),
-      const NavigationDestination(icon: Icon(Icons.notifications_none), selectedIcon: Icon(Icons.notifications), label: 'الإشعارات'),
-      const NavigationDestination(icon: Icon(Icons.mail_outline), selectedIcon: Icon(Icons.mail), label: 'تواصل'),
-      const NavigationDestination(icon: Icon(Icons.star_border), selectedIcon: Icon(Icons.star), label: 'تقييم'),
-      const NavigationDestination(icon: Icon(Icons.lock_outline), selectedIcon: Icon(Icons.lock), label: 'كلمة المرور'),
-      if (isAdmin) const NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), selectedIcon: Icon(Icons.admin_panel_settings), label: 'الإدارة'),
+      const NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view_rounded), label: 'المزيد'),
     ];
+    final navigationIndex = index <= 3 ? index : 4;
     return Scaffold(
       appBar: AppBar(
         title: Text(titles[index]),
@@ -2737,13 +2827,55 @@ class _HomePageState extends State<HomePage> {
           IconButton(onPressed: logout, icon: const Icon(Icons.logout_rounded)),
         ],
       ),
-      body: pages[index],
+      body: _pageWithHomeButton(pages[index]),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => index = i),
+        selectedIndex: navigationIndex,
+        onDestinationSelected: (i) {
+          if (i <= 3) {
+            setState(() => index = i);
+          } else {
+            _showMoreSheet(titles);
+          }
+        },
         destinations: destinations,
       ),
     );
+  }
+
+  Future<void> _showMoreSheet(List<String> titles) async {
+    final options = <(int, IconData)>[
+      (4, Icons.notifications_outlined),
+      (5, Icons.mail_outline_rounded),
+      (6, Icons.star_outline_rounded),
+      (7, Icons.lock_outline_rounded),
+      if (isAdmin) (8, Icons.admin_panel_settings_outlined),
+    ];
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('المزيد من الخدمات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                ...options.map((item) => ListTile(
+                  leading: Icon(item.$2, color: Theme.of(sheetContext).colorScheme.primary),
+                  title: Text(titles[item.$1], style: const TextStyle(fontWeight: FontWeight.w800)),
+                  trailing: const Icon(Icons.chevron_left_rounded),
+                  onTap: () => Navigator.pop(sheetContext, item.$1),
+                )),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (selected != null && mounted) setState(() => index = selected);
   }
 }
 
@@ -2829,7 +2961,7 @@ class _DesktopSideBar extends StatelessWidget {
     showAboutDialog(
       context: context,
       applicationName: 'المنظومة الإلكترونية الموحدة',
-      applicationVersion: '2.0.0',
+      applicationVersion: '2.2.0',
       applicationLegalese: 'الشركة المصرية لنقل الكهرباء — منطقة الدلتا\nتم التصميم والتطوير بواسطة خالد يوسف المنسي',
     );
   }
@@ -3107,6 +3239,22 @@ class _DashboardPageState extends State<DashboardPage> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
+  Future<void> _openUnifiedWebService() async {
+    final opened = await launchUrl(
+      Uri.parse(apiBaseUrl),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح الخدمة الآن. تأكد من اتصال الإنترنت.')),
+      );
+    }
+  }
+
+  void _openCardServices() {
+    _open(context, const CardServicesPage());
+  }
+
   String _statusText() {
     final s = '${info?['status'] ?? ''}'.toLowerCase();
     return (s == 'active' || s == 'ساري' || s == '0') ? 'ساري' : (s.isEmpty ? 'ساري' : '${info?['status']}');
@@ -3124,6 +3272,8 @@ class _DashboardPageState extends State<DashboardPage> {
       _BoltService(Icons.notifications_active_rounded, 'الإشعارات', widget.onNotifications),
       _BoltService(Icons.forum_rounded, 'تواصل معنا', () => _open(context, const ContactPage())),
       _BoltService(Icons.star_rounded, 'تقييم الخدمة', () => _open(context, const RatingPage())),
+      _BoltService(Icons.credit_card_rounded, 'خدمات كارت المرتبات', _openCardServices),
+      _BoltService(Icons.apps_rounded, 'إضافات أخرى', _openUnifiedWebService),
     ];
 
     return LayoutBuilder(
@@ -3135,7 +3285,11 @@ class _DashboardPageState extends State<DashboardPage> {
             image: DecorationImage(
               image: const AssetImage('assets/login_bg_reference_v2.jpg'),
               fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(dark ? const Color(0xD9071728) : const Color(0xBDF7F9FC), BlendMode.srcOver),
+              // النهاري يحافظ على نحو 70% من وضوح الصورة، والليلي يضيف طبقة أغمق.
+              colorFilter: ColorFilter.mode(
+                dark ? const Color(0x99071728) : const Color(0x4D092A4A),
+                BlendMode.srcOver,
+              ),
             ),
           ),
           child: ListView(
@@ -3173,6 +3327,840 @@ class _DashboardPageState extends State<DashboardPage> {
       },
     );
   }
+}
+
+class CardServicesPage extends StatefulWidget {
+  const CardServicesPage({super.key});
+
+  @override
+  State<CardServicesPage> createState() => _CardServicesPageState();
+}
+
+class _CardServicesPageState extends State<CardServicesPage> {
+  bool loading = true;
+  bool submitting = false;
+  String? error;
+  Map<String, dynamic> employee = {};
+  List<Map<String, dynamic>> requests = [];
+  Set<String> staffRoles = {};
+  bool isCardAdmin = false;
+
+  static const statusNames = <String, String>{
+    'SUBMITTED': 'تم إرسال الطلب',
+    'REVIEWED': 'تمت مراجعة الطلب',
+    'BANK_UPLOADED': 'تم رفع الطلب للبنك',
+    'WAITING_BANK_RESPONSE': 'بانتظار رد البنك',
+    'RECEIVED_FROM_BANK': 'تم استلام الكارت من البنك',
+    'DELIVERED': 'تم تسليم الكارت',
+    'ACCEPTED': 'تم قبول الطلب',
+    'REJECTED': 'تم رفض الطلب',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  Future<void> load() async {
+    if (mounted) {
+      setState(() {
+        loading = true;
+        error = null;
+      });
+    }
+    try {
+      final results = await Future.wait([
+        api.get('/api/employee/me'),
+        api.get('/api/card-requests/mine'),
+        api.get('/api/card-staff/me'),
+      ]);
+      final employeeBody = jsonDecode(results[0].body);
+      final requestsBody = jsonDecode(results[1].body);
+      final staffBody = jsonDecode(results[2].body);
+      if (results[0].statusCode != 200) {
+        throw Exception(_map(employeeBody)['error'] ?? 'تعذر تحميل بيانات الموظف');
+      }
+      if (results[1].statusCode != 200) {
+        throw Exception(_map(requestsBody)['error'] ?? 'تعذر تحميل طلبات الكارت');
+      }
+      final list = requestsBody is List
+          ? requestsBody.map(_map).toList()
+          : <Map<String, dynamic>>[];
+      final staff = _map(staffBody);
+      final roles = staff['roles'] is List
+          ? (staff['roles'] as List).map((e) => '$e'.toUpperCase()).toSet()
+          : <String>{};
+      if (!mounted) return;
+      setState(() {
+        employee = _map(employeeBody);
+        requests = list;
+        staffRoles = roles;
+        isCardAdmin = staff['is_hr_admin'] == true;
+      });
+    } catch (e) {
+      if (mounted) setState(() => error = cleanError(e));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  String _value(String key, [String fallback = '—']) {
+    final value = '${employee[key] ?? ''}'.trim();
+    return value.isEmpty || value == 'null' ? fallback : value;
+  }
+
+  String _statusName(dynamic status) {
+    final key = '${status ?? ''}'.toUpperCase();
+    return statusNames[key] ?? (key.isEmpty ? 'غير محدد' : key);
+  }
+
+  Color _statusColor(dynamic status) {
+    switch ('${status ?? ''}'.toUpperCase()) {
+      case 'ACCEPTED':
+      case 'DELIVERED':
+      case 'RECEIVED_FROM_BANK':
+        return EmployeePortalApp.green;
+      case 'REJECTED':
+        return EmployeePortalApp.red;
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  Future<void> _confirmAndSubmit({
+    required String title,
+    required String serviceCode,
+    String? reasonCode,
+  }) async {
+    if (submitting) return;
+    var dataConfirmed = false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          icon: const Icon(Icons.credit_card_rounded, size: 42, color: EmployeePortalApp.gold),
+          title: Text(title, textAlign: TextAlign.center),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('راجع البيانات التي سيتم إرسالها إلى البنك:', style: TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                _CardInfoRow(label: 'الاسم', value: _value('full_name')),
+                _CardInfoRow(label: 'كود الموظف', value: _value('employee_code')),
+                _CardInfoRow(label: 'كود الصرف', value: _value('code_sarf')),
+                _CardInfoRow(label: 'كود البنك', value: _value('bank_employee_code')),
+                _CardInfoRow(label: 'الرقم القومي', value: _value('national_id')),
+                _CardInfoRow(label: 'الهاتف', value: _value('phone')),
+                _CardInfoRow(label: 'الوظيفة', value: _value('job_title')),
+                _CardInfoRow(label: 'الإدارة', value: _value('department')),
+                _CardInfoRow(label: 'الخدمة', value: title),
+                const SizedBox(height: 10),
+                CheckboxListTile(
+                  value: dataConfirmed,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: (value) => setDialogState(() => dataConfirmed = value == true),
+                  title: const Text(
+                    'أقر بأن البيانات الموضحة صحيحة، وهي البيانات التي سيتم إرسالها إلى البنك.',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+            FilledButton.icon(
+              onPressed: dataConfirmed ? () => Navigator.pop(dialogContext, true) : null,
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('تأكيد وإرسال'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => submitting = true);
+    try {
+      final response = await api.post('/api/card-requests', {
+        'service_code': serviceCode,
+        if (reasonCode != null) 'reason_code': reasonCode,
+        'data_confirmed': true,
+      });
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 201) {
+        throw Exception(_map(body)['error'] ?? 'تعذر إرسال الطلب');
+      }
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.check_circle_rounded, size: 48, color: EmployeePortalApp.green),
+          title: const Text('تم إرسال الطلب بنجاح', textAlign: TextAlign.center),
+          content: Text(
+            'رقم الطلب: ${_map(body)['request_id'] ?? '—'}\nيمكنك متابعة حالته من قائمة طلباتي.',
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [FilledButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('تم'))],
+        ),
+      );
+      await load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(cleanError(e)), backgroundColor: EmployeePortalApp.red),
+      );
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
+  Future<void> _showTimeline(Map<String, dynamic> requestItem) async {
+    final id = requestItem['id'];
+    if (id == null) return;
+    var loadingDialogOpen = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final response = await api.get('/api/card-requests/$id/timeline');
+      final body = jsonDecode(response.body);
+      if (mounted && loadingDialogOpen) {
+        Navigator.pop(context);
+        loadingDialogOpen = false;
+      }
+      if (response.statusCode != 200) {
+        throw Exception(_map(body)['error'] ?? 'تعذر تحميل مراحل الطلب');
+      }
+      final items = body is List ? body.map(_map).toList() : <Map<String, dynamic>>[];
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (sheetContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('مراحل الطلب رقم $id', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 14),
+                  if (items.isEmpty)
+                    const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد مراحل مسجلة', textAlign: TextAlign.center))
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => const Divider(height: 20),
+                        itemBuilder: (_, index) {
+                          final item = items[index];
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundColor: EmployeePortalApp.gold.withValues(alpha: .12),
+                              child: const Icon(Icons.check_rounded, color: EmployeePortalApp.gold),
+                            ),
+                            title: Text('${item['display_name'] ?? _statusName(item['new_status'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                            subtitle: Text([
+                              if ('${item['actor_name'] ?? ''}'.trim().isNotEmpty) 'بواسطة: ${item['actor_name']}',
+                              if ('${item['receiver_name'] ?? ''}'.trim().isNotEmpty) 'المستلم: ${item['receiver_name']}',
+                              if ('${item['created_at'] ?? ''}'.trim().isNotEmpty) _formatCardDate(item['created_at']),
+                            ].join('\n')),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      if (loadingDialogOpen && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        loadingDialogOpen = false;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cleanError(e))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('خدمات كارت المرتبات')),
+        body: loading
+            ? const Center(child: CircularProgressIndicator())
+            : error != null
+                ? _ErrorView(message: error!, onRetry: load)
+                : RefreshIndicator(
+                    onRefresh: load,
+                    child: ListView(
+                      padding: const EdgeInsets.all(14),
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              const Row(children: [
+                                Icon(Icons.verified_user_outlined, color: EmployeePortalApp.gold),
+                                SizedBox(width: 8),
+                                Text('بيانات مقدم الطلب', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                              ]),
+                              const Divider(height: 24),
+                              _CardInfoRow(label: 'الاسم', value: _value('full_name')),
+                              _CardInfoRow(label: 'كود الموظف', value: _value('employee_code')),
+                              _CardInfoRow(label: 'كود الصرف', value: _value('code_sarf')),
+                              _CardInfoRow(label: 'كود البنك', value: _value('bank_employee_code')),
+                              _CardInfoRow(label: 'الوظيفة', value: _value('job_title')),
+                              _CardInfoRow(label: 'الإدارة', value: _value('department')),
+                            ]),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text('اختر الخدمة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 10),
+                        _NativeCardServiceTile(
+                          icon: Icons.credit_card_off_rounded,
+                          title: 'بدل فاقد',
+                          subtitle: 'تسجيل طلب استخراج كارت بدل فاقد',
+                          enabled: !submitting,
+                          onTap: () => _confirmAndSubmit(title: 'بدل فاقد', serviceCode: 'REPLACEMENT', reasonCode: 'LOST'),
+                        ),
+                        _NativeCardServiceTile(
+                          icon: Icons.credit_card_rounded,
+                          title: 'بدل تالف',
+                          subtitle: 'تسجيل طلب استخراج كارت بدل تالف',
+                          enabled: !submitting,
+                          onTap: () => _confirmAndSubmit(title: 'بدل تالف', serviceCode: 'REPLACEMENT', reasonCode: 'DAMAGED'),
+                        ),
+                        _NativeCardServiceTile(
+                          icon: Icons.sms_outlined,
+                          title: 'رسائل السحب والإيداع',
+                          subtitle: 'تفعيل خدمة رسائل عمليات الكارت',
+                          enabled: !submitting,
+                          onTap: () => _confirmAndSubmit(title: 'رسائل السحب والإيداع', serviceCode: 'SMS'),
+                        ),
+                        if (submitting) ...[
+                          const SizedBox(height: 8),
+                          const LinearProgressIndicator(),
+                        ],
+                        if (staffRoles.isNotEmpty || isCardAdmin) ...[
+                          const SizedBox(height: 20),
+                          const Text('إدارة خدمات الكارت', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 8),
+                          if (isCardAdmin || staffRoles.contains('REVIEWER'))
+                            _CardStaffTile(
+                              icon: Icons.fact_check_outlined,
+                              title: 'مراجعة الطلبات الجديدة',
+                              onTap: () => _openStaffQueue('review', 'مراجعة الطلبات'),
+                            ),
+                          if (isCardAdmin || staffRoles.contains('EXECUTIVE'))
+                            _CardStaffTile(
+                              icon: Icons.cloud_upload_outlined,
+                              title: 'تنفيذ الطلبات ومتابعة البنك',
+                              onTap: () => _openStaffQueue('execute', 'تنفيذ الطلبات'),
+                            ),
+                          if (isCardAdmin || staffRoles.contains('BANK_RECEIVER'))
+                            _CardStaffTile(
+                              icon: Icons.account_balance_outlined,
+                              title: 'استلام الكروت من البنك',
+                              onTap: () => _openStaffQueue('receive', 'استلام الكروت من البنك'),
+                            ),
+                          if (isCardAdmin || staffRoles.contains('DELIVERY'))
+                            _CardStaffTile(
+                              icon: Icons.how_to_reg_outlined,
+                              title: 'تسليم الكروت للموظفين',
+                              onTap: () => _openStaffQueue('deliver', 'تسليم الكروت'),
+                            ),
+                        ],
+                        const SizedBox(height: 20),
+                        Row(children: [
+                          const Expanded(child: Text('طلباتي السابقة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+                          IconButton(onPressed: load, tooltip: 'تحديث', icon: const Icon(Icons.refresh_rounded)),
+                        ]),
+                        if (requests.isEmpty)
+                          const Card(child: Padding(padding: EdgeInsets.all(24), child: Text('لا توجد طلبات سابقة', textAlign: TextAlign.center)))
+                        else
+                          ...requests.map((item) {
+                            final statusColor = _statusColor(item['status']);
+                            final service = '${item['reason_name'] ?? item['service_name'] ?? 'طلب كارت'}';
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              child: ListTile(
+                                onTap: () => _showTimeline(item),
+                                leading: CircleAvatar(
+                                  backgroundColor: statusColor.withValues(alpha: .12),
+                                  child: Icon(Icons.credit_card_rounded, color: statusColor),
+                                ),
+                                title: Text(service, style: const TextStyle(fontWeight: FontWeight.w900)),
+                                subtitle: Text('رقم الطلب: ${item['id'] ?? '—'}\n${_statusName(item['status'])}\n${_formatCardDate(item['submitted_at'])}'),
+                                trailing: const Icon(Icons.chevron_left_rounded),
+                                isThreeLine: true,
+                              ),
+                            );
+                          }),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.home_rounded),
+                          label: const Text('الرجوع للقائمة الرئيسية'),
+                        ),
+                      ],
+                    ),
+                  ),
+      ),
+    );
+  }
+
+  Future<void> _openStaffQueue(String view, String title) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CardStaffQueuePage(view: view, title: title)),
+    );
+    if (mounted) await load();
+  }
+}
+
+class _CardStaffTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  const _CardStaffTile({required this.icon, required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: const EdgeInsets.only(bottom: 9),
+        child: ListTile(
+          onTap: onTap,
+          leading: CircleAvatar(
+            backgroundColor: EmployeePortalApp.navyLight.withValues(alpha: .12),
+            child: Icon(icon, color: EmployeePortalApp.navyLight),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+          trailing: const Icon(Icons.chevron_left_rounded),
+        ),
+      );
+}
+
+class CardStaffQueuePage extends StatefulWidget {
+  final String view;
+  final String title;
+  const CardStaffQueuePage({super.key, required this.view, required this.title});
+
+  @override
+  State<CardStaffQueuePage> createState() => _CardStaffQueuePageState();
+}
+
+class _CardStaffQueuePageState extends State<CardStaffQueuePage> {
+  bool loading = true;
+  bool working = false;
+  String? error;
+  List<Map<String, dynamic>> items = [];
+
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    setState(() { loading = true; error = null; });
+    try {
+      final response = await api.get('/api/card-staff/queue?view=${widget.view}');
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 200) {
+        throw Exception(_map(body)['error'] ?? 'تعذر تحميل الطلبات');
+      }
+      if (!mounted) return;
+      setState(() => items = body is List
+          ? body.map(_map).toList()
+          : <Map<String, dynamic>>[]);
+    } catch (e) {
+      if (mounted) setState(() => error = cleanError(e));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<String?> _notesDialog(String title, {bool required = false}) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          minLines: 2,
+          maxLines: 4,
+          decoration: InputDecoration(labelText: required ? 'السبب (مطلوب)' : 'ملاحظات (اختياري)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+          FilledButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (required && text.isEmpty) return;
+              Navigator.pop(dialogContext, text);
+            },
+            child: const Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _showRequestDetails(Map<String, dynamic> item) async {
+    final requestId = item['id'];
+    if (requestId == null) return;
+    try {
+      final response = await api.get('/api/card-staff/requests/$requestId/details');
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 200) {
+        throw Exception(_map(body)['error'] ?? 'تعذر تحميل بيانات الطلب');
+      }
+      if (!mounted) return;
+      final details = _map(body);
+      String value(String key) {
+        final text = '${details[key] ?? ''}'.trim();
+        return text.isEmpty || text == 'null' ? '—' : text;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (sheetContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: .78,
+              minChildSize: .45,
+              maxChildSize: .94,
+              builder: (_, controller) => ListView(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+                children: [
+                  Text('بيانات الطلب #$requestId', textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: EmployeePortalApp.green.withValues(alpha: .10), borderRadius: BorderRadius.circular(12)),
+                    child: const Text('البيانات التالية هي البيانات المسجلة بالطلب والمجهزة للإرسال إلى البنك.', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(height: 12),
+                  _CardInfoRow(label: 'الخدمة', value: value('reason_name') == '—' ? value('service_name') : value('reason_name')),
+                  _CardInfoRow(label: 'تاريخ الطلب', value: _formatCardDate(details['submitted_at'])),
+                  const Divider(height: 24),
+                  _CardInfoRow(label: 'الاسم', value: value('employee_name')),
+                  _CardInfoRow(label: 'كود الموظف', value: value('employee_code')),
+                  _CardInfoRow(label: 'الرقم القومي', value: value('national_id')),
+                  _CardInfoRow(label: 'الهاتف', value: value('phone')),
+                  _CardInfoRow(label: 'كود البنك', value: value('bank_code')),
+                  _CardInfoRow(label: 'كود الصرف', value: value('code_sarf')),
+                  _CardInfoRow(label: 'المنطقة', value: value('region')),
+                  _CardInfoRow(label: 'الوظيفة', value: value('job_title')),
+                  _CardInfoRow(label: 'الإدارة', value: value('department')),
+                  _CardInfoRow(label: 'التأمين', value: value('insurance_number')),
+                  _CardInfoRow(label: 'البريد', value: value('email')),
+                  _CardInfoRow(label: 'العنوان', value: value('address')),
+                  const SizedBox(height: 14),
+                  FilledButton(onPressed: () => Navigator.pop(sheetContext), child: const Text('إغلاق')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(cleanError(e)), backgroundColor: EmployeePortalApp.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _transition(Map<String, dynamic> item, String status, String label) async {
+    final notes = await _notesDialog(label);
+    if (notes == null) return;
+    await _run(() => api.post('/api/card-staff/requests/${item['id']}/transition', {
+      'to_status': status,
+      'notes': notes,
+    }));
+  }
+
+  Future<void> _bankResponse(Map<String, dynamic> item, String status) async {
+    final rejected = status == 'REJECTED';
+    final notes = await _notesDialog(rejected ? 'سبب رفض البنك' : 'تأكيد قبول البنك', required: rejected);
+    if (notes == null) return;
+    await _run(() => api.post('/api/card-staff/requests/${item['id']}/bank-response', {
+      'response_status': status,
+      if (rejected) 'rejection_reason': notes,
+    }));
+  }
+
+  Future<void> _deliver(Map<String, dynamic> item) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تحديد مستلم الكارت'),
+        content: const Text('هل استلم الموظف الكارت بنفسه أم استلمه موظف آخر؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+          OutlinedButton(onPressed: () => Navigator.pop(dialogContext, 'OTHER'), child: const Text('موظف آخر')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, 'SELF'), child: const Text('الموظف نفسه')),
+        ],
+      ),
+    );
+    if (choice == null) return;
+    String? receiverCode;
+    if (choice == 'OTHER') {
+      receiverCode = await Navigator.push<String>(context, MaterialPageRoute(builder: (_) => const CardEmployeeSearchPage()));
+      if (receiverCode == null || receiverCode.isEmpty) return;
+    }
+    await _run(() => api.post('/api/card-staff/requests/${item['id']}/deliver', {
+      'receiver_type': choice,
+      if (receiverCode != null) 'receiver_employee_code': receiverCode,
+    }));
+  }
+
+  Future<void> _run(Future<http.Response> Function() action) async {
+    if (working) return;
+    setState(() => working = true);
+    try {
+      final response = await action();
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 200) throw Exception(_map(body)['error'] ?? 'تعذر تنفيذ الإجراء');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_map(body)['message'] ?? 'تم تنفيذ الإجراء بنجاح'}'), backgroundColor: EmployeePortalApp.green));
+      await load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cleanError(e)), backgroundColor: EmployeePortalApp.red));
+    } finally {
+      if (mounted) setState(() => working = false);
+    }
+  }
+
+  List<Widget> _actions(Map<String, dynamic> item) {
+    final status = '${item['status'] ?? ''}'.toUpperCase();
+    if (widget.view == 'review') {
+      return [FilledButton.icon(onPressed: working ? null : () => _transition(item, 'REVIEWED', 'تأكيد مراجعة الطلب'), icon: const Icon(Icons.check), label: const Text('تمت المراجعة'))];
+    }
+    if (widget.view == 'receive') {
+      return [FilledButton.icon(onPressed: working ? null : () => _transition(item, 'RECEIVED_FROM_BANK', 'تأكيد استلام الكارت من البنك'), icon: const Icon(Icons.inventory_2_outlined), label: const Text('تم الاستلام من البنك'))];
+    }
+    if (widget.view == 'deliver') {
+      return [FilledButton.icon(onPressed: working ? null : () => _deliver(item), icon: const Icon(Icons.how_to_reg), label: const Text('تسجيل التسليم'))];
+    }
+    if (status == 'REVIEWED') {
+      return [FilledButton.icon(onPressed: working ? null : () => _transition(item, 'BANK_UPLOADED', 'تأكيد رفع الطلب للبنك'), icon: const Icon(Icons.cloud_upload_outlined), label: const Text('تم الرفع للبنك'))];
+    }
+    if (status == 'BANK_UPLOADED') {
+      return [FilledButton.icon(onPressed: working ? null : () => _transition(item, 'WAITING_BANK_RESPONSE', 'تأكيد انتظار رد البنك'), icon: const Icon(Icons.hourglass_top), label: const Text('بانتظار رد البنك'))];
+    }
+    if (status == 'WAITING_BANK_RESPONSE') {
+      return [
+        FilledButton.icon(onPressed: working ? null : () => _bankResponse(item, 'ACCEPTED'), icon: const Icon(Icons.check_circle_outline), label: const Text('قبول البنك')),
+        OutlinedButton.icon(onPressed: working ? null : () => _bankResponse(item, 'REJECTED'), icon: const Icon(Icons.cancel_outlined), label: const Text('رفض البنك')),
+      ];
+    }
+    return [];
+  }
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
+              ? _ErrorView(message: error!, onRetry: load)
+              : RefreshIndicator(
+                  onRefresh: load,
+                  child: items.isEmpty
+                      ? ListView(children: const [SizedBox(height: 180), Center(child: Text('لا توجد طلبات في هذه المرحلة'))])
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: items.length,
+                          itemBuilder: (_, index) {
+                            final item = items[index];
+                            final actions = _actions(item);
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                                  Text('${item['employee_name'] ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                                  const SizedBox(height: 5),
+                                  Text('كود الموظف: ${item['employee_code'] ?? '—'}'),
+                                  Text('الخدمة: ${item['reason_name'] ?? item['service_name'] ?? '—'}'),
+                                  Text('كود البنك: ${item['bank_code'] ?? '—'}'),
+                                  Text('كود الصرف: ${item['code_sarf'] ?? '—'}'),
+                                  Text('تاريخ الطلب: ${_formatCardDate(item['submitted_at'])}'),
+                                  if (widget.view == 'review' || widget.view == 'execute') ...[
+                                    const SizedBox(height: 10),
+                                    OutlinedButton.icon(
+                                      onPressed: working ? null : () => _showRequestDetails(item),
+                                      icon: const Icon(Icons.badge_outlined),
+                                      label: const Text('بيانات الطلب والموظف'),
+                                    ),
+                                  ],
+                                  if (actions.isNotEmpty) ...[
+                                    const Divider(height: 22),
+                                    Wrap(spacing: 8, runSpacing: 8, children: actions),
+                                  ],
+                                ]),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+    ),
+  );
+}
+
+class CardEmployeeSearchPage extends StatefulWidget {
+  const CardEmployeeSearchPage({super.key});
+  @override
+  State<CardEmployeeSearchPage> createState() => _CardEmployeeSearchPageState();
+}
+
+class _CardEmployeeSearchPageState extends State<CardEmployeeSearchPage> {
+  final controller = TextEditingController();
+  bool loading = false;
+  List<Map<String, dynamic>> results = [];
+
+  Future<void> search() async {
+    final query = controller.text.trim();
+    if (query.length < 2) return;
+    setState(() => loading = true);
+    try {
+      final response = await api.get('/api/card-staff/employee-search?q=${Uri.encodeQueryComponent(query)}');
+      final body = jsonDecode(response.body);
+      if (response.statusCode != 200) throw Exception(body is Map ? body['error'] : 'تعذر البحث');
+      if (mounted) {
+        setState(() => results = body is List
+            ? body.map((e) => Map<String, dynamic>.from(e)).toList()
+            : <Map<String, dynamic>>[]);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cleanError(e))));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  void dispose() { controller.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Scaffold(
+      appBar: AppBar(title: const Text('اختيار الموظف المستلم')),
+      body: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(children: [
+          TextField(controller: controller, onSubmitted: (_) => search(), decoration: InputDecoration(labelText: 'كود الموظف أو الاسم', suffixIcon: IconButton(onPressed: search, icon: const Icon(Icons.search)))),
+          if (loading) const LinearProgressIndicator(),
+          const SizedBox(height: 10),
+          Expanded(child: ListView.builder(
+            itemCount: results.length,
+            itemBuilder: (_, i) {
+              final item = results[i];
+              return Card(child: ListTile(
+                title: Text('${item['full_name'] ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text('كود: ${item['employee_code'] ?? '—'}'),
+                onTap: () => Navigator.pop(context, '${item['employee_code'] ?? ''}'),
+              ));
+            },
+          )),
+        ]),
+      ),
+    ),
+  );
+}
+
+String _formatCardDate(dynamic value) {
+  final raw = '${value ?? ''}'.trim();
+  if (raw.isEmpty || raw == 'null') return '—';
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return raw.replaceFirst('T', ' ');
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${parsed.year}/${two(parsed.month)}/${two(parsed.day)} - ${two(parsed.hour)}:${two(parsed.minute)}';
+}
+
+class _CardInfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _CardInfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(width: 94, child: Text(label, style: const TextStyle(color: EmployeePortalApp.gray, fontWeight: FontWeight.w700))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w800))),
+        ]),
+      );
+}
+
+class _NativeCardServiceTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _NativeCardServiceTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: const EdgeInsets.only(bottom: 10),
+        child: ListTile(
+          enabled: enabled,
+          onTap: enabled ? onTap : null,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          leading: CircleAvatar(
+            backgroundColor: EmployeePortalApp.gold.withValues(alpha: .12),
+            child: Icon(icon, color: EmployeePortalApp.gold),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+          subtitle: Text(subtitle),
+          trailing: const Icon(Icons.chevron_left_rounded),
+        ),
+      );
 }
 
 class _PortalServiceCard extends StatelessWidget {
@@ -4289,7 +5277,7 @@ class _MonthYearSelector extends StatelessWidget {
             child: DropdownButtonFormField<int>(
               value: year,
               decoration: const InputDecoration(labelText: 'اختر السنة', isDense: true),
-              items: [2024, 2025, 2026, 2027, 2028]
+              items: [2026, 2027, 2028]
                   .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
                   .toList(),
               onChanged: (v) {

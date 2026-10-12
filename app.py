@@ -562,6 +562,8 @@ def login():
             "full_name": "خالد المنسي",
             "role": "viewer",
             "employee_code": DEMO_EMPLOYEE_CODE,
+            "code_sarf": "DEMO",
+            "bank_employee_code": "DEMO",
             "is_demo": True,
             "read_only": True,
         })
@@ -1055,6 +1057,8 @@ def get_my_info():
         demo_birth_date = birth_date_from_national_id("30109011234567")
         return jsonify({
             "employee_code": DEMO_EMPLOYEE_CODE,
+            "code_sarf": "DEMO",
+            "bank_employee_code": "DEMO",
             "insurance_number": "000000000",
             "full_name": "خالد المنسي",
             "job_title": "مطور",
@@ -1077,7 +1081,8 @@ def get_my_info():
     cursor.execute(
         """
         SELECT e.employee_code, e.full_name, e.job_title, e.hire_date, e.national_id,
-               e.phone, e.status, e.insurance_number, e.email, d.name AS department_name
+               e.phone, e.status, e.insurance_number, e.email,
+               e.code_sarf, e.bank_employee_code, d.name AS department_name
         FROM employees e
         LEFT JOIN departments d ON d.id = e.department_id
         WHERE e.id = ?
@@ -1097,6 +1102,8 @@ def get_my_info():
     conn.close()
     return jsonify({
         "employee_code": row.employee_code,
+        "code_sarf": row.code_sarf,
+        "bank_employee_code": row.bank_employee_code,
         "insurance_number": row.insurance_number,
         "full_name": row.full_name,
         "job_title": row.job_title,
@@ -1210,6 +1217,8 @@ def get_payslip():
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
+    if year < 2026:
+        return jsonify({"error": "بيانات سنة 2025 غير متاحة"}), 404
 
     if request.is_demo:
         return jsonify(demo_payslip(month, year))
@@ -1230,7 +1239,8 @@ def get_payslip():
     cursor.execute(
         """
         SELECT
-            CASE WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
+            CASE WHEN band_code = 222 THEN N'علاج'
+                 WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
                  THEN N'الأساسي'
                  ELSE band_name
             END AS display_name,
@@ -1241,10 +1251,16 @@ def get_payslip():
         FROM payroll_items
         WHERE employee_id = ? AND month = ? AND year = ?
           AND sarfia_no = 1
-          AND NOT (band_name LIKE N'ت %' AND band_name NOT LIKE N'%حصة العامل%' AND band_name NOT LIKE N'%رصيد%')
+          AND (
+                band_code = 222
+                OR ISNULL(band_name, N'') NOT LIKE N'ت %'
+                OR band_name LIKE N'%حصة العامل%'
+                OR band_name LIKE N'%رصيد%'
+              )
           AND band_name NOT LIKE N'%مصاريف ادارية%'
         GROUP BY
-            CASE WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
+            CASE WHEN band_code = 222 THEN N'علاج'
+                 WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
                  THEN N'الأساسي'
                  ELSE band_name
             END,
@@ -1359,6 +1375,8 @@ def get_wage_record():
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
+    if year < 2026:
+        return jsonify({"error": "بيانات سنة 2025 غير متاحة"}), 404
 
     if request.is_demo:
         return jsonify(demo_wage_record(month, year))
@@ -1446,6 +1464,8 @@ def download_payslip_pdf():
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
+    if year < 2026:
+        return jsonify({"error": "بيانات سنة 2025 غير متاحة"}), 404
 
     if request.is_demo:
         data = demo_payslip(month, year)
@@ -1485,7 +1505,8 @@ def download_payslip_pdf():
     cursor.execute(
         """
         SELECT
-            CASE WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
+            CASE WHEN band_code = 222 THEN N'علاج'
+                 WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
                  THEN N'الأساسي'
                  ELSE band_name
             END AS display_name,
@@ -1496,10 +1517,16 @@ def download_payslip_pdf():
         FROM payroll_items
         WHERE employee_id = ? AND month = ? AND year = ?
           AND sarfia_no = 1
-          AND NOT (band_name LIKE N'ت %' AND band_name NOT LIKE N'%حصة العامل%')
+          AND (
+                band_code = 222
+                OR ISNULL(band_name, N'') NOT LIKE N'ت %'
+                OR band_name LIKE N'%حصة العامل%'
+                OR band_name LIKE N'%رصيد%'
+              )
           AND band_name NOT LIKE N'%مصاريف ادارية%'
         GROUP BY
-            CASE WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
+            CASE WHEN band_code = 222 THEN N'علاج'
+                 WHEN band_code IN (1,5,6,7,8,9,10,11,12,13,14,15,28,29,30,31,32,33,34,37,39,43,47,53,54,59,60,84,198)
                  THEN N'الأساسي'
                  ELSE band_name
             END,
@@ -1571,6 +1598,8 @@ def download_wage_record_pdf():
 
     if not month or not year:
         return jsonify({"error": "لازم تحدد الشهر والسنة"}), 400
+    if year < 2026:
+        return jsonify({"error": "بيانات سنة 2025 غير متاحة"}), 404
 
     if request.is_demo:
         data = demo_wage_record(month, year)
@@ -3338,8 +3367,68 @@ def _delete_private_card_files(*filenames):
 @token_required
 def create_card_request():
     """إنشاء طلب كارت مع البيانات الخاصة وصور البطاقة للموظف الحالي."""
+    json_data = request.get_json(silent=True) if request.is_json else None
+    if json_data is not None:
+        service_code = (json_data.get("service_code") or "").strip().upper()
+        reason_code = (json_data.get("reason_code") or "").strip().upper() or None
+        if json_data.get("data_confirmed") is not True:
+            return jsonify({"error": "يجب تأكيد صحة البيانات التي سيتم إرسالها إلى البنك"}), 400
+        if service_code not in {"REPLACEMENT", "SMS"}:
+            return jsonify({"error": "هذه الخدمة تحتاج استكمال النموذج المخصص"}), 400
+        if service_code == "SMS":
+            reason_code = None
+        if service_code == "REPLACEMENT" and reason_code not in {"LOST", "DAMAGED"}:
+            return jsonify({"error": "اختر بدل فاقد أو بدل تالف"}), 400
+
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            user_id = _current_user_id(cursor)
+            if not user_id:
+                return jsonify({"error": "الحساب غير موجود أو غير نشط"}), 403
+            cursor.execute(
+                "EXEC dbo.sp_CreateCardRequest @UserID=?, @ServiceCode=?, @ReasonCode=?",
+                user_id, service_code, reason_code,
+            )
+            row = cursor.fetchone()
+            request_id = None
+            if row:
+                for attr in ("request_id", "id"):
+                    if hasattr(row, attr) and getattr(row, attr) is not None:
+                        request_id = int(getattr(row, attr))
+                        break
+            if request_id is None:
+                cursor.execute(
+                    """
+                    SELECT TOP (1) r.id
+                    FROM card_requests r
+                    INNER JOIN card_service_types st ON st.id = r.service_type_id
+                    WHERE r.employee_id = ? AND st.service_code = ?
+                    ORDER BY r.id DESC
+                    """,
+                    request.employee_id, service_code,
+                )
+                req_row = cursor.fetchone()
+                if not req_row:
+                    raise RuntimeError("تعذر تحديد رقم الطلب الجديد.")
+                request_id = int(req_row.id)
+            conn.commit()
+            return jsonify({
+                "message": "تم إرسال الطلب بنجاح",
+                "request_id": request_id,
+                "status": "SUBMITTED",
+            }), 201
+        except Exception as exc:
+            conn.rollback()
+            return _card_error_response(exc)
+        finally:
+            conn.close()
+
     service_code = (request.form.get("service_code") or "").strip().upper()
     reason_code = (request.form.get("reason_code") or "").strip().upper() or None
+    data_confirmed = (request.form.get("data_confirmed") or "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
     address = (request.form.get("address") or "").strip()
     phone = re.sub(r"\D", "", request.form.get("phone") or "")
     national_id = re.sub(r"\D", "", request.form.get("national_id") or "")
@@ -3348,6 +3437,8 @@ def create_card_request():
 
     if service_code not in {"NEW_CARD", "REPLACEMENT", "SMS"}:
         return jsonify({"error": "اختر خدمة صحيحة"}), 400
+    if not data_confirmed:
+        return jsonify({"error": "يجب تأكيد صحة البيانات التي سيتم إرسالها إلى البنك"}), 400
     if service_code == "SMS":
         reason_code = None
     if len(address) < 10 or len(address) > 500:
@@ -3429,6 +3520,79 @@ def create_card_request():
             conn.rollback()
             _delete_private_card_files(front_name, back_name)
             return _card_error_response(exc)
+    finally:
+        conn.close()
+
+
+@app.route("/api/card-staff/requests/<int:request_id>/details", methods=["GET"])
+@token_required
+def card_request_details(request_id):
+    """بيانات الطلب والموظف لموظفي المراجعة والتنفيذ البنكي فقط."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        user_id = _current_user_id(cursor)
+        roles = _card_staff_roles(cursor, user_id) if user_id else set()
+        if request.role != "hr_admin" and not roles.intersection({"REVIEWER", "EXECUTIVE"}):
+            return jsonify({"error": "ليس لديك صلاحية لعرض بيانات الطلب"}), 403
+
+        cursor.execute(
+            """
+            SELECT
+                r.id, r.status, r.submitted_at,
+                st.service_code, st.service_name,
+                rr.reason_code, rr.reason_name,
+                r.employee_code_snapshot, r.employee_name_snapshot,
+                r.bank_code_snapshot, r.code_sarf_snapshot, r.region_snapshot,
+                e.job_title, e.insurance_number, e.phone AS employee_phone,
+                e.national_id AS employee_national_id, e.email,
+                d.name AS department_name,
+                pd.address_text, pd.phone AS request_phone,
+                pd.national_id AS request_national_id,
+                pd.id_front_file, pd.id_back_file
+            FROM card_requests r
+            INNER JOIN card_service_types st ON st.id = r.service_type_id
+            LEFT JOIN card_request_reasons rr ON rr.id = r.reason_id
+            INNER JOIN employees e ON e.id = r.employee_id
+            LEFT JOIN departments d ON d.id = e.department_id
+            LEFT JOIN card_request_private_data pd ON pd.request_id = r.id
+            WHERE r.id = ?
+            """,
+            request_id,
+        )
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "الطلب غير موجود"}), 404
+
+        has_front = bool(row.id_front_file)
+        has_back = bool(row.id_back_file)
+        return jsonify({
+            "request_id": int(row.id),
+            "status": str(row.status),
+            "submitted_at": row.submitted_at.isoformat() if row.submitted_at else None,
+            "service_code": str(row.service_code),
+            "service_name": row.service_name,
+            "reason_code": str(row.reason_code) if row.reason_code else None,
+            "reason_name": row.reason_name,
+            "employee_name": row.employee_name_snapshot,
+            "employee_code": row.employee_code_snapshot,
+            "bank_code": row.bank_code_snapshot,
+            "code_sarf": row.code_sarf_snapshot,
+            "region": row.region_snapshot,
+            "job_title": row.job_title,
+            "department": row.department_name,
+            "insurance_number": row.insurance_number,
+            "phone": row.request_phone or row.employee_phone,
+            "national_id": row.request_national_id or row.employee_national_id,
+            "email": row.email,
+            "address": row.address_text,
+            "id_front_url": (
+                f"/api/card-staff/requests/{request_id}/id-image/front" if has_front else None
+            ),
+            "id_back_url": (
+                f"/api/card-staff/requests/{request_id}/id-image/back" if has_back else None
+            ),
+        })
     finally:
         conn.close()
 

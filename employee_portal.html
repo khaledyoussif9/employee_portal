@@ -951,6 +951,7 @@
       </div>
 
       <div class="content">
+        <button id="globalHomeBack" class="back-link hidden" onclick="switchTab('home')">← الرجوع للقائمة الرئيسية</button>
         <div id="tabHome">
           <section class="home-v2">
             <div class="home-hero">
@@ -1149,6 +1150,7 @@ let _selectedRating = 0;
 function yearOptions(selected) {
   const currentYear = CURRENT_PERIOD.getFullYear();
   return [currentYear - 1, currentYear, currentYear + 1]
+    .filter(y => y >= 2026)
     .map(y => `<option value="${y}" ${selected === y ? "selected" : ""}>${y}</option>`)
     .join("");
 }
@@ -1782,6 +1784,7 @@ function startLiveClock() {
 }
 
 function switchTab(tab) {
+  document.getElementById("globalHomeBack").classList.toggle("hidden", tab === "home");
   document.getElementById("navHome").classList.toggle("active", tab === "home");
   document.getElementById("navAdmin").classList.toggle("active", tab === "admin");
   document.getElementById("navPayslip").classList.toggle("active", tab === "payslip");
@@ -1830,8 +1833,47 @@ function switchTab(tab) {
 
 function renderCardServicesPanel() {
   const el = document.getElementById("tabCardServices");
-  el.innerHTML = `<div class="portal-subpage"><button class="back-link" onclick="switchTab('home')">→ رجوع للرئيسية</button><div class="card"><div class="card-header">💳 خدمات كارت المرتبات</div><div class="portal-actions"><button class="portal-action" onclick="showCardRequestForm('NEW_CARD')">🆕<b>إصدار كارت جديد</b><small>تعيين / منقول / عودة من إجازة</small></button><button class="portal-action" onclick="showCardRequestForm('REPLACEMENT')">♻️<b>بدل فاقد / تالف</b><small>طلب بدل فاقد أو بدل تالف</small></button><button class="portal-action" onclick="showCardRequestForm('SMS')">📱<b>رسائل السحب والإيداع</b><small>طلب خدمة الرسائل البنكية</small></button><button class="portal-action" onclick="loadMyCardRequests()">📋<b>طلباتي</b><small>متابعة حالة الطلبات السابقة</small></button><button class="portal-action" onclick="window.open('https://www.nbe.com.eg/NBE/E/#/AR/ProductDetails?inParams=%7B%22CategoryID%22%3A%22selfservices%22%2C%22ProductID%22%3A%22%D8%AD%D8%AC%D8%B2%20%D9%85%D9%88%D8%B9%D8%AF%20%D8%A8%D8%A7%D9%84%D9%81%D8%B1%D8%B9_18782%22%7D','_blank','noopener,noreferrer')">🏦<b>حجز موعد بالبنك الأهلي المصري</b><small>فتح خدمة الحجز الرسمية في نافذة جديدة</small></button></div><div id="cardStaffActions" style="margin-top:12px"></div><div id="cardServiceWork"></div></div></div>`;
+  el.innerHTML = `<div class="portal-subpage"><div class="card"><div class="card-header">💳 خدمات كارت المرتبات</div><div class="portal-actions"><button class="portal-action" onclick="showCardRequestForm('NEW_CARD')">🆕<b>إصدار كارت جديد</b><small>تعيين / منقول / عودة من إجازة</small></button><button class="portal-action" onclick="showSimpleCardConfirmation('REPLACEMENT','LOST','بدل فاقد')">♻️<b>بدل فاقد</b><small>تأكيد الطلب مباشرة من بياناتك المسجلة</small></button><button class="portal-action" onclick="showSimpleCardConfirmation('REPLACEMENT','DAMAGED','بدل تالف')">🪪<b>بدل تالف</b><small>تأكيد الطلب مباشرة من بياناتك المسجلة</small></button><button class="portal-action" onclick="showSimpleCardConfirmation('SMS',null,'رسائل السحب والإيداع')">📱<b>رسائل السحب والإيداع</b><small>تفعيل الخدمة من بياناتك المسجلة</small></button><button class="portal-action" onclick="loadMyCardRequests()">📋<b>طلباتي</b><small>متابعة حالة الطلبات السابقة</small></button><button class="portal-action" onclick="window.open('https://www.nbe.com.eg/NBE/E/#/AR/ProductDetails?inParams=%7B%22CategoryID%22%3A%22selfservices%22%2C%22ProductID%22%3A%22%D8%AD%D8%AC%D8%B2%20%D9%85%D9%88%D8%B9%D8%AF%20%D8%A8%D8%A7%D9%84%D9%81%D8%B1%D8%B9_18782%22%7D','_blank','noopener,noreferrer')">🏦<b>حجز موعد بالبنك الأهلي المصري</b><small>فتح خدمة الحجز الرسمية في نافذة جديدة</small></button></div><div id="cardStaffActions" style="margin-top:12px"></div><div id="cardServiceWork"></div></div></div>`;
   loadCardStaffActions();
+}
+
+async function showSimpleCardConfirmation(serviceCode, reasonCode, serviceName) {
+  const w=document.getElementById('cardServiceWork');
+  w.innerHTML='<div class="state-box"><span class="spin"></span> جاري تحميل بياناتك الإدارية...</div>';
+  try {
+    const r=await apiFetch(`${API_BASE}/api/employee/me`,{headers:{Authorization:`Bearer ${session.token}`}});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'تعذر تحميل البيانات الإدارية');
+    const rows=[
+      ['الاسم بالكامل',d.full_name],
+      ['كود العامل',d.employee_code],
+      ['كود الصرف',d.code_sarf||'غير مسجل'],
+      ['كود البنك',d.bank_employee_code||'غير مسجل'],
+      ['الرقم القومي',d.national_id||'غير مسجل'],
+      ['رقم التليفون',d.phone||'غير مسجل'],
+      ['الوظيفة',d.job_title||'غير مسجل'],
+      ['الإدارة / القسم',d.department||d.department_name||'غير مسجل'],
+      ['الحالة الوظيفية',String(d.status||'').toLowerCase()==='active'?'ساري العمل':(d.status||'غير مسجل')]
+    ];
+    w.innerHTML=`<div class="portal-form"><h3>تأكيد طلب — ${escHtml(serviceName)}</h3><div class="state-box dashed"><b>راجع البيانات التي سيتم إرسالها إلى البنك:</b>${rows.map(x=>`<div class="info-row"><span class="label">${escHtml(x[0])}</span><span class="value">${escHtml(x[1])}</span></div>`).join('')}</div><label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px"><input id="cardDataConfirmation" type="checkbox" style="width:auto;margin-top:4px"><b>أقر بأن البيانات الموضحة صحيحة، وهي البيانات التي سيتم إرسالها إلى البنك.</b></label><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px"><button class="btn-primary" id="cardSimpleConfirmBtn" onclick="submitSimpleCardRequest('${serviceCode}',${reasonCode?`'${reasonCode}'`:'null'})">تأكيد وإرسال</button><button class="btn-print" onclick="renderCardServicesPanel()">إلغاء</button></div><div id="cardRequestMsg"></div></div>`;
+  } catch(e) {
+    w.innerHTML=`<div class="portal-msg err">${escHtml(e.message)}</div>`;
+  }
+}
+
+async function submitSimpleCardRequest(serviceCode, reasonCode) {
+  const m=document.getElementById('cardRequestMsg'),btn=document.getElementById('cardSimpleConfirmBtn');
+  if(!document.getElementById('cardDataConfirmation')?.checked){m.className='portal-msg err';m.textContent='يجب تأكيد صحة البيانات التي سيتم إرسالها إلى البنك.';return;}
+  btn.disabled=true;m.className='portal-msg';m.textContent='جاري إرسال الطلب...';
+  try {
+    const r=await apiFetch(`${API_BASE}/api/card-requests`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.token}`},body:JSON.stringify({service_code:serviceCode,reason_code:reasonCode,data_confirmed:true})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||d.message||'تعذر إرسال الطلب');
+    m.className='portal-msg ok';m.textContent=(d.message||'تم إرسال الطلب بنجاح.')+(d.request_id?` رقم الطلب: ${d.request_id}`:'');
+    setTimeout(()=>loadMyCardRequests(),1200);
+  } catch(e) {
+    m.className='portal-msg err';m.textContent=e.message;btn.disabled=false;
+  }
 }
 
 
@@ -1903,8 +1945,10 @@ async function cardDeliver(id){
 }
 async function showCardPrivateDetails(id){
   const w=document.getElementById('cardServiceWork');
-  try{const r=await apiFetch(`${API_BASE}/api/card-staff/requests/${id}/private-details`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await r.json();if(!r.ok)throw new Error(d.error||'تعذر عرض البيانات');
-    w.insertAdjacentHTML('afterbegin',`<div class="portal-form"><h3>🔐 بيانات الطلب #${id}</h3><div>العنوان: ${escHtml(d.address)}</div><div>الهاتف: ${escHtml(d.phone)}</div><div>الرقم القومي: ${escHtml(d.national_id)}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="portal-action" style="width:auto" onclick="openProtectedCardImage('${d.id_front_url}')">صورة الوجه</button><button class="portal-action" style="width:auto" onclick="openProtectedCardImage('${d.id_back_url}')">صورة الظهر</button></div></div>`);
+  try{const r=await apiFetch(`${API_BASE}/api/card-staff/requests/${id}/details`,{headers:{Authorization:`Bearer ${session.token}`}}),d=await r.json();if(!r.ok)throw new Error(d.error||'تعذر عرض البيانات');
+    const rows=[['الخدمة',d.reason_name||d.service_name],['تاريخ الطلب',formatCardDateTime(d.submitted_at)],['الاسم',d.employee_name],['كود العامل',d.employee_code],['الرقم القومي',d.national_id],['الهاتف',d.phone],['كود البنك',d.bank_code],['كود الصرف',d.code_sarf],['المنطقة',d.region],['الوظيفة',d.job_title],['الإدارة',d.department],['الرقم التأميني',d.insurance_number],['البريد الإلكتروني',d.email],['العنوان',d.address]];
+    const imageButtons=[d.id_front_url?`<button class="portal-action" style="width:auto" onclick="openProtectedCardImage('${d.id_front_url}')">صورة الوجه</button>`:'',d.id_back_url?`<button class="portal-action" style="width:auto" onclick="openProtectedCardImage('${d.id_back_url}')">صورة الظهر</button>`:''].join('');
+    w.insertAdjacentHTML('afterbegin',`<div class="portal-form"><h3>🔐 بيانات الطلب #${id}</h3><div class="portal-msg ok">هذه هي البيانات المسجلة بالطلب والمجهزة للإرسال إلى البنك.</div><div class="state-box dashed">${rows.map(x=>`<div class="info-row"><span class="label">${escHtml(x[0])}</span><span class="value">${escHtml(x[1]||'—')}</span></div>`).join('')}</div>${imageButtons?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${imageButtons}</div>`:''}</div>`);
   }catch(e){alert(e.message);}
 }
 async function openProtectedCardImage(url){
@@ -1954,6 +1998,7 @@ function showCardRequestForm(service) {
     </label>
 
     <div class="state-box dashed">JPG / JPEG / PNG فقط — بحد أقصى 5 MB لكل صورة.</div>
+    <label style="display:flex;gap:8px;align-items:flex-start"><input id="cardFormDataConfirmation" type="checkbox" style="width:auto;margin-top:4px"><b>أقر بأن البيانات المدخلة وبياناتي المسجلة صحيحة، وهي البيانات التي سيتم إرسالها إلى البنك.</b></label>
     <button class="btn-primary" id="cardSubmitBtn" onclick="submitCardRequest('${service}')">تأكيد وإرسال الطلب</button>
     <div id="cardRequestMsg"></div>
   </div>`;
@@ -1968,11 +2013,13 @@ async function submitCardRequest(service){
   const nationalId=(document.getElementById('cardNationalId')?.value||'').trim();
   const front=document.getElementById('cardIdFront')?.files?.[0];
   const back=document.getElementById('cardIdBack')?.files?.[0];
+  const dataConfirmed=document.getElementById('cardFormDataConfirmation')?.checked===true;
 
   if(address.length<10){m.className='portal-msg err';m.textContent='اكتب العنوان بالتفصيل.';return;}
   if(!/^01\d{9}$/.test(phone)){m.className='portal-msg err';m.textContent='رقم التليفون يجب أن يكون 11 رقمًا ويبدأ بـ 01.';return;}
   if(!/^\d{14}$/.test(nationalId)){m.className='portal-msg err';m.textContent='الرقم القومي يجب أن يكون 14 رقمًا.';return;}
   if(!front || !back){m.className='portal-msg err';m.textContent='ارفع صورة وجه البطاقة وصورة الظهر.';return;}
+  if(!dataConfirmed){m.className='portal-msg err';m.textContent='يجب تأكيد صحة البيانات التي سيتم إرسالها إلى البنك.';return;}
 
   const allowed=['image/jpeg','image/png'], max=5*1024*1024;
   for(const f of [front,back]){
@@ -1986,6 +2033,7 @@ async function submitCardRequest(service){
   fd.append('address',address);
   fd.append('phone',phone);
   fd.append('national_id',nationalId);
+  fd.append('data_confirmed','true');
   fd.append('id_front',front);
   fd.append('id_back',back);
 
