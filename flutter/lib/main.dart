@@ -29,7 +29,6 @@ Future<void> main() async {
           : ThemeMode.system;
   runApp(const EmployeePortalApp());
 }
-
 class EmployeePortalApp extends StatelessWidget {
   const EmployeePortalApp({super.key});
 
@@ -336,7 +335,6 @@ class _SplashPageState extends State<SplashPage> {
     );
   }
 }
-
 
 class _ExactCompanyLogo extends StatelessWidget {
   final double size;
@@ -2123,15 +2121,15 @@ class _ContactPageState extends State<ContactPage> {
       if (response.statusCode != 200) {
         throw Exception(body is Map ? (body['error'] ?? 'تعذر تحميل الرسائل') : 'تعذر تحميل الرسائل');
       }
-      final list = (body as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-      setState(() => messages = list);
-
-      for (final m in list.where((e) => e['admin_reply'] != null && e['employee_has_seen_reply'] != true)) {
-        final id = m['id'];
-        if (id != null) {
-          api.post('/api/messages/$id/seen', {}).catchError((_) => http.Response('', 500));
-        }
+      final dynamic rawMessages = body is Map ? body['messages'] : body;
+      if (rawMessages is! List) {
+        throw Exception('صيغة الرسائل المستلمة غير صحيحة');
       }
+      final list = rawMessages
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      if (mounted) setState(() => messages = list);
     } catch (e) {
       setState(() => error = cleanError(e));
     } finally {
@@ -2167,22 +2165,6 @@ class _ContactPageState extends State<ContactPage> {
       );
     } finally {
       if (mounted) setState(() => sending = false);
-    }
-  }
-
-  Future<void> toggleReplyLike(Map<String, dynamic> m) async {
-    final id = m['id'];
-    if (id == null) return;
-    try {
-      final response = await api.post('/api/messages/$id/like-reply', {});
-      final body = jsonDecode(response.body);
-      if (response.statusCode != 200) {
-        throw Exception(body['error'] ?? 'تعذر تسجيل الإعجاب');
-      }
-      setState(() => m['reply_liked'] = body['reply_liked']);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cleanError(e))));
     }
   }
 
@@ -2265,49 +2247,25 @@ class _ContactPageState extends State<ContactPage> {
             )
           else
             ...messages.map((m) {
-              final hasReply = m['admin_reply'] != null && '${m['admin_reply']}'.isNotEmpty;
-              final liked = m['reply_liked'] == true;
+              final fromAdmin = '${m['sender_role'] ?? ''}'.toLowerCase() == 'admin';
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
+                color: fromAdmin ? EmployeePortalApp.goldSoft : null,
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'رسالتك — ${m['created_at'] ?? ''}',
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        '${fromAdmin ? 'رد مسؤول النظام' : 'رسالتك'} — ${m['created_at'] ?? ''}',
+                        style: TextStyle(
+                          color: fromAdmin ? EmployeePortalApp.gold : Colors.grey,
+                          fontWeight: fromAdmin ? FontWeight.w800 : FontWeight.normal,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(height: 5),
-                      Text('${m['message'] ?? ''}'),
-                      const Divider(height: 22),
-                      if (hasReply) ...[
-                        Text(
-                          'رد المسؤول — ${m['replied_at'] ?? ''}',
-                          style: const TextStyle(
-                            color: EmployeePortalApp.gold,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: EmployeePortalApp.goldSoft,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text('${m['admin_reply']}'),
-                        ),
-                        const SizedBox(height: 6),
-                        OutlinedButton.icon(
-                          onPressed: () => toggleReplyLike(m),
-                          icon: Icon(liked ? Icons.thumb_up : Icons.thumb_up_outlined),
-                          label: Text(liked ? 'شكرًا' : 'أعجبني'),
-                        ),
-                      ] else
-                        const Text('⏳ لسه منتظر رد', style: TextStyle(color: Colors.grey)),
+                      Text('${m['body'] ?? m['message'] ?? ''}'),
                     ],
                   ),
                 ),
@@ -2714,6 +2672,57 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _showAboutSystem() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          icon: const Icon(Icons.info_outline_rounded, size: 46, color: EmployeePortalApp.gold),
+          title: const Column(
+            children: [
+              Text('عن النظام', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900)),
+              SizedBox(height: 4),
+              Text('Payroll Portal — بوابة الموظفين', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: EmployeePortalApp.gray)),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CardInfoRow(label: 'اسم النظام', value: 'بوابة الموظفين الإلكترونية'),
+                _CardInfoRow(label: 'الشركة', value: 'الشركة المصرية لنقل الكهرباء'),
+                _CardInfoRow(label: 'المنطقة', value: 'منطقة الدلتا'),
+                _CardInfoRow(label: 'الإصدار', value: '2.2.0+24'),
+                _CardInfoRow(label: 'تاريخ الإنشاء', value: 'يوليو 2026'),
+                _CardInfoRow(label: 'المطوّر', value: 'خالد يوسف المنسي'),
+                Divider(height: 24),
+                Text(
+                  'تم تصميم وبرمجة هذا النظام بالكامل بواسطة خالد يوسف المنسي منفردًا، دون مشاركة أي جهة أو شخص آخر.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.w800, height: 1.6),
+                ),
+                SizedBox(height: 12),
+                Text('للتواصل: واتساب 01201413051', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900, color: EmployeePortalApp.gold)),
+                SizedBox(height: 12),
+                Text(
+                  '© 2026 خالد يوسف المنسي. جميع الحقوق محفوظة. لا يجوز نسخ أو تعديل أو إعادة استخدام هذا النظام أو أي جزء منه بدون إذن كتابي من المطوّر.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11, color: EmployeePortalApp.gray, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق')),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final titles = <String>[
@@ -2869,6 +2878,19 @@ class _HomePageState extends State<HomePage> {
                   trailing: const Icon(Icons.chevron_left_rounded),
                   onTap: () => Navigator.pop(sheetContext, item.$1),
                 )),
+                const Divider(),
+                ListTile(
+                  leading: Icon(Icons.info_outline_rounded, color: Theme.of(sheetContext).colorScheme.primary),
+                  title: const Text('عن النظام', style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: const Text('معلومات المنظومة والإصدار والمطوّر'),
+                  trailing: const Icon(Icons.chevron_left_rounded),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    Future<void>.delayed(const Duration(milliseconds: 180), () {
+                      if (mounted) _showAboutSystem();
+                    });
+                  },
+                ),
               ],
             ),
           ),
@@ -2958,11 +2980,37 @@ class _DesktopSideBar extends StatelessWidget {
   });
 
   void _showAbout(BuildContext context) {
-    showAboutDialog(
+    showDialog<void>(
       context: context,
-      applicationName: 'المنظومة الإلكترونية الموحدة',
-      applicationVersion: '2.2.0',
-      applicationLegalese: 'الشركة المصرية لنقل الكهرباء — منطقة الدلتا\nتم التصميم والتطوير بواسطة خالد يوسف المنسي',
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          icon: const Icon(Icons.info_outline_rounded, size: 46, color: EmployeePortalApp.gold),
+          title: const Text('عن النظام', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900)),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CardInfoRow(label: 'اسم النظام', value: 'بوابة الموظفين الإلكترونية'),
+                _CardInfoRow(label: 'الشركة', value: 'الشركة المصرية لنقل الكهرباء'),
+                _CardInfoRow(label: 'المنطقة', value: 'منطقة الدلتا'),
+                _CardInfoRow(label: 'الإصدار', value: '2.2.0+24'),
+                _CardInfoRow(label: 'تاريخ الإنشاء', value: 'يوليو 2026'),
+                _CardInfoRow(label: 'المطوّر', value: 'خالد يوسف المنسي'),
+                Divider(height: 24),
+                Text('تم تصميم وبرمجة هذا النظام بالكامل بواسطة خالد يوسف المنسي منفردًا، دون مشاركة أي جهة أو شخص آخر.', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, height: 1.6)),
+                SizedBox(height: 12),
+                Text('للتواصل: واتساب 01201413051', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900, color: EmployeePortalApp.gold)),
+                SizedBox(height: 12),
+                Text('© 2026 خالد يوسف المنسي. جميع الحقوق محفوظة.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: EmployeePortalApp.gray)),
+              ],
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [FilledButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق'))],
+        ),
+      ),
     );
   }
 
@@ -3009,7 +3057,7 @@ class _DesktopSideBar extends StatelessWidget {
           ListTile(
             onTap: () => _showAbout(context),
             leading: Icon(Icons.info_outline_rounded, color: Theme.of(context).colorScheme.primary),
-            title: const Text('حول النظام', style: TextStyle(fontWeight: FontWeight.w800)),
+            title: const Text('عن النظام', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
           ListTile(
             onTap: onToggleTheme,
